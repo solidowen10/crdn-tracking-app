@@ -1,7 +1,9 @@
 const { google } = require('googleapis');
+const fs = require('fs');
 
 const SHEET_SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-const SHEET_TABS = ['Projects', 'Quote Items', 'Parts', 'Services', 'Activity'];
+const SHEET_TABS = ['Projects', 'Quote Items', 'Parts', 'Services', 'Activity', 'Users'];
+const SYNC_NOTE = 'Auto-synced from CRDN';
 
 function syncEnabled() {
   return String(process.env.GOOGLE_SHEETS_SYNC_ENABLED || '').toLowerCase() === 'true';
@@ -53,6 +55,35 @@ function sheetsClient() {
 function value(value) {
   if (value === null || value === undefined) return '';
   return value;
+}
+
+function columnName(index) {
+  let name = '';
+  let n = index;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    name = String.fromCharCode(65 + rem) + name;
+    n = Math.floor((n - 1) / 26);
+  }
+  return name;
+}
+
+function sheetRange(tab, a1) {
+  return `'${String(tab).replace(/'/g, "''")}'!${a1}`;
+}
+
+function keyValue(row) {
+  return String(row?.[0] ?? '').trim();
+}
+
+function serviceAccountEmail() {
+  const file = String(process.env.GOOGLE_APPLICATION_CREDENTIALS || '').trim();
+  if (!file) return '';
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8')).client_email || '';
+  } catch (err) {
+    return '';
+  }
 }
 
 function moneyTotal(price, qty) {
@@ -204,6 +235,18 @@ function exportData(db) {
     ORDER BY al.created_at DESC, al.id DESC
   `).all();
 
+  const users = db.prepare(`
+    SELECT
+      id AS "User ID",
+      line_user_id AS "LINE User ID",
+      display_name AS "Display Name",
+      role AS "Role",
+      last_login_at AS "Last Login At",
+      created_at AS "Created At"
+    FROM users
+    ORDER BY created_at DESC, id DESC
+  `).all();
+
   return {
     Projects: rowsWithHeader([
       'Project ID', 'Job #', 'Customer', 'Vehicle', 'Plate / ID', 'Package', 'Stage',
@@ -231,16 +274,20 @@ function exportData(db) {
     Activity: rowsWithHeader([
       'Activity ID', 'Project ID', 'Job #', 'Customer', 'Vehicle', 'User',
       'LINE User ID', 'Action', 'Old Value', 'New Value', 'Created At'
-    ], activity)
+    ], activity),
+    Users: rowsWithHeader([
+      'User ID', 'LINE User ID', 'Display Name', 'Role', 'Last Login At', 'Created At'
+    ], users)
   };
 }
 
 async function ensureSheets(sheets, id) {
   const response = await sheets.spreadsheets.get({
     spreadsheetId: id,
-    fields: 'spreadsheetId,properties.title,sheets.properties.title'
+    fields: 'spreadsheetId,properties.title,sheets(properties(sheetId,title),protectedRanges(protectedRangeId,description))'
   });
-  const existingTabs = new Set((response.data.sheets || []).map(sheet => sheet.properties.title));
+  const sheetInfo = new Map((response.data.sheets || []).map(sheet => [sheet.properties.title, sheet]));
+  const existingTabs = new Set(sheetInfo.keys());
   const missing = SHEET_TABS.filter(tab => !existingTabs.has(tab));
   if (missing.length) {
     await sheets.spreadsheets.batchUpdate({
@@ -249,17 +296,137 @@ async function ensureSheets(sheets, id) {
         requests: missing.map(title => ({ addSheet: { properties: { title } } }))
       }
     });
+    return ensureSheets(sheets, id);
   }
   return {
     spreadsheet_id: response.data.spreadsheetId,
-    title: response.data.properties?.title || ''
+    title: response.data.properties?.title || '',
+    sheets: sheetInfo
   };
+}
+
+async function formatSyncedColumns(sheets, id, sheet, tab, headerCount) {
+  const sheetId = sheet?.properties?.sheetId;
+  if (sheetId === undefined || !headerCount) return;
+  const description = `CRDN auto-synced columns: ${tab}`;
+  const deleteExisting = (sheet.protectedRanges || [])
+    .filter(range => range.description === description)
+    .map(range => ({ deleteProtectedRange: { protectedRangeId: range.protectedRangeId } }));
+  const email = serviceAccountEmail();
+  const protectedRange = {
+    range: { sheetId, startColumnIndex: 0, endColumnIndex: headerCount },
+    description,
+    warningOnly: false
+  };
+  if (email) protectedRange.editors = { users: [email] };
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: id,
+    requestBody: {
+      requests: [
+        ...deleteExisting,
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
+            cell: {
+              note: SYNC_NOTE,
+              userEnteredFormat: {
+                backgroundColor: { red: 0.82, green: 0.82, blue: 0.82 },
+                textFormat: { bold: true }
+              }
+            },
+            fields: 'note,userEnteredFormat(backgroundColor,textFormat)'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.94, green: 0.94, blue: 0.94 }
+              }
+            },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
+        },
+        { addProtectedRange: { protectedRange } }
+      ]
+    }
+  });
+}
+
+async function syncTab(sheets, id, tab, values, sheet) {
+  const headers = values[0] || [];
+  const rows = values.slice(1);
+  if (!headers.length) return 0;
+  const lastCol = columnName(headers.length);
+  const headerRange = sheetRange(tab, `A1:${lastCol}1`);
+  const bodyRange = sheetRange(tab, `A2:${lastCol}`);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: id,
+    range: headerRange,
+    valueInputOption: 'RAW',
+    requestBody: { values: [headers] }
+  });
+
+  const existingResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: id,
+    range: bodyRange
+  }).catch(err => {
+    if (err.code === 400 || err.status === 400) return { data: { values: [] } };
+    throw err;
+  });
+
+  const existingRows = existingResponse.data.values || [];
+  const existingByKey = new Map();
+  existingRows.forEach((row, index) => {
+    const key = keyValue(row);
+    if (key) existingByKey.set(key, index + 2);
+  });
+
+  const seen = new Set();
+  const updates = [];
+  let appendRow = existingRows.length + 2;
+  rows.forEach(row => {
+    const normalized = headers.map((_, index) => value(row[index]));
+    const key = keyValue(normalized);
+    if (!key) return;
+    const rowNumber = existingByKey.get(key) || appendRow++;
+    seen.add(key);
+    updates.push({
+      range: sheetRange(tab, `A${rowNumber}:${lastCol}${rowNumber}`),
+      values: [normalized]
+    });
+  });
+
+  existingByKey.forEach((rowNumber, key) => {
+    if (!seen.has(key)) {
+      updates.push({
+        range: sheetRange(tab, `A${rowNumber}:${lastCol}${rowNumber}`),
+        values: [headers.map(() => '')]
+      });
+    }
+  });
+
+  if (updates.length) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: id,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: updates
+      }
+    });
+  }
+
+  await formatSyncedColumns(sheets, id, sheet, tab, headers.length);
+  return rows.length;
 }
 
 async function testGoogleSheetsConnection() {
   const sheets = sheetsClient();
   const info = await ensureSheets(sheets, spreadsheetId());
-  return { ok: true, ...info, tabs: SHEET_TABS };
+  return { ok: true, spreadsheet_id: info.spreadsheet_id, title: info.title, tabs: SHEET_TABS };
 }
 
 async function syncGoogleSheets(db) {
@@ -271,17 +438,7 @@ async function syncGoogleSheets(db) {
 
   for (const tab of SHEET_TABS) {
     const values = data[tab];
-    counts[tab] = Math.max(values.length - 1, 0);
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: id,
-      range: `'${tab}'!A:Z`
-    });
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: id,
-      range: `'${tab}'!A1`,
-      valueInputOption: 'RAW',
-      requestBody: { values }
-    });
+    counts[tab] = await syncTab(sheets, id, tab, values, info.sheets.get(tab));
   }
 
   return {

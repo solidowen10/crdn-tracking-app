@@ -39,6 +39,12 @@ button{cursor:pointer}
 .nav-menu.open{display:flex;flex-direction:column;gap:3px}
 .nav-menu button{border:none;background:transparent;color:var(--black);font-size:var(--sm);font-weight:600;text-align:left;padding:9px 10px;border-radius:var(--rs);cursor:pointer}
 .nav-menu button:hover{background:var(--brand-f);color:var(--brand)}
+.menu-status{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--g100);font-size:var(--xxs);color:var(--g500);margin-bottom:3px}
+.pending-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:6px;padding:0 5px;border-radius:99px;background:#dc2626;color:#fff;font-size:11px;font-weight:800}
+.pending-badge:empty{display:none}
+.userrow.pending{background:#fff7ed;margin:0 -6px;padding-left:6px;padding-right:6px;border-radius:var(--rs)}
+.role-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;text-transform:capitalize}
+.role-admin{background:#fef3c7;color:#d97706}.role-member{background:#f0fdf4;color:#15803d}.role-pending{background:#fff7ed;color:#f97316}.role-disabled{background:#f3f4f6;color:#6b7280}
 
 /* BUTTONS */
 .btn{padding:8px 15px;border-radius:var(--rs);font-size:var(--xs);font-weight:500;border:none;transition:.15s;line-height:1;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -337,7 +343,7 @@ button{cursor:pointer}
 <div class="topbar">
   <div class="tlogo" onclick="goHome()">
     <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
-    <span class="tlogo-name">CREATIVE <span>DEN</span> STUDIO</span>
+    <span class="tlogo-name">CREATIVE DEN <span>STUDIO</span></span>
   </div>
   <div class="tright">
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
@@ -346,8 +352,9 @@ button{cursor:pointer}
         <span></span><span></span><span></span>
       </button>
       <div class="nav-menu" id="nav-menu">
+        <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
-        <button onclick="showView('settings');closeNavMenu()">Settings</button>
+        <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
       </div>
     </div>
     <div class="upill"><div class="udot"></div><span id="uname">...</span></div>
@@ -614,31 +621,44 @@ let USERS=[
 // ══════════════════════════════════════
 let projects=[];
 
-let AP=null, activeTab='overview';
+let AP=null, activeTab='overview', currentFilter='All', dashboardSummaryState=null, settingsLoaded=false;
 let currentUser={displayName:'Owen',role:'admin'};
 
 // ══════════════════════════════════════
 // API LAYER
 // ══════════════════════════════════════
 async function api(method,path,body){
-  try{
-    const opts={method,credentials:'include',headers:{}};
-    if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
-    const r=await fetch(path,opts);
-    if(r.status===401){location.href='/login';return null;}
-    if(!r.ok)throw new Error(await r.text());
-    return await r.json();
-  }catch(e){return null;}
+  const opts={method,credentials:'include',headers:{}};
+  if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  const r=await fetch(path,opts);
+  if(r.status===401){location.href='/login';throw new Error('Not authenticated');}
+  const text=await r.text();
+  let data=null;
+  if(text){
+    try{data=JSON.parse(text);}catch(e){data=text;}
+  }
+  if(!r.ok){
+    const msg=typeof data==='string'?data:(data?.error||`${method} ${path} failed`);
+    throw new Error(msg);
+  }
+  return data;
 }
 const GET=p=>api('GET',p);
 const POST=(p,b)=>api('POST',p,b);
 const PATCH=(p,b)=>api('PATCH',p,b);
 const DELETE=p=>api('DELETE',p);
 
+function errMsg(e){
+  return e?.message?.replace(/^Error:\s*/,'')||'Something went wrong';
+}
+
 async function loadUser(){
   const u=await GET('/auth/me');
-  if(u){currentUser=u;document.getElementById('uname').textContent=u.displayName||'User';}
-  else document.getElementById('uname').textContent='Owen';
+  if(u){
+    currentUser=u;
+    document.getElementById('uname').textContent=u.displayName||'User';
+    const menuName=document.getElementById('uname-menu');if(menuName)menuName.textContent=`${u.displayName||'User'} · ${u.role||'member'}`;
+  }
 }
 
 // ══════════════════════════════════════
@@ -654,16 +674,18 @@ const sCol=l=>sObj(l).c;
 const itemById=id=>{for(const c of CATALOG)for(const i of c.items)if(i.id===id)return i;return null};
 const catOf=id=>{for(const c of CATALOG)if(c.items.find(i=>i.id===id))return c.cat;return 'Other'};
 const effP=id=>itemById(id)?.price||0;
-const qty=(p,id)=>p.itemQtys[id]||1;
+const qty=(p,id)=>(p.itemQtys||{})[id]||1;
 const partCost=item=>(item?.parts||[]).reduce((s,sp)=>s+(parseFloat(sp.cost)||0),0);
 const spTot=id=>partCost(itemById(id));
 const depPaid=p=>sIdx(p.stage)>=4;
 const nowStr=()=>new Date().toISOString().slice(0,16).replace('T',' ');
 const calcTotal=p=>{
-  const c=p.checkedItems.reduce((s,id)=>s+effP(id)*qty(p,id),0);
+  if(!p)return 0;
+  const c=(p.checkedItems||[]).reduce((s,id)=>s+effP(id)*qty(p,id),0);
   const x=(p.customItems||[]).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
   return c+x;
 };
+const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||0);
 function pstCls(s){return{'Need to Order':'pst-need','Ordered':'pst-ordered','Arrived':'pst-arrived','Installed':'pst-installed','Backordered':'pst-back'}[s]||'pst-none';}
 let _tt=null;
 function toast(msg,dur=2400){
@@ -718,6 +740,89 @@ function undoQuoteChange(){
   toast('Quote change undone');
 }
 
+function projectFromApi(row){
+  const p=row||{};
+  return {
+    ...p,
+    id:p.id,
+    jobNo:p.jobNo||p.job_no||`CRDN-${String(p.id||0).padStart(3,'0')}`,
+    owner:p.owner||p.customer||'',
+    vehicle:p.vehicle||p.name||'',
+    plate:p.plate||'',
+    pkg:p.pkg||p.package||'',
+    stage:p.stage||'01 Intake',
+    priority:p.priority||'Normal',
+    designer:p.designer||'',
+    finish:p.finish||p.finish_date||'',
+    notes:p.notes||'',
+    archived:p.archived===1||p.archived===true,
+    checkedItems:Array.isArray(p.checkedItems)?p.checkedItems:[],
+    itemQtys:p.itemQtys||{},
+    customItems:Array.isArray(p.customItems)?p.customItems:[],
+    partsStatus:p.partsStatus||{},
+    stockStatus:p.stockStatus||{},
+    timeline:Array.isArray(p.timeline)?p.timeline:[],
+    quoteTotal:Number(p.quote_total||p.quoteTotal||0),
+    saved:true
+  };
+}
+
+function apiFilter(f){
+  return {Waiting:'Waiting Approval',Parts:'Parts Ordering'}[f]||f||'All';
+}
+
+async function refreshDashboard(filter=currentFilter){
+  currentFilter=filter||'All';
+  const list=document.getElementById('plist');
+  if(list)list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">Loading…</div>';
+  try{
+    const data=await GET(`/api/dashboard?filter=${encodeURIComponent(apiFilter(currentFilter))}`);
+    dashboardSummaryState=data?.summary||null;
+    projects=(data?.projects||[]).map(projectFromApi);
+    renderDash(currentFilter);
+  }catch(e){
+    if(list)list.innerHTML=`<div style="padding:40px;text-align:center;color:var(--danger)">Could not load projects: ${errMsg(e)}</div>`;
+    toast(`Could not load dashboard: ${errMsg(e)}`,4000);
+  }
+}
+
+async function fetchProject(id){
+  const data=await GET(`/api/projects/${id}`);
+  const p=projectFromApi(data);
+
+  try{
+    const consultation=await GET(`/api/projects/${p.id}/consultation`);
+    const items=(consultation.categories||[]).flatMap(cat=>cat.items||[]);
+
+    p.checkedItems=items
+      .filter(item=>item.selected)
+      .map(item=>item.slug||String(item.id));
+
+    p.itemQtys={};
+    items.forEach(item=>{
+      if(item.selected&&item.quote_item){
+        p.itemQtys[item.slug||item.id]=item.quote_item.quantity||1;
+      }
+    });
+  }catch(e){
+    console.error('Failed to hydrate consultation',e);
+  }
+
+  return p;
+}
+
+function pendingCount(){
+  return USERS.filter(u=>u.role==='pending').length;
+}
+
+function updatePendingBadge(){
+  const badge=document.getElementById('pending-badge');
+  if(!badge)return;
+  const n=pendingCount();
+  badge.textContent=n?commas(n):'';
+  badge.title=n?`${n} pending LINE login request${n===1?'':'s'}`:'';
+}
+
 // ══════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════
@@ -727,7 +832,7 @@ function showView(v){
   document.getElementById('mobbar').classList.toggle('show',v==='detail'&&activeTab==='consult');
   closeNavMenu();
   if(v==='settings')renderSettings();
-  if(v==='dash')renderDash();
+  if(v==='dash')refreshDashboard(currentFilter);
 }
 function goHome(){AP=null;showView('dash');}
 function toggleNavMenu(event){
@@ -742,7 +847,11 @@ function closeNavMenu(){
   document.getElementById('nav-menu')?.classList.remove('open');
   document.querySelector('.menu-btn')?.setAttribute('aria-expanded','false');
 }
-function setFilter(el,f){document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderDash(f);}
+function setFilter(el,f){
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  refreshDashboard(f);
+}
 function st(tab,btn){
   activeTab=tab;
   document.querySelectorAll('#dtbar .dtab').forEach(b=>b.classList.remove('on'));
@@ -757,26 +866,27 @@ function st(tab,btn){
 function renderDash(filter='All'){
   const active=projects.filter(p=>!p.archived&&sIdx(p.stage)>=1&&sIdx(p.stage)<=12);
   const waitP=projects.filter(p=>!p.archived&&sIdx(p.stage)>=6&&sIdx(p.stage)<=7);
-  const tot=active.reduce((s,p)=>s+calcTotal(p),0);
+  const tot=active.reduce((s,p)=>s+projectQuoteTotal(p),0);
   const now=new Date(),weekOut=new Date(now.getTime()+7*24*60*60*1000);
   const dueWeek=active.filter(p=>p.finish&&new Date(p.finish)>=now&&new Date(p.finish)<=weekOut).length;
-  document.getElementById('s-active').textContent=commas(active.length);
-  document.getElementById('s-parts').textContent=commas(waitP.length);
-  document.getElementById('s-due').textContent=commas(dueWeek);
-  document.getElementById('s-total').textContent=tot>=1000?'NT$'+commas(Math.round(tot/1000))+'K':fmt(tot);
+  const summary=dashboardSummaryState||{
+    active_projects:active.length,
+    waiting_parts:waitP.length,
+    due_this_week:dueWeek,
+    total_quoted:tot
+  };
+  document.getElementById('s-active').textContent=commas(summary.active_projects||0);
+  document.getElementById('s-parts').textContent=commas(summary.waiting_parts||0);
+  document.getElementById('s-due').textContent=commas(summary.due_this_week||0);
+  const quoted=Number(summary.total_quoted||0);
+  document.getElementById('s-total').textContent=quoted>=1000?'NT$'+commas(Math.round(quoted/1000))+'K':fmt(quoted);
 
   let shown=projects;
-  if(filter==='Active')shown=projects.filter(p=>!p.archived&&sIdx(p.stage)>=1&&sIdx(p.stage)<=12);
-  else if(filter==='Waiting')shown=projects.filter(p=>!p.archived&&p.stage==='04 Waiting Approval');
-  else if(filter==='Parts')shown=projects.filter(p=>!p.archived&&['07 Parts Ordering','08 Parts Arrived'].includes(p.stage));
-  else if(filter==='Building')shown=projects.filter(p=>!p.archived&&['09 Building','10 Installation'].includes(p.stage));
-  else if(filter==='Delivered')shown=projects.filter(p=>!p.archived&&p.stage==='13 Delivered');
-  else if(filter==='Archived')shown=projects.filter(p=>p.archived||p.stage==='14 Archived');
 
   const list=document.getElementById('plist');list.innerHTML='';
   if(!shown.length){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">No projects found</div>';return;}
   shown.forEach(p=>{
-    const pct=sPct(p.stage),col=sCol(p.stage),t=calcTotal(p);
+    const pct=sPct(p.stage),col=sCol(p.stage),t=projectQuoteTotal(p);
     const d=document.createElement('div');d.className='pcard';
     d.innerHTML=`
       <div class="pc-h">
@@ -788,7 +898,6 @@ function renderDash(filter='All'){
         <div class="prog"><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div><span class="ppct">${pct}%</span></div>
         <span class="designer-pill">👤 ${p.designer||'—'}</span>
         <span class="job-pill">${p.jobNo}</span>
-        ${!p.saved?'<span class="pc-status unsaved">Unsaved</span>':''}
         ${p.archived?'<span class="pc-status archived">Archived</span>':''}
       </div>
       <div class="pc-f">
@@ -803,11 +912,16 @@ function renderDash(filter='All'){
 // ══════════════════════════════════════
 // DETAIL
 // ══════════════════════════════════════
-function openDetail(p){
-  AP=p;
-  document.getElementById('d-crumb').textContent=p.jobNo;
-  document.getElementById('d-title').textContent=`${p.vehicle} — ${p.owner}`;
-  document.getElementById('d-sub').textContent=`${p.jobNo}  ·  ${p.plate||'—'}  ·  ${p.pkg||'—'}`;
+async function openDetail(p){
+  try{
+    AP=p?.id?await fetchProject(p.id):p;
+  }catch(e){
+    AP=p;
+    toast(`Could not refresh project: ${errMsg(e)}`,3500);
+  }
+  document.getElementById('d-crumb').textContent=AP.jobNo;
+  document.getElementById('d-title').textContent=`${AP.vehicle} — ${AP.owner}`;
+  document.getElementById('d-sub').textContent=`${AP.jobNo}  ·  ${AP.plate||'—'}  ·  ${AP.pkg||'—'}`;
   showView('detail');
   st('overview',document.querySelector('#dtbar .dtab'));
 }
@@ -857,7 +971,25 @@ function rOverview(body){
 }
 async function savePatch(data){
   if(!AP)return;
-  await PATCH(`/api/projects/${AP.id}`,data);
+  const payload={...data};
+  if(payload.vehicle!==undefined){payload.name=payload.vehicle;delete payload.vehicle;}
+  try{
+    const updated=await PATCH(`/api/projects/${AP.id}`,payload);
+    if(updated){
+      const next=projectFromApi(updated);
+      AP={
+  	...next,
+  	checkedItems: AP.checkedItems || [],
+  	itemQtys: AP.itemQtys || {},
+  	customItems: AP.customItems || [],
+  	timeline: AP.timeline || []
+      };
+      projects=projects.map(p=>p.id===AP.id?AP:p);
+      renderDash(currentFilter);
+    }
+  }catch(e){
+    toast(`Save failed: ${errMsg(e)}`,4000);
+  }
 }
 function changeStage(val){
   const old=AP.stage;AP.stage=val;
@@ -929,10 +1061,22 @@ function chgQty(id,delta){
 function addCustRow(){pushQuoteUndo();if(!AP.customItems)AP.customItems=[];AP.customItems.push({name:'',price:0,qty:1});buildChecklist();buildQPanel();}
 function rmCust(i){pushQuoteUndo();AP.customItems.splice(i,1);buildChecklist();buildQPanel();updMobBar();}
 async function saveConsult(){
-  if(!AP)return;AP.saved=true;
+  if(!AP)return;
   AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcTotal(AP))}`,type:'save'});
-  await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems});
-  toast('Consultation saved ✓');buildChecklist();renderDash();
+  try{
+    await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems});
+    AP.saved=true;
+const fresh=await fetchProject(AP.id);
+AP={...fresh};
+projects=projects.map(p=>p.id===AP.id?AP:p);
+
+toast('Consultation saved ✓');
+buildChecklist();
+renderDash(currentFilter);
+  }catch(e){
+    AP.saved=false;
+    toast(`Consultation not saved: ${errMsg(e)}`,4500);
+  }
 }
 function buildQPanel(){
   const p=AP,el=document.getElementById('cright');if(!el)return;
@@ -1294,11 +1438,39 @@ async function deleteProject(){
 // ══════════════════════════════════════
 // SETTINGS
 // ══════════════════════════════════════
+function userFromApi(row){
+  return {
+    id:row.id,
+    name:row.display_name||row.name||'LINE User',
+    lineId:row.line_user_id||row.lineId||'',
+    role:row.role||'pending',
+    lastLoginAt:row.last_login_at||'',
+    createdAt:row.created_at||''
+  };
+}
+
+async function loadAdminSettings(opts={}){
+  if(currentUser.role!=='admin')return null;
+  try{
+    const data=await GET('/api/admin/settings');
+    if(data?.users)USERS=data.users.map(userFromApi);
+    const terms=document.getElementById('default-terms');
+    if(terms&&data?.quote_terms)terms.value=data.quote_terms;
+    settingsLoaded=true;
+    updatePendingBadge();
+    return data;
+  }catch(e){
+    if(!opts.silent)toast(`Could not load admin settings: ${errMsg(e)}`,4000);
+    return null;
+  }
+}
+
 function renderSettings(){
   renderPackages();
   renderCatalog();
   renderPipeline();
   renderUsers();
+  loadAdminSettings().then(()=>renderUsers());
   loadSheetsStatus();
 }
 
@@ -1491,21 +1663,41 @@ function renderPipeline(){
 function renderUsers(){
   const el=document.getElementById('users-settings');if(!el)return;
   el.innerHTML=USERS.map((u,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--g100)">
-      <div style="width:32px;height:32px;border-radius:50%;background:var(--brand-l);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--brand);flex-shrink:0">${u.name[0]}</div>
+    <div class="userrow ${u.role==='pending'?'pending':''}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--g100)">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--brand-l);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--brand);flex-shrink:0">${(u.name||'U')[0]}</div>
       <div style="flex:1">
         <div style="font-size:var(--sm);font-weight:600">${u.name}</div>
         <div style="font-size:11px;font-family:monospace;color:var(--g400)">${u.lineId}</div>
+        ${u.lastLoginAt?`<div style="font-size:11px;color:var(--g400)">Last login ${new Date(u.lastLoginAt).toLocaleString('zh-TW')}</div>`:''}
       </div>
-      <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:${u.role==='admin'?'#fef3c7':'var(--g100)'};color:${u.role==='admin'?'#d97706':'var(--g500)'}">${u.role}</span>
-      ${u.role!=='admin'?`<button class="btn btn-danger btn-xs" onclick="deleteUser(${i})">Delete</button>`:'<div style="width:52px"></div>'}
+      <span class="role-badge role-${u.role}">${u.role}</span>
+      ${u.role==='pending'?`<button class="btn btn-green btn-xs" onclick="updateUserRole(${i},'member')">Approve</button>`:''}
+      ${u.role!=='disabled'&&u.lineId!==currentUser.userId?`<button class="btn btn-amber btn-xs" onclick="updateUserRole(${i},'disabled')">Disable</button>`:''}
+      ${u.role==='disabled'?`<button class="btn btn-out btn-xs" onclick="updateUserRole(${i},'member')">Enable</button>`:''}
+      ${u.lineId!==currentUser.userId?`<button class="btn btn-danger btn-xs" onclick="deleteUser(${i})">Delete</button>`:'<div style="width:52px"></div>'}
     </div>`).join('');
+  updatePendingBadge();
+}
+async function updateUserRole(i,role){
+  const u=USERS[i];if(!u)return;
+  try{
+    const res=await PATCH(`/api/admin/users/${u.id}`,{display_name:u.name,role});
+    USERS[i]=userFromApi(res);
+    renderUsers();
+    toast(role==='member'&&u.role==='pending'?`${u.name} approved ✓`:`${u.name} updated`);
+  }catch(e){
+    toast(`User update failed: ${errMsg(e)}`,4000);
+  }
 }
 async function deleteUser(i){
   const u=USERS[i];
   if(!confirm(`Remove ${u.name} from the team?`))return;
-  await DELETE(`/api/admin/users/${u.id}`);
-  USERS.splice(i,1);renderUsers();toast(`${u.name} removed`);
+  try{
+    await DELETE(`/api/admin/users/${u.id}`);
+    USERS.splice(i,1);renderUsers();toast(`${u.name} removed`);
+  }catch(e){
+    toast(`Delete failed: ${errMsg(e)}`,4000);
+  }
 }
 function openAddUser(){document.getElementById('modal-adduser').classList.add('open');}
 async function addUser(){
@@ -1513,12 +1705,15 @@ async function addUser(){
   const lineId=document.getElementById('au-id').value.trim();
   const role=document.getElementById('au-role').value;
   if(!name||!lineId){toast('Name and LINE ID required');return;}
-  const res=await POST('/api/admin/users',{name,lineId,role});
-  const newUser={id:res?.id||uid(),name,lineId,role};
-  USERS.push(newUser);
-  closeModal('modal-adduser');
-  ['au-name','au-id'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  renderUsers();toast('Team member added ✓');
+  try{
+    const res=await POST('/api/admin/users',{display_name:name,line_user_id:lineId,role});
+    USERS.unshift(userFromApi(res));
+    closeModal('modal-adduser');
+    ['au-name','au-id'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    renderUsers();toast('Team member added ✓');
+  }catch(e){
+    toast(`Add user failed: ${errMsg(e)}`,4000);
+  }
 }
 
 // ── TERMS ──
@@ -1529,9 +1724,12 @@ function saveTerms(){toast('Terms saved ✓');}
 // ══════════════════════════════════════
 async function loadSheetsStatus(){
   const el=document.getElementById('sheets-body');if(!el)return;
-  const data=await GET('/api/admin/google-sheets/status');
-  if(!data){el.innerHTML=sheetsHTML({enabled:false,spreadsheet_id:'',credentials_configured:false,tabs:[],last_synced_at:'',last_error:'API not reachable (check deployment)'});return;}
-  el.innerHTML=sheetsHTML(data);
+  try{
+    const data=await GET('/api/admin/google-sheets/status');
+    el.innerHTML=sheetsHTML(data);
+  }catch(e){
+    el.innerHTML=sheetsHTML({enabled:false,spreadsheet_id:'',credentials_configured:false,tabs:[],last_synced_at:'',last_error:errMsg(e)});
+  }
 }
 function sheetsHTML(d){
   const tabs=d.tabs||[];
@@ -1546,25 +1744,31 @@ function sheetsHTML(d){
 }
 async function testSheets(){
   const btn=document.getElementById('btn-test');btn.disabled=true;btn.innerHTML='<div class="spin"></div> Testing…';
-  const data=await GET('/api/admin/google-sheets/status?test=1');
-  btn.disabled=false;btn.textContent='🔌 Test Connection';
-  if(!data){toast('Cannot reach server',3000);return;}
-  if(data.error){toast('❌ '+data.error,4000);return;}
-  if(data.test?.ok){
-    const el=document.getElementById('sheets-body');if(el)el.innerHTML=sheetsHTML(data);
-    toast(`✅ Connected — "${data.test.title}"`);
-  } else {toast('❌ Connection failed',3500);}
+  try{
+    const data=await GET('/api/admin/google-sheets/status?test=1');
+    if(data.test?.ok){
+      const el=document.getElementById('sheets-body');if(el)el.innerHTML=sheetsHTML(data);
+      toast(`✅ Connected — "${data.test.title}"`);
+    } else {toast('❌ Connection failed',3500);}
+  }catch(e){
+    toast('❌ '+errMsg(e),4000);
+  }finally{
+    btn.disabled=false;btn.textContent='🔌 Test Connection';
+  }
 }
 async function syncNow(){
   const btn=document.getElementById('btn-sync');btn.disabled=true;btn.innerHTML='<div class="spin"></div> Syncing…';
-  const data=await POST('/api/admin/google-sheets/sync',{});
-  btn.disabled=false;btn.textContent='⬆ Sync Now';
-  if(!data){toast('Sync failed — check server logs',3500);return;}
-  if(data.error){toast('❌ '+data.error,4000);return;}
-  if(data.ok){
-    const el=document.getElementById('sheets-body');if(el&&data.status)el.innerHTML=sheetsHTML(data.status);
-    const counts=data.counts?Object.entries(data.counts).map(([k,v])=>`${k}:${commas(v)}`).join(', '):'';
-    toast(`✅ Synced${counts?' — '+counts:''}`,3500);
+  try{
+    const data=await POST('/api/admin/google-sheets/sync',{});
+    if(data.ok){
+      const el=document.getElementById('sheets-body');if(el&&data.status)el.innerHTML=sheetsHTML(data.status);
+      const counts=data.counts?Object.entries(data.counts).map(([k,v])=>`${k}:${commas(v)}`).join(', '):'';
+      toast(`✅ Synced${counts?' — '+counts:''}`,3500);
+    }
+  }catch(e){
+    toast('❌ '+errMsg(e),4000);
+  }finally{
+    btn.disabled=false;btn.textContent='⬆ Sync Now';
   }
 }
 
@@ -1590,26 +1794,37 @@ async function createProject(){
   const pkgId=pkgSel?.value||'';
   const pkg=pkgId?PACKAGES.find(p=>p.id===pkgId)?.name||'':document.getElementById('m-pkg')?.options[document.getElementById('m-pkg').selectedIndex]?.text||'';
   const designer=document.getElementById('m-designer').value;
-  const preItems=pkgId?PACKAGES.find(p=>p.id===pkgId)?.items||[]:[];
-
-  const res=await POST('/api/projects',{owner,name:vehicle,plate,pkg,designer,stage:'02 Consultation',priority:'Normal'});
-  const id=res?.id||Date.now();
-  const num=res?.jobNo||`CRDN-${String(projects.length+1).padStart(3,'0')}`;
-  const p={id,jobNo:num,owner,vehicle,plate,pkg,stage:'02 Consultation',priority:'Normal',designer,finish:'',
-    checkedItems:[...preItems],itemQtys:{},customItems:[],partsStatus:{},stockStatus:{},notes:'',saved:false,archived:false,
-    timeline:[{time:nowStr(),user:currentUser.displayName,action:'Project created',old:'',nv:num+' · '+vehicle+' · '+owner+(pkg?' · '+pkg:''),type:'create'}]};
-  projects.unshift(p);
-  closeModal('modal-new');
-  ['m-owner','m-vehicle','m-plate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  openDetail(p);
+  const btn=document.querySelector('#modal-new .btn-brand');
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
+  try{
+    const res=await POST('/api/projects',{owner,name:vehicle,vehicle,plate,pkg,designer,stage:'02 Consultation',priority:'Normal'});
+    const p=projectFromApi(res);
+    closeModal('modal-new');
+    ['m-owner','m-vehicle','m-plate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    await refreshDashboard('All');
+    await openDetail(p);
+    toast('Project created ✓');
+  }catch(e){
+    toast(`Project was not created: ${errMsg(e)}`,4500);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Create & Consult →';}
+  }
 }
 
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
+async function initApp(){
+  try{
+    await loadUser();
+    if(currentUser.role==='admin')await loadAdminSettings({silent:true});
+    await refreshDashboard('All');
+  }catch(e){
+    toast(`App failed to load: ${errMsg(e)}`,4500);
+  }
+}
 document.addEventListener('click',closeNavMenu);
-loadUser();
-renderDash();
+initApp();
 </script>
 </body>
 </html>

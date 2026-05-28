@@ -97,12 +97,16 @@ function hydrateSessionUser(req) {
 
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
-  if (!hydrateSessionUser(req)) return res.status(403).json({ error: 'Access is pending admin approval' });
+  if (!hydrateSessionUser(req)) {
+    req.session.destroy(() => {});
+    return res.status(403).json({ error: 'Access is pending admin approval' });
+  }
   next();
 }
 
 function requireAdmin(req, res, next) {
   if (!req.session.user || !hydrateSessionUser(req) || req.session.user.role !== 'admin') {
+    if (req.session.user) req.session.destroy(() => {});
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
@@ -110,6 +114,9 @@ function requireAdmin(req, res, next) {
 
 function requirePageAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
+  if (!hydrateSessionUser(req)) {
+    return req.session.destroy(() => res.redirect('/login'));
+  }
   next();
 }
 
@@ -300,8 +307,12 @@ function activatePartsAfterDeposit(vehicleId, req) {
 }
 
 function renderAccessPending(profile, role) {
-  const status = role === 'disabled' ? 'Access disabled' : 'Admin approval pending';
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${status}</title><style>body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#171410;color:#f6f1e8;min-height:100vh;display:grid;place-items:center;margin:0}.card{width:min(520px,calc(100vw - 32px));background:#211d18;border:1px solid #3d3428;border-radius:18px;padding:30px}.label{color:#d4a96a;font-size:12px;text-transform:uppercase;letter-spacing:.12em}.id{background:#111;padding:12px;border-radius:10px;overflow:auto}</style></head><body><main class="card"><div class="label">Creative Den</div><h1>${status}</h1><p>${escapeHtml(profile.displayName || 'LINE user')} is not approved yet.</p><p>Your LINE user ID:</p><pre class="id">${escapeHtml(profile.userId)}</pre><p>Ask an existing admin to approve this request in the Admin tab.</p></main></body></html>`;
+  const disabled = role === 'disabled';
+  const status = disabled ? 'Access disabled' : 'Waiting for admin approval';
+  const body = disabled
+    ? 'This LINE account has been disabled. Please contact an admin if this looks wrong.'
+    : 'Your request has been sent to an admin. This page checks again every 15 seconds.';
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${status}</title><style>*{box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f8f8f5;color:#111110;min-height:100vh;display:grid;place-items:center;margin:0;padding:20px}.card{width:min(520px,100%);background:#fff;border:1px solid #e2e2de;border-radius:16px;padding:28px;box-shadow:0 8px 24px rgba(0,0,0,.10)}.brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}.brand img{width:42px;height:42px;border-radius:8px}.brand strong{font-size:18px;letter-spacing:.08em}.brand span{color:#ca741f}h1{font-size:24px;margin:0 0 10px}p{color:#6b6b68;line-height:1.6}.id{background:#f8f8f5;border:1px solid #e2e2de;padding:12px;border-radius:8px;overflow:auto;color:#111}.actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}.btn{border:1px solid #e2e2de;background:#fff;color:#111;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}.primary{background:#ca741f;border-color:#ca741f;color:#fff}.muted{font-size:13px;color:#8c8c89}</style></head><body><main class="card"><div class="brand"><img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="Creative Den"><strong>CREATIVE DEN <span>STUDIO</span></strong></div><h1>${status}</h1><p>${escapeHtml(body)}</p><p>Your LINE user ID:</p><pre class="id">${escapeHtml(profile.userId)}</pre><div class="actions"><form method="post" action="/auth/logout"><button class="btn" type="submit">Logout</button></form>${disabled ? '' : '<button class="btn primary" type="button" onclick="checkNow()">Check again</button>'}<span class="muted" id="check-status"></span></div></main><script>async function checkNow(){const el=document.getElementById('check-status');try{el.textContent='Checking...';const r=await fetch('/auth/pending-status',{credentials:'include'});const data=await r.json();if(data.status==='approved'){location.href='/';return;}if(data.status==='disabled'){location.reload();return;}el.textContent='Still waiting';}catch(e){el.textContent='Cannot check right now';}}${disabled ? '' : 'setInterval(checkNow,15000);'}</script></body></html>`;
 }
 
 app.get('/health', (req, res) => res.json({ ok: true, app: 'crdn-tracking-app' }));
@@ -358,16 +369,46 @@ app.get('/auth/callback', async (req, res) => {
       `).run(profile.displayName || existing.display_name || 'LINE User', envAdmin ? 1 : 0, profile.userId);
     }
 
-    const user = getUser(profile.userId);
-    if (!['admin', 'member'].includes(user.role)) return res.status(403).send(renderAccessPending(profile, user.role));
+	    const user = getUser(profile.userId);
+	    if (!['admin', 'member'].includes(user.role)) {
+	      req.session.pendingLineUserId = profile.userId;
+	      req.session.pendingDisplayName = profile.displayName || user.display_name || 'LINE User';
+	      delete req.session.user;
+	      delete req.session.lineOAuthState;
+	      return res.status(403).send(renderAccessPending(profile, user.role));
+	    }
 
-    req.session.user = { userId: profile.userId, displayName: profile.displayName || user.display_name || 'LINE User', role: user.role };
-    delete req.session.lineOAuthState;
-    res.redirect('/');
+	    req.session.user = { userId: profile.userId, displayName: profile.displayName || user.display_name || 'LINE User', role: user.role };
+	    delete req.session.pendingLineUserId;
+	    delete req.session.pendingDisplayName;
+	    delete req.session.lineOAuthState;
+	    res.redirect('/');
   } catch (err) {
     console.error(err.response?.data || err);
     res.status(500).send('LINE authentication failed. Check channel ID, secret, and callback URL.');
   }
+});
+
+app.get('/auth/pending-status', (req, res) => {
+  const lineUserId = req.session.pendingLineUserId || req.session.user?.userId;
+  if (!lineUserId) return res.json({ status: 'unknown' });
+  const user = getUser(lineUserId);
+  if (!user) return res.json({ status: 'unknown' });
+  if (['admin', 'member'].includes(user.role)) {
+    req.session.user = {
+      userId: user.line_user_id,
+      displayName: user.display_name || req.session.pendingDisplayName || 'LINE User',
+      role: user.role
+    };
+    delete req.session.pendingLineUserId;
+    delete req.session.pendingDisplayName;
+    return res.json({ status: 'approved', role: user.role });
+  }
+  if (user.role === 'disabled') {
+    delete req.session.user;
+    return res.json({ status: 'disabled', role: user.role });
+  }
+  res.json({ status: 'pending', role: user.role });
 });
 
 app.get('/auth/me', requireAuth, (req, res) => res.json(req.session.user));
@@ -395,7 +436,7 @@ app.get('/api/dashboard', requireAuth, (req, res) => {
 
 app.post('/api/projects', requireAuth, (req, res) => {
   const owner = text(req.body.owner);
-  const name = text(req.body.name);
+  const name = text(req.body.name || req.body.vehicle);
   if (!owner || !name) return res.status(400).json({ error: 'customer and vehicle are required' });
   const stage = normalizeStage(req.body.stage || '01 Intake');
   const result = db.prepare(`
@@ -514,8 +555,123 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
 });
 
 app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
-  requireProject(req.params.id, true);
-  res.status(501).json({ error: 'not implemented' });
+  const project = requireProject(req.params.id, true);
+
+  console.log('CONSULTATION BODY:', JSON.stringify(req.body, null, 2));
+
+  const checkedItemsRaw = req.body.checkedItems || [];
+
+  const checkedItems = Array.isArray(checkedItemsRaw)
+  ? checkedItemsRaw.map(String)
+  : Object.keys(checkedItemsRaw)
+      .filter(key => checkedItemsRaw[key])
+      .map(String);
+
+  const checkedSet = new Set(checkedItems);
+  const itemQtys = req.body.itemQtys || {};
+  const warnings = [];
+
+  const items = db.prepare(`
+    SELECT
+      ci.id,
+      ci.slug,
+      ci.name,
+      ci.description,
+      ci.default_customer_price,
+      ci.default_internal_cost,
+      ci.supplier,
+      ci.need_order,
+      ci.sort_order,
+      ci.active,
+      cc.name AS category
+    FROM consultation_items ci
+    JOIN consultation_categories cc ON cc.id=ci.category_id
+    WHERE ci.active=1
+    ORDER BY cc.sort_order, ci.sort_order, ci.id
+  `).all();
+
+  for (const item of items) {
+    const existing = db.prepare(
+      'SELECT * FROM quote_items WHERE vehicle_id=? AND consultation_item_id=?'
+    ).get(project.id, item.id);
+
+    const selected =
+      checkedSet.has(String(item.id)) ||
+      checkedSet.has(String(item.slug));
+
+    if (selected) {
+      const qtyRaw = itemQtys[item.id] ?? itemQtys[String(item.id)] ?? existing?.quantity ?? 1;
+      const qty = Math.max(0.01, number(qtyRaw, 1));
+      const customerPrice = int(existing?.customer_price ?? item.default_customer_price);
+      const internalCost = int(existing?.internal_cost ?? item.default_internal_cost);
+      const supplier = text(existing?.supplier ?? item.supplier);
+      const needOrder = !!item.need_order;
+      const partsStatus = needOrder ? 'Need to Order' : 'Not Needed';
+
+      if (existing) {
+        db.prepare(`
+          UPDATE quote_items
+          SET category=?, description=?, quantity=?, customer_price=?, internal_cost=?, supplier=?,
+              need_order=?, parts_status=?, active=1, updated_at=CURRENT_TIMESTAMP
+          WHERE id=?
+        `).run(
+          item.category,
+          item.name,
+          qty,
+          customerPrice,
+          internalCost,
+          supplier,
+          needOrder ? 1 : 0,
+          partsStatus,
+          existing.id
+        );
+      } else {
+        db.prepare(`
+          INSERT INTO quote_items (
+            vehicle_id, consultation_item_id, category, description, quantity, customer_price,
+            internal_cost, supplier, need_order, parts_status, sort_order
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          project.id,
+          item.id,
+          item.category,
+          item.name,
+          qty,
+          customerPrice,
+          internalCost,
+          supplier,
+          needOrder ? 1 : 0,
+          partsStatus,
+          nextSort('quote_items', project.id)
+        );
+      }
+    } else if (existing && existing.active) {
+      const activePart = db.prepare(
+        'SELECT * FROM parts WHERE quote_item_id=? AND active=1 LIMIT 1'
+      ).get(existing.id);
+
+      if (activePart && !['Need to Order', 'Not Needed', 'Cancelled'].includes(activePart.status)) {
+        warnings.push(`Kept linked part for ${existing.description} because it is already ${activePart.status}.`);
+      } else if (activePart) {
+        db.prepare('UPDATE parts SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(activePart.id);
+      }
+
+      db.prepare('UPDATE quote_items SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(existing.id);
+    }
+  }
+
+  activity(req, project.id, 'consultation saved', null, `${checkedItems.length} items selected`);
+
+  if (project.stage === '05 Deposit Paid' || stageProgress(project.stage) > stageProgress('05 Deposit Paid')) {
+    activatePartsAfterDeposit(project.id, req);
+  }
+
+  res.json({
+    ok: true,
+    quote_total: quoteTotals(project.id).customer,
+    warnings
+  });
 });
 
 app.patch('/api/projects/:id/consultation/:itemId', requireAuth, (req, res) => {
@@ -894,7 +1050,9 @@ app.post('/api/admin/users', requireAdmin, (req, res) => {
     VALUES (?, ?, ?)
     ON CONFLICT(line_user_id) DO UPDATE SET display_name=excluded.display_name, role=excluded.role
   `).run(lineUserId, text(req.body.display_name), role);
-  res.status(201).json(getUser(lineUserId));
+  const user = getUser(lineUserId);
+  logActivity(null, actor(req).userId || null, actor(req).displayName || null, 'user added', null, `${user.display_name || user.line_user_id} (${user.role})`);
+  res.status(201).json(user);
 });
 
 app.patch('/api/admin/users/:userId', requireAdmin, (req, res) => {
@@ -904,6 +1062,14 @@ app.patch('/api/admin/users/:userId', requireAdmin, (req, res) => {
   const role = ['admin', 'member', 'pending', 'disabled'].includes(req.body.role) ? req.body.role : current.role;
   if (current.line_user_id === actor(req).userId && role !== 'admin') return res.status(400).json({ error: 'You cannot remove your own admin access' });
   db.prepare('UPDATE users SET display_name=?, role=? WHERE id=?').run(text(req.body.display_name ?? current.display_name), role, id);
+  if (role !== current.role) {
+    const action = role === 'member' && current.role === 'pending'
+      ? 'user approved'
+      : role === 'disabled'
+        ? 'user disabled'
+        : 'user role changed';
+    logActivity(null, actor(req).userId || null, actor(req).displayName || null, action, current.role, `${current.display_name || current.line_user_id}: ${role}`);
+  }
   res.json(db.prepare('SELECT id, line_user_id, display_name, role, last_login_at, created_at FROM users WHERE id=?').get(id));
 });
 
@@ -912,6 +1078,7 @@ app.delete('/api/admin/users/:userId', requireAdmin, (req, res) => {
   const current = db.prepare('SELECT * FROM users WHERE id=?').get(id);
   if (!current) return res.status(404).json({ error: 'User not found' });
   if (current.line_user_id === actor(req).userId) return res.status(400).json({ error: 'You cannot delete your own user' });
+  logActivity(null, actor(req).userId || null, actor(req).displayName || null, 'user deleted', current.role, current.display_name || current.line_user_id);
   db.prepare('DELETE FROM users WHERE id=?').run(id);
   res.json({ success: true });
 });
@@ -936,14 +1103,27 @@ app.post('/api/admin/consultation/items', requireAdmin, (req, res) => {
   const categoryId = Number(req.body.category_id);
   const name = text(req.body.name);
   if (!categoryId || !name) return res.status(400).json({ error: 'category_id and name are required' });
+
+  const baseSlug = slugify(req.body.name);
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (
+    db.prepare('SELECT id FROM consultation_items WHERE slug=?')
+      .get(slug)
+  ) {
+    slug = `${baseSlug}-${counter++}`;
+  }
+
   const sort = int(req.body.sort_order, db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM consultation_items WHERE category_id=?').get(categoryId).next);
   const result = db.prepare(`
     INSERT INTO consultation_items (
-      category_id, name, description, default_customer_price, default_internal_cost,
+      category_id, slug, name, description, default_customer_price, default_internal_cost,
       supplier, need_order, sort_order, active
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(categoryId, name, text(req.body.description), int(req.body.default_customer_price), int(req.body.default_internal_cost), text(req.body.supplier), bool(req.body.need_order) ? 1 : 0, sort, req.body.active === false ? 0 : 1);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(categoryId, slug, name, text(req.body.description), int(req.body.default_customer_price), int(req.body.default_internal_cost), text(req.body.supplier), bool(req.body.need_order) ? 1 : 0, sort, req.body.active === false ? 0 : 1);
   res.status(201).json(db.prepare('SELECT * FROM consultation_items WHERE id=?').get(result.lastInsertRowid));
 });
 

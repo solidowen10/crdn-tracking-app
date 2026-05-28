@@ -1,0 +1,9 @@
+node_modules
+.env
+secure
+data
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+

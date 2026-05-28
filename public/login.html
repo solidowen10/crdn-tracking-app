@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Creative Den Studio Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Noto Sans TC',sans-serif;background:#171410;color:#f6f1e8;min-height:100vh;display:grid;place-items:center;padding:16px}
+    .card{width:min(420px,100%);background:#211d18;border:1px solid #3d3428;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.4)}
+    .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+    .logo-img{width:48px;height:48px;border-radius:10px;object-fit:cover}
+    .logo-text{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.08em;color:#f6f1e8}
+    .logo-text span{color:#ca741f}
+    .title{font-family:'Bebas Neue',sans-serif;font-size:23px;letter-spacing:.06em;margin-bottom:8px;color:#f6f1e8}
+    .sub{color:#c9c0b2;line-height:1.6;margin-bottom:28px;font-size:15px}
+    .btn{display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;background:#06c755;color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:14px 18px;font-size:15px;font-family:'Noto Sans TC',sans-serif;transition:.15s}
+    .btn:hover{background:#05b44b}
+    .line-icon{width:22px;height:22px;flex-shrink:0}
+    .note{font-size:12px;color:#9e9587;margin-top:20px;line-height:1.6;padding-top:20px;border-top:1px solid #3d3428}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo-row">
+      <img class="logo-img" src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
+      <div class="logo-text">CREATIVE <span>DEN</span> STUDIO</div>
+    </div>
+    <div class="title">Internal Tracker</div>
+    <p class="sub">Sign in with your LINE account to access the vehicle project tracking dashboard. Restricted to approved team members only.</p>
+    <a class="btn" href="/auth/line">
+      <svg class="line-icon" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M19.952 10.357c0-4.193-4.208-7.602-9.381-7.602S1.19 6.164 1.19 10.357c0 3.759 3.336 6.906 7.843 7.503.305.066.72.2.825.462.095.237.062.608.03.847l-.133.802c-.04.237-.19.927.812.505 1.003-.422 5.41-3.185 7.383-5.458 1.363-1.494 2.002-3.012 2.002-4.661z"/>
+      </svg>
+      Continue with LINE
+    </a>
+    <p class="note">Access is restricted to approved Creative Den Studio team members. If you need access, contact your system administrator.</p>
+  </main>
+</body>
+</html>

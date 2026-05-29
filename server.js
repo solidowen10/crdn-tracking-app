@@ -698,58 +698,60 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
 
 app.patch('/api/projects/:id/consultation/:itemId', requireAuth, (req, res) => {
   const project = requireProject(req.params.id, true);
+  const itemKey = String(req.params.itemId);
+
   const item = db.prepare(`
-    SELECT ci.*, cc.name AS category
-    FROM consultation_items ci
-    JOIN consultation_categories cc ON cc.id=ci.category_id
-    WHERE ci.id=?
-  `).get(Number(req.params.itemId));
+    SELECT *
+    FROM consultation_items
+    WHERE id=? OR slug=?
+    LIMIT 1
+  `).get(Number(itemKey) || 0, itemKey);
+
   if (!item) return res.status(404).json({ error: 'Checklist item not found' });
 
-  const selected = bool(req.body.selected);
-  const existing = db.prepare('SELECT * FROM quote_items WHERE vehicle_id=? AND consultation_item_id=?').get(project.id, item.id);
-  let warning = '';
+  const status = PART_STATUSES.includes(req.body.parts_status)
+    ? req.body.parts_status
+    : PART_STATUSES.includes(req.body.status)
+      ? req.body.status
+      : 'Need to Order';
 
-  if (selected) {
-    const qty = Math.max(0.01, number(req.body.quantity, existing?.quantity || 1));
-    const customerPrice = int(req.body.customer_price ?? existing?.customer_price ?? item.default_customer_price);
-    const internalCost = int(req.body.internal_cost ?? existing?.internal_cost ?? item.default_internal_cost);
-    const supplier = text(req.body.supplier ?? existing?.supplier ?? item.supplier);
-    const needOrder = req.body.need_order === undefined ? !!item.need_order : bool(req.body.need_order);
-    const partsStatus = needOrder ? 'Need to Order' : 'Not Needed';
-    if (existing) {
-      db.prepare(`
-        UPDATE quote_items
-        SET category=?, description=?, quantity=?, customer_price=?, internal_cost=?, supplier=?,
-            need_order=?, parts_status=?, internal_notes=?, active=1, updated_at=CURRENT_TIMESTAMP
-        WHERE id=?
-      `).run(item.category, item.name, qty, customerPrice, internalCost, supplier, needOrder ? 1 : 0, partsStatus, text(req.body.internal_notes ?? existing.internal_notes), existing.id);
-      activity(req, project.id, 'quote item edited', existing.description, item.name);
-    } else {
-      db.prepare(`
-        INSERT INTO quote_items (
-          vehicle_id, consultation_item_id, category, description, quantity, customer_price,
-          internal_cost, supplier, need_order, parts_status, internal_notes, sort_order
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(project.id, item.id, item.category, item.name, qty, customerPrice, internalCost, supplier, needOrder ? 1 : 0, partsStatus, text(req.body.internal_notes), nextSort('quote_items', project.id));
-      activity(req, project.id, 'quote item added', null, item.name);
-    }
-    if (project.stage === '05 Deposit Paid' || stageProgress(project.stage) > stageProgress('05 Deposit Paid')) {
-      activatePartsAfterDeposit(project.id, req);
-    }
-  } else if (existing) {
-    const activePart = db.prepare('SELECT * FROM parts WHERE quote_item_id=? AND active=1 LIMIT 1').get(existing.id);
-    if (activePart && !['Need to Order', 'Not Needed', 'Cancelled'].includes(activePart.status)) {
-      warning = `Linked part is already ${activePart.status}; quote item was marked inactive but the part was kept.`;
-    } else if (activePart) {
-      db.prepare('UPDATE parts SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(activePart.id);
-    }
-    db.prepare('UPDATE quote_items SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(existing.id);
-    activity(req, project.id, 'quote item deleted', existing.description, null);
+  const existing = db.prepare(`
+    SELECT *
+    FROM quote_items
+    WHERE vehicle_id=? AND consultation_item_id=? AND active=1
+  `).get(project.id, item.id);
+
+  if (!existing) return res.status(404).json({ error: 'Quote item not found' });
+
+  db.prepare(`
+    UPDATE quote_items
+    SET parts_status=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(status, existing.id);
+
+  const activePart = db.prepare(`
+    SELECT *
+    FROM parts
+    WHERE vehicle_id=? AND quote_item_id=? AND active=1
+    LIMIT 1
+  `).get(project.id, existing.id);
+
+  if (activePart) {
+    db.prepare(`
+      UPDATE parts
+      SET status=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(status, activePart.id);
   }
 
-  res.json({ ok: true, warning, quote_total: quoteTotals(project.id).customer });
+  activity(req, project.id, 'part status changed', existing.parts_status || '', `${existing.description}: ${status}`);
+
+  res.json({
+    ok: true,
+    item_id: item.id,
+    slug: item.slug,
+    parts_status: status
+  });
 });
 
 app.get('/api/projects/:id/quote', requireAuth, (req, res) => {

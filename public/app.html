@@ -796,6 +796,17 @@ function undoQuoteChange(){
   toast('Quote change undone');
 }
 
+function activityFromApi(row){
+  return {
+    time: row.created_at || '',
+    user: row.display_name || row.user_id || 'System',
+    action: row.action || '',
+    old: row.old_value || '',
+    nv: row.new_value || '',
+    type: (row.action || '').toLowerCase().includes('stage') ? 'stage' : 'note'
+  };
+}
+
 function projectFromApi(row){
   const p=row||{};
   return {
@@ -869,15 +880,24 @@ async function fetchProject(id){
       .map(item=>item.slug||String(item.id));
 
     p.itemQtys={};
+    p.partsStatus={};
+
     items.forEach(item=>{
+      const key=item.slug||String(item.id);
       if(item.selected&&item.quote_item){
-        p.itemQtys[item.slug||item.id]=item.quote_item.quantity||1;
+        p.itemQtys[key]=item.quote_item.quantity||1;
+        p.partsStatus[key]=item.quote_item.parts_status||'Need to Order';
       }
     });
   }catch(e){
     console.error('Failed to hydrate consultation',e);
   }
-
+  try{
+  const activity=await GET(`/api/projects/${p.id}/activity`);
+  p.timeline=(activity||[]).map(activityFromApi);
+}catch(e){
+  console.error('Failed to hydrate activity',e);
+}
   return p;
 }
 
@@ -1409,11 +1429,26 @@ function rParts(body){
     }).join('')}`;
 }
 function updPS(itemId,val){
-  const p=AP;if(!p.partsStatus)p.partsStatus={};
+  const p=AP;
+  if(!p.partsStatus)p.partsStatus={};
+
   const old=p.partsStatus[itemId]||'Need to Order';
   p.partsStatus[itemId]=val;
-  p.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Part status changed',old,nv:`${itemById(itemId)?.name} → ${val}`,type:'parts'});
-  PATCH(`/api/projects/${p.id}/parts/${itemId}`,{status:val});
+
+  p.timeline.unshift({
+    time:nowStr(),
+    user:currentUser.displayName,
+    action:'Part status changed',
+    old,
+    nv:`${itemById(itemId)?.name} → ${val}`,
+    type:'parts'
+  });
+
+  PATCH(`/api/projects/${p.id}/consultation/${itemId}`,{
+    parts_status:val
+  }).catch(e=>toast(`Status save failed: ${errMsg(e)}`,4000));
+
+  rParts(document.getElementById('tb'));
   toast('Part status updated ✓');
 }
 function toggleSubpartStock(itemId,index,checked){
@@ -1454,8 +1489,9 @@ function rTimeline(body){
 }
 async function addNote(){
   const note=prompt('Add internal note:');if(!note||!AP)return;
-  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Note added',old:'',nv:note,type:'note'});
-  await POST(`/api/projects/${AP.id}/activity`,{action:'Note added',new_value:note});
+  await POST(`/api/projects/${AP.id}/activity`,{note});
+  const activity=await GET(`/api/projects/${AP.id}/activity`);
+  AP.timeline=(activity||[]).map(activityFromApi);
   rTimeline(document.getElementById('tb'));
 }
 

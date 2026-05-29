@@ -191,6 +191,7 @@ function projectSummary(row) {
     stage,
     progress: stageProgress(stage),
     quote_total: totals.customer,
+    cashflow_json: row.cashflow_json || '',
     quote_cost: totals.cost,
     quote_profit: totals.profit,
     quote_count: totals.count,
@@ -479,9 +480,8 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
   const archived = stage === '14 Archived' || bool(next.archived) ? 1 : 0;
   db.prepare(`
     UPDATE vehicles
-    SET job_no=?, owner=?, name=?, plate=?, pkg=?, stage=?, designer=?, priority=?,
-        progress=?, start_date=?, finish_date=?, customer_update=?, customer_action=?,
-        next_action=?, notes=?, archived=?, updated_at=CURRENT_TIMESTAMP
+  SET job_no=?, owner=?, name=?, plate=?, pkg=?, stage=?, designer=?, ...
+    next_action=?, notes=?, cashflow_json=?, archived=?, updated_at=CURRENT_TIMESTAMP 
     WHERE id=?
   `).run(
     text(next.job_no),
@@ -499,6 +499,7 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
     text(next.customer_action),
     text(next.next_action),
     text(next.notes),
+    text(next.cashflow_json),
     archived,
     current.id
   );

@@ -672,8 +672,40 @@ const sObj=l=>STAGES.find(s=>s.l===l)||STAGES[0];
 const sIdx=l=>STAGES.findIndex(s=>s.l===l);
 const sPct=l=>sObj(l).pct;
 const sCol=l=>sObj(l).c;
-const itemById=id=>{for(const c of CATALOG)for(const i of c.items)if(i.id===id)return i;return null};
-const catOf=id=>{for(const c of CATALOG)if(c.items.find(i=>i.id===id))return c.cat;return 'Other'};
+const itemKey=item=>String(item.slug||item.id);
+
+const normalizeItem=(item,cat={})=>({
+  ...item,
+  id:itemKey(item),
+  name:item.name||'Unnamed item',
+  desc:item.desc||item.description||'',
+  price:Number(item.price??item.default_customer_price??item.customer_price??0),
+  intCost:Number(item.intCost??item.default_internal_cost??item.internal_cost??0),
+  cat:cat.cat||cat.name||item.category||'Other'
+});
+
+const liveCatalog=()=>(
+  AP?.consultationCategories?.length
+    ? AP.consultationCategories
+    : CATALOG
+);
+
+const itemById=id=>{
+  const key=String(id);
+  for(const cat of liveCatalog()){
+    for(const item of cat.items||[]){
+      const normalized=normalizeItem(item,cat);
+      if(normalized.id===key)return normalized;
+    }
+  }
+  return null;
+};
+
+const catOf=id=>{
+  const item=itemById(id);
+  return item?.cat||'Other';
+};
+
 const effP=id=>itemById(id)?.price||0;
 const qty=(p,id)=>(p.itemQtys||{})[id]||1;
 const partCost=item=>(item?.parts||[]).reduce((s,sp)=>s+(parseFloat(sp.cost)||0),0);
@@ -809,6 +841,7 @@ async function fetchProject(id){
 
   try{
     const consultation=await GET(`/api/projects/${p.id}/consultation`);
+    p.consultationCategories=consultation.categories||[];
     const items=(consultation.categories||[]).flatMap(cat=>cat.items||[]);
 
     p.checkedItems=items
@@ -1031,27 +1064,30 @@ function rConsult(body){
 }
 function buildChecklist(){
   const p=AP,el=document.getElementById('cleft');if(!el)return;
+  const catalog=liveCatalog();
   el.innerHTML=`
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
       <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcQuoteTotal(p))}</strong></div>
       <button class="btn btn-out btn-sm" onclick="undoQuoteChange()" ${quoteUndoCount()?'':'disabled'}>↶ Undo</button>
       <button class="btn btn-green btn-sm" onclick="saveConsult()">💾 Save</button>
     </div>
-    ${CATALOG.map(cat=>`
+    ${catalog.map(cat=>`
       <div class="cat-sec">
-        <div class="cat-h"><span>${cat.icon} ${cat.cat}</span><span style="color:var(--g300)">${cat.items.filter(i=>p.checkedItems.includes(i.id)).length}/${cat.items.length}</span></div>
-        ${cat.items.map(item=>{
-          const on=p.checkedItems.includes(item.id),q=qty(p,item.id);
-          return`<div class="chk ${on?'on':''}" id="ci-${item.id}">
-            <div class="cbox" onclick="toggleItem('${item.id}')"><span class="ctick">✓</span></div>
-            <div class="ci" onclick="toggleItem('${item.id}')"><div class="cn">${item.name}</div><div class="cd">${item.desc}</div></div>
-            ${on?`<div class="qtyc" onclick="event.stopPropagation()">
-              <div class="qb ${q<=1?'qbh':''}" onclick="chgQty('${item.id}',-1)">−</div>
-              <div class="qv">${commas(q)}</div>
-              <div class="qb" onclick="chgQty('${item.id}',1)">+</div>
-            </div>`:''}
-            <div class="cp" onclick="toggleItem('${item.id}')">${fmt(effP(item.id)*(on?q:1))}</div>
-          </div>`;
+      <div class="cat-h"><span>${cat.icon||''} ${cat.cat||cat.name||'Category'}</span><span style="color:var(--g300)">${(cat.items||[]).filter(i=>p.checkedItems.includes(normalizeItem(i,cat).id)).length}/${(cat.items||[]).length}</span></div>
+        ${(cat.items||[]).map(item=>{
+	const normalized=normalizeItem(item,cat);
+	const id=normalized.id;
+	const on=p.checkedItems.includes(id),q=qty(p,id);
+          return`<div class="chk ${on?'on':''}" id="ci-${id}">
+  	   <div class="cbox" onclick="toggleItem('${id}')"><span class="ctick">✓</span></div>
+  	   <div class="ci" onclick="toggleItem('${id}')"><div class="cn">${normalized.name}</div><div class="cd">${normalized.desc}</div></div>
+  	   ${on?`<div class="qtyc" onclick="event.stopPropagation()">
+    	     <div class="qb ${q<=1?'qbh':''}" onclick="chgQty('${id}',-1)">−</div>
+    	     <div class="qv">${commas(q)}</div>
+    	     <div class="qb" onclick="chgQty('${id}',1)">+</div>
+  	   </div>`:''}
+  	   <div class="cp" onclick="toggleItem('${id}')">${fmt(effP(id)*(on?q:1))}</div>
+  	  </div>`;
         }).join('')}
       </div>`).join('')}
     <div class="cat-sec">

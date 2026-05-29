@@ -477,13 +477,29 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
   const current = requireProject(req.params.id, true);
   const next = { ...current, ...req.body };
   const stage = normalizeStage(next.stage);
-  const archived = stage === '14 Archived' || bool(next.archived) ? 1 : 0;
+  const archived = stage === '14 Archived' || bool(next.archived) ? 1 : 0; 
   db.prepare(`
-    UPDATE vehicles
-  SET job_no=?, owner=?, name=?, plate=?, pkg=?, stage=?, designer=?, ...
-    next_action=?, notes=?, cashflow_json=?, archived=?, updated_at=CURRENT_TIMESTAMP 
-    WHERE id=?
-  `).run(
+  UPDATE vehicles
+  SET job_no=?,
+      owner=?,
+      name=?,
+      plate=?,
+      pkg=?,
+      stage=?,
+      designer=?,
+      priority=?,
+      progress=?,
+      start_date=?,
+      finish_date=?,
+      customer_update=?,
+      customer_action=?,
+      next_action=?,
+      notes=?,
+      cashflow_json=?,
+      archived=?,
+      updated_at=CURRENT_TIMESTAMP
+  WHERE id=?
+`).run(
     text(next.job_no),
     text(next.owner),
     text(next.name),

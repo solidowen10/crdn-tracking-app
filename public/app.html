@@ -399,6 +399,7 @@ button{cursor:pointer}
       <button class="dtab"     onclick="st('parts',this)">Parts</button>
       <button class="dtab"     onclick="st('timeline',this)">Activity</button>
       <button class="dtab"     onclick="st('admin',this)">Admin</button>
+      <button class="dtab"     onclick="st('cashflow',this)">💰 Cashflow</button>
     </div>
   </div>
   <div class="tb" id="tb"></div>
@@ -681,11 +682,18 @@ const depPaid=p=>sIdx(p.stage)>=4;
 const nowStr=()=>new Date().toISOString().slice(0,16).replace('T',' ');
 const calcTotal=p=>{
   if(!p)return 0;
+  if(p.saved && Number(p.serverTotal||0)>0) return Number(p.serverTotal||0);
+  return projectQuoteTotal(p);
+};
+
+const calcQuoteTotal=p=>{
+  if(!p)return 0;
   const c=(p.checkedItems||[]).reduce((s,id)=>s+effP(id)*qty(p,id),0);
   const x=(p.customItems||[]).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
   return c+x;
 };
-const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||0);
+
+const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||p?.serverTotal||0);
 function pstCls(s){return{'Need to Order':'pst-need','Ordered':'pst-ordered','Arrived':'pst-arrived','Installed':'pst-installed','Backordered':'pst-back'}[s]||'pst-none';}
 let _tt=null;
 function toast(msg,dur=2400){
@@ -763,8 +771,17 @@ function projectFromApi(row){
     stockStatus:p.stockStatus||{},
     timeline:Array.isArray(p.timeline)?p.timeline:[],
     quoteTotal:Number(p.quote_total||p.quoteTotal||0),
+    serverTotal:Number(p.quote_total||p.quoteTotal||0),
+    cashflow:parseCashflow(p),
     saved:true
   };
+}
+
+function parseCashflow(p){
+  if(p.cashflow_json){
+    try{return JSON.parse(p.cashflow_json);}catch(e){}
+  }
+  return {deposits:[],vendorPayments:[]};
 }
 
 function apiFilter(f){
@@ -926,7 +943,14 @@ async function openDetail(p){
   st('overview',document.querySelector('#dtbar .dtab'));
 }
 function renderTab(t){
-  ({overview:rOverview,consult:rConsult,quote:rQuote,parts:rParts,timeline:rTimeline,admin:rAdmin}[t]||rOverview)(document.getElementById('tb'));
+  ({overview:rOverview,
+    consult:rConsult,
+    quote:rQuote,
+    parts:rParts,
+    timeline:rTimeline,
+    admin:rAdmin,
+    cashflow:rCashflow
+  }[t]||rOverview)(document.getElementById('tb'));
 }
 
 // ══════════════════════════════════════
@@ -1009,7 +1033,7 @@ function buildChecklist(){
   const p=AP,el=document.getElementById('cleft');if(!el)return;
   el.innerHTML=`
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcTotal(p))}</strong></div>
+      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcQuoteTotal(p))}</strong></div>
       <button class="btn btn-out btn-sm" onclick="undoQuoteChange()" ${quoteUndoCount()?'':'disabled'}>↶ Undo</button>
       <button class="btn btn-green btn-sm" onclick="saveConsult()">💾 Save</button>
     </div>
@@ -1062,7 +1086,7 @@ function addCustRow(){pushQuoteUndo();if(!AP.customItems)AP.customItems=[];AP.cu
 function rmCust(i){pushQuoteUndo();AP.customItems.splice(i,1);buildChecklist();buildQPanel();updMobBar();}
 async function saveConsult(){
   if(!AP)return;
-  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcTotal(AP))}`,type:'save'});
+  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcQuoteTotal(AP))}`,type:'save'});
   try{
     await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems});
     AP.saved=true;
@@ -1082,7 +1106,7 @@ function buildQPanel(){
   const p=AP,el=document.getElementById('cright');if(!el)return;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcTotal(p);
+  const total=calcQuoteTotal(p);
   const lines=[
     ...checked.map(x=>`<div class="qpl"><div><div class="qpln">${x.item.name}</div><div class="qplc">${catOf(x.item.id)}${x.q>1?` · qty ${commas(x.q)}`:''}</div></div><div class="qpla">${fmt(x.price*x.q)}</div></div>`),
     ...customs.map(c=>`<div class="qpl"><div><div class="qpln">${c.name||'Custom item'}</div><div class="qplc">Custom${(c.qty||1)>1?` · qty ${commas(c.qty)}`:''}</div></div><div class="qpla">${fmt((c.price||0)*(c.qty||1))}</div></div>`)
@@ -1101,14 +1125,14 @@ function buildQPanel(){
 }
 function updMobBar(){
   if(!AP)return;
-  document.getElementById('mob-amt').textContent=fmt(calcTotal(AP));
+  document.getElementById('mob-amt').textContent=fmt(calcQuoteTotal(AP));
   document.getElementById('mob-cnt').textContent=commas(AP.checkedItems.length)+' items';
 }
 function copyQuoteText(){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcTotal(p);
+  const total=calcQuoteTotal(p);
   const lines=[...checked.map(x=>`${x.item.name.padEnd(38)}${x.q>1?'x'+commas(x.q)+' ':'     '} ${fmt(x.price*x.q)}`),
                ...customs.map(c=>`${(c.name||'Custom').padEnd(38)}      ${fmt((c.price||0)*(c.qty||1))}`)].join('\n');
   const terms=document.getElementById('default-terms')?.value||'';
@@ -1119,7 +1143,7 @@ function printQuote(){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcTotal(p);
+  const total=calcQuoteTotal(p);  
   const terms=document.getElementById('default-terms')?.value||'';
   const rows=[
     ...checked.map(x=>`<tr><td>${catOf(x.item.id)}</td><td>${x.item.name}</td><td style="text-align:center">${commas(x.q)}</td><td style="text-align:right;font-family:monospace">${fmt(x.price)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt(x.price*x.q)}</td></tr>`),
@@ -1171,7 +1195,7 @@ function rQuote(body){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=p.customItems||[];
-  const total=calcTotal(p);
+  const total=calcQuoteTotal(p);
   const cRows=checked.map(x=>`
     <tr>
       <td style="color:var(--g500)">${catOf(x.item.id)}</td>
@@ -1433,6 +1457,125 @@ async function deleteProject(){
   await DELETE(`/api/projects/${p.id}`);
   projects=projects.filter(x=>x.id!==p.id);
   AP=null;goHome();toast('Project deleted');
+}
+
+// ══════════════════════════════════════
+// CASHFLOW TAB
+// ══════════════════════════════════════
+function cfData(p){
+  if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
+  return p.cashflow;
+}
+
+function rCashflow(body){
+  const p=AP;
+  const cf=cfData(p);
+  const totalDeposits=(cf.deposits||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);
+  const totalVendor=(cf.vendorPayments||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);
+  const quoteTotal=calcTotal(p);
+  const balanceRemaining=quoteTotal-totalDeposits;
+  const cashPosition=totalDeposits-totalVendor;
+  const bannerCls=cashPosition>0?'ok':cashPosition===0?'warn':'neg';
+  const bannerMsg=cashPosition>0?`${fmt(cashPosition)} available buffer`:cashPosition===0?'Breaking even on deposits vs spend':'⚠ Spent more than collected so far';
+
+  body.innerHTML=`
+    <div class="cf-balance-banner ${bannerCls}">
+      <div>
+        <div style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g500);margin-bottom:2px">Cash Position</div>
+        <div class="bb" style="font-size:22px;color:${cashPosition>=0?'#15803d':'#dc2626'}">${fmt(cashPosition)}</div>
+        <div style="font-size:var(--xxs);color:var(--g500);margin-top:2px">${bannerMsg}</div>
+      </div>
+      <button class="btn btn-out btn-sm" onclick="saveCashflow()">💾 Save</button>
+    </div>
+
+    <div class="cf-grid">
+      <div class="cf-card hi">
+        <div class="cf-lbl">Quote Total</div>
+        <div class="cf-val brand">${fmt(quoteTotal)}</div>
+        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">From saved quote</div>
+      </div>
+      <div class="cf-card">
+        <div class="cf-lbl">Deposits Collected</div>
+        <div class="cf-val pos">${fmt(totalDeposits)}</div>
+        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">${commas((totalDeposits/quoteTotal*100)||0)}% of quote</div>
+      </div>
+      <div class="cf-card">
+        <div class="cf-lbl">Balance Remaining</div>
+        <div class="cf-val" style="color:${balanceRemaining>0?'#f97316':'#15803d'}">${fmt(balanceRemaining)}</div>
+        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">Still to collect from customer</div>
+      </div>
+      <div class="cf-card">
+        <div class="cf-lbl">Vendor Payments</div>
+        <div class="cf-val neg">${fmt(totalVendor)}</div>
+        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">Parts & materials paid out</div>
+      </div>
+    </div>
+
+    <div class="cf-section-title">💵 Deposits Received</div>
+    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
+      <table class="cf-table">
+        <thead><tr><th>Date</th><th>Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
+        <tbody>
+          ${(cf.deposits||[]).map((d,i)=>`
+            <tr>
+              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.deposits[${i}].date=this.value"></td>
+              <td><input class="cf-input desc" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. 50% deposit" onchange="AP.cashflow.deposits[${i}].desc=this.value"></td>
+              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.deposits[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
+              <td><button class="cf-del" onclick="rmCfEntry('deposits',${i})">×</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-out btn-sm" onclick="addCfEntry('deposits')">+ Add Deposit</button>
+
+    <div class="cf-section-title">🧾 Vendor / Parts Payments</div>
+    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
+      <table class="cf-table">
+        <thead><tr><th>Date</th><th>Vendor / Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
+        <tbody>
+          ${(cf.vendorPayments||[]).map((d,i)=>`
+            <tr>
+              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.vendorPayments[${i}].date=this.value"></td>
+              <td><input class="cf-input" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. Bed frame steel" onchange="AP.cashflow.vendorPayments[${i}].desc=this.value"></td>
+              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.vendorPayments[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
+              <td><button class="cf-del" onclick="rmCfEntry('vendorPayments',${i})">×</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-out btn-sm" onclick="addCfEntry('vendorPayments')">+ Add Payment</button>
+
+    <div style="margin-top:20px;padding:13px 16px;background:var(--g50);border-radius:var(--r);font-size:var(--xs);color:var(--g500);line-height:1.8">
+      <strong style="color:var(--black)">How to read this:</strong><br>
+      <strong>Cash Position</strong> = Deposits collected − Vendor payments<br>
+      <strong>Balance Remaining</strong> = Quote total − Deposits collected<br>
+      Data is saved per project. Hit 💾 Save after making changes.
+    </div>`;
+}
+
+function addCfEntry(type){
+  const p=AP;if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
+  p.cashflow[type].push({date:new Date().toISOString().slice(0,10),desc:'',amount:0});
+  rCashflow(document.getElementById('tb'));
+}
+
+function rmCfEntry(type,i){
+  const p=AP;if(!p.cashflow)return;
+  p.cashflow[type].splice(i,1);
+  rCashflow(document.getElementById('tb'));
+}
+
+async function saveCashflow(){
+  if(!AP)return;
+  const cfJson=JSON.stringify(AP.cashflow);
+  const res=await PATCH(`/api/projects/${AP.id}`,{
+    cashflow_json:cfJson
+  });
+  if(res){
+    toast('Cashflow saved ✓');
+  }else{
+    toast('Save failed — check server');
+  }
 }
 
 // ══════════════════════════════════════

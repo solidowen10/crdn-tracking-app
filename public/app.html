@@ -132,8 +132,8 @@ button{cursor:pointer}
 
 /* CONSULTATION */
 .cwrap{display:flex;gap:16px}
-.cleft{flex:1;min-width:0}
-.cright{width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
+.cleft{flex:1;min-width:0;padding-right:316px}
+.cright{width:300px;flex-shrink:0;position:fixed;right:16px;top:180px;z-index:35}
 @media(max-width:700px){
   .topbar{height:64px;padding:0 14px;gap:10px}
   .tlogo{gap:12px;min-width:0}
@@ -145,6 +145,7 @@ button{cursor:pointer}
   .nav-menu{top:46px}
   .cwrap{flex-direction:column}
   .cright{width:100%;position:static}
+  .cleft{padding-right:0}
   .hide-sm{display:none}
   .pc-b{grid-template-columns:1fr 1fr}
   .job-pill{text-align:left}
@@ -486,7 +487,7 @@ button{cursor:pointer}
       </div>
     </div>
     <div class="mf"><label>Designer</label>
-      <select class="msel" id="m-designer"><option value="">— Unassigned —</option><option>Wei</option><option>Jason</option></select>
+      <select class="msel" id="m-designer"><option value="">— Unassigned —</option><option>Alex</option><option>Willy</option></select>
     </div>
     <div class="mbtns">
       <button class="btn btn-out" onclick="closeModal('modal-new')">Cancel</button>
@@ -1200,7 +1201,7 @@ function printQuote(){
   table{width:100%;border-collapse:collapse;margin-bottom:14px}
   th{padding:8px 10px;text-align:left;font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8c8c89;background:#f8f8f5;border-bottom:1px solid #dededa}
   td{padding:9px 10px;border-bottom:1px solid #f0f0ec;font-size:11pt;vertical-align:middle}
-  .tr td{background:#CA741F;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
+  .tr td{background:#fff;color:#CA741F;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
   .terms{font-size:10pt;color:#6b6b68;line-height:1.7;padding:13px 15px;background:#f8f8f5;border-radius:8px;margin-top:8px;white-space:pre-wrap}
   @media print{@page{margin:12mm}body{padding:0}}</style></head><body>
   <div class="hd">

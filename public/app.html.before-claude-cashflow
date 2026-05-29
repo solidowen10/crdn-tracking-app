@@ -132,8 +132,8 @@ button{cursor:pointer}
 
 /* CONSULTATION */
 .cwrap{display:flex;gap:16px}
-.cleft{flex:1;min-width:0;padding-right:316px}
-.cright{width:300px;flex-shrink:0;position:fixed;right:16px;top:180px;z-index:35}
+.cleft{flex:1;min-width:0}
+.cright{width:300px;flex-shrink:0;position:sticky;top:0;align-self:flex-start}
 @media(max-width:700px){
   .topbar{height:64px;padding:0 14px;gap:10px}
   .tlogo{gap:12px;min-width:0}
@@ -145,7 +145,6 @@ button{cursor:pointer}
   .nav-menu{top:46px}
   .cwrap{flex-direction:column}
   .cright{width:100%;position:static}
-  .cleft{padding-right:0}
   .hide-sm{display:none}
   .pc-b{grid-template-columns:1fr 1fr}
   .job-pill{text-align:left}
@@ -235,18 +234,7 @@ button{cursor:pointer}
 .sptable td{padding:5px 0;border-bottom:1px solid var(--g100)}
 .sptable tr:last-child td{border-bottom:none}
 .stock-check{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--black)}
-.stock-check input{
-  appearance:auto;
-  -webkit-appearance:checkbox;
-  width:18px;
-  height:18px;
-  min-width:18px;
-  display:inline-block;
-  opacity:1;
-  visibility:visible;
-  accent-color:var(--brand);
-  flex-shrink:0;
-}
+.stock-check input{width:16px;height:16px;accent-color:var(--brand);flex-shrink:0}
 .stocked-row td{color:var(--g400)}
 .stocked-row .stock-check span{text-decoration:line-through}
 .stock-note{font-size:var(--xxxs);color:var(--g400);margin-bottom:7px}
@@ -411,7 +399,6 @@ button{cursor:pointer}
       <button class="dtab"     onclick="st('parts',this)">Parts</button>
       <button class="dtab"     onclick="st('timeline',this)">Activity</button>
       <button class="dtab"     onclick="st('admin',this)">Admin</button>
-      <button class="dtab"     onclick="st('cashflow',this)">💰 Cashflow</button>
     </div>
   </div>
   <div class="tb" id="tb"></div>
@@ -498,7 +485,7 @@ button{cursor:pointer}
       </div>
     </div>
     <div class="mf"><label>Designer</label>
-      <select class="msel" id="m-designer"><option value="">— Unassigned —</option><option>Alex</option><option>Willy</option></select>
+      <select class="msel" id="m-designer"><option value="">— Unassigned —</option><option>Wei</option><option>Jason</option></select>
     </div>
     <div class="mbtns">
       <button class="btn btn-out" onclick="closeModal('modal-new')">Cancel</button>
@@ -530,7 +517,7 @@ button{cursor:pointer}
 <div class="overlay" id="modal-adduser">
   <div class="modal">
     <div class="modalt">Add Team Member</div>
-    <div class="mf"><label>Display name</label><input class="mi" id="au-name" placeholder="e.g. Alex"></div>
+    <div class="mf"><label>Display name</label><input class="mi" id="au-name" placeholder="e.g. Wei"></div>
     <div class="mf"><label>LINE User ID</label><input class="mi" id="au-id" placeholder="U…" style="font-family:monospace;font-size:var(--sm)"></div>
     <div class="mf"><label>Role</label>
       <select class="msel" id="au-role"><option value="member">member</option><option value="admin">admin</option></select>
@@ -684,64 +671,21 @@ const sObj=l=>STAGES.find(s=>s.l===l)||STAGES[0];
 const sIdx=l=>STAGES.findIndex(s=>s.l===l);
 const sPct=l=>sObj(l).pct;
 const sCol=l=>sObj(l).c;
-const itemKey=item=>String(item.slug||item.id);
-
-const normalizeItem=(item,cat={})=>({
-  ...item,
-  dbId:item.dbId||item.db_id||item.item_id||item.id,
-  id:itemKey(item),
-  slug:item.slug||itemKey(item),
-  name:item.name||'Unnamed item',
-  desc:item.desc||item.description||'',
-  price:Number(item.price??item.default_customer_price??item.customer_price??0),
-  intCost:Number(item.intCost??item.default_internal_cost??item.internal_cost??0),
-  parts:item.parts||item.subparts||[],
-  subparts:item.subparts||item.parts||[],
-  cat:cat.cat||cat.name||item.category||'Other'
-});
-
-const liveCatalog=()=>(
-  AP?.consultationCategories?.length
-    ? AP.consultationCategories
-    : CATALOG
-);
-
-const itemById=id=>{
-  const key=String(id);
-  for(const cat of liveCatalog()){
-    for(const item of cat.items||[]){
-      const normalized=normalizeItem(item,cat);
-      if(normalized.id===key)return normalized;
-    }
-  }
-  return null;
-};
-
-const catOf=id=>{
-  const item=itemById(id);
-  return item?.cat||'Other';
-};
-
+const itemById=id=>{for(const c of CATALOG)for(const i of c.items)if(i.id===id)return i;return null};
+const catOf=id=>{for(const c of CATALOG)if(c.items.find(i=>i.id===id))return c.cat;return 'Other'};
 const effP=id=>itemById(id)?.price||0;
 const qty=(p,id)=>(p.itemQtys||{})[id]||1;
 const partCost=item=>(item?.parts||[]).reduce((s,sp)=>s+(parseFloat(sp.cost)||0),0);
 const spTot=id=>partCost(itemById(id));
-const depPaid=p=>true;
+const depPaid=p=>sIdx(p.stage)>=4;
 const nowStr=()=>new Date().toISOString().slice(0,16).replace('T',' ');
 const calcTotal=p=>{
-  if(!p)return 0;
-  if(p.saved && Number(p.serverTotal||0)>0) return Number(p.serverTotal||0);
-  return projectQuoteTotal(p);
-};
-
-const calcQuoteTotal=p=>{
   if(!p)return 0;
   const c=(p.checkedItems||[]).reduce((s,id)=>s+effP(id)*qty(p,id),0);
   const x=(p.customItems||[]).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
   return c+x;
 };
-
-const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||p?.serverTotal||0);
+const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||0);
 function pstCls(s){return{'Need to Order':'pst-need','Ordered':'pst-ordered','Arrived':'pst-arrived','Installed':'pst-installed','Backordered':'pst-back'}[s]||'pst-none';}
 let _tt=null;
 function toast(msg,dur=2400){
@@ -816,24 +760,11 @@ function projectFromApi(row){
     itemQtys:p.itemQtys||{},
     customItems:Array.isArray(p.customItems)?p.customItems:[],
     partsStatus:p.partsStatus||{},
-    stockStatus:parseJsonField(p.stock_status_json)||p.stockStatus||{},
+    stockStatus:p.stockStatus||{},
     timeline:Array.isArray(p.timeline)?p.timeline:[],
     quoteTotal:Number(p.quote_total||p.quoteTotal||0),
-    serverTotal:Number(p.quote_total||p.quoteTotal||0),
-    cashflow:parseCashflow(p),
     saved:true
   };
-}
-function parseJsonField(v){
-  if(!v)return null;
-  try{return JSON.parse(v);}catch(e){return null;}
-}
-
-function parseCashflow(p){
-  if(p.cashflow_json){
-    try{return JSON.parse(p.cashflow_json);}catch(e){}
-  }
-  return {deposits:[],vendorPayments:[]};
 }
 
 function apiFilter(f){
@@ -861,7 +792,6 @@ async function fetchProject(id){
 
   try{
     const consultation=await GET(`/api/projects/${p.id}/consultation`);
-    p.consultationCategories=consultation.categories||[];
     const items=(consultation.categories||[]).flatMap(cat=>cat.items||[]);
 
     p.checkedItems=items
@@ -996,14 +926,7 @@ async function openDetail(p){
   st('overview',document.querySelector('#dtbar .dtab'));
 }
 function renderTab(t){
-  ({overview:rOverview,
-    consult:rConsult,
-    quote:rQuote,
-    parts:rParts,
-    timeline:rTimeline,
-    admin:rAdmin,
-    cashflow:rCashflow
-  }[t]||rOverview)(document.getElementById('tb'));
+  ({overview:rOverview,consult:rConsult,quote:rQuote,parts:rParts,timeline:rTimeline,admin:rAdmin}[t]||rOverview)(document.getElementById('tb'));
 }
 
 // ══════════════════════════════════════
@@ -1017,17 +940,12 @@ function rOverview(body){
       <div class="fr"><span class="fl">Customer</span><input class="fi" value="${p.owner}" onchange="AP.owner=this.value;savePatch({owner:this.value})"></div>
       <div class="fr"><span class="fl">Vehicle</span><input class="fi" value="${p.vehicle}" onchange="AP.vehicle=this.value;savePatch({vehicle:this.value})"></div>
       <div class="fr"><span class="fl">Plate</span><input class="fi" value="${p.plate||''}" onchange="AP.plate=this.value;savePatch({plate:this.value})"></div>
-      <div class="fr"><span class="fl">Package</span>
-  	<select class="fsel" onchange="AP.pkg=this.value;savePatch({pkg:this.value})">
-    	  <option value="" ${!p.pkg?'selected':''}>— No package —</option>
-    	  ${PACKAGES.map(pk=>`<option value="${pk.name}" ${p.pkg===pk.name?'selected':''}>${pk.name}</option>`).join('')}
-  	</select>
-      </div>
+      <div class="fr"><span class="fl">Package</span><input class="fi" value="${p.pkg||''}" onchange="AP.pkg=this.value;savePatch({pkg:this.value})"></div>
       <div class="fr"><span class="fl">Designer</span>
         <select class="fsel" onchange="AP.designer=this.value;savePatch({designer:this.value})">
           <option ${!p.designer?'selected':''}>— Unassigned —</option>
-          <option ${p.designer==='Alex'?'selected':''}>Alex</option>
-          <option ${p.designer==='Willy'?'selected':''}>Willy</option>
+          <option ${p.designer==='Wei'?'selected':''}>Wei</option>
+          <option ${p.designer==='Jason'?'selected':''}>Jason</option>
         </select></div>
       <div class="fr"><span class="fl">Priority</span>
         <select class="fsel" onchange="AP.priority=this.value;savePatch({priority:this.value})">
@@ -1064,9 +982,6 @@ async function savePatch(data){
   	checkedItems: AP.checkedItems || [],
   	itemQtys: AP.itemQtys || {},
   	customItems: AP.customItems || [],
-  	consultationCategories: AP.consultationCategories || [],
-  	partsStatus: AP.partsStatus || {},
-  	stockStatus: AP.stockStatus || {},
   	timeline: AP.timeline || []
       };
       projects=projects.map(p=>p.id===AP.id?AP:p);
@@ -1092,30 +1007,27 @@ function rConsult(body){
 }
 function buildChecklist(){
   const p=AP,el=document.getElementById('cleft');if(!el)return;
-  const catalog=liveCatalog();
   el.innerHTML=`
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcQuoteTotal(p))}</strong></div>
+      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcTotal(p))}</strong></div>
       <button class="btn btn-out btn-sm" onclick="undoQuoteChange()" ${quoteUndoCount()?'':'disabled'}>↶ Undo</button>
       <button class="btn btn-green btn-sm" onclick="saveConsult()">💾 Save</button>
     </div>
-    ${catalog.map(cat=>`
+    ${CATALOG.map(cat=>`
       <div class="cat-sec">
-      <div class="cat-h"><span>${cat.icon||''} ${cat.cat||cat.name||'Category'}</span><span style="color:var(--g300)">${(cat.items||[]).filter(i=>p.checkedItems.includes(normalizeItem(i,cat).id)).length}/${(cat.items||[]).length}</span></div>
-        ${(cat.items||[]).map(item=>{
-	const normalized=normalizeItem(item,cat);
-	const id=normalized.id;
-	const on=p.checkedItems.includes(id),q=qty(p,id);
-          return`<div class="chk ${on?'on':''}" id="ci-${id}">
-  	   <div class="cbox" onclick="toggleItem('${id}')"><span class="ctick">✓</span></div>
-  	   <div class="ci" onclick="toggleItem('${id}')"><div class="cn">${normalized.name}</div><div class="cd">${normalized.desc}</div></div>
-  	   ${on?`<div class="qtyc" onclick="event.stopPropagation()">
-    	     <div class="qb ${q<=1?'qbh':''}" onclick="chgQty('${id}',-1)">−</div>
-    	     <div class="qv">${commas(q)}</div>
-    	     <div class="qb" onclick="chgQty('${id}',1)">+</div>
-  	   </div>`:''}
-  	   <div class="cp" onclick="toggleItem('${id}')">${fmt(effP(id)*(on?q:1))}</div>
-  	  </div>`;
+        <div class="cat-h"><span>${cat.icon} ${cat.cat}</span><span style="color:var(--g300)">${cat.items.filter(i=>p.checkedItems.includes(i.id)).length}/${cat.items.length}</span></div>
+        ${cat.items.map(item=>{
+          const on=p.checkedItems.includes(item.id),q=qty(p,item.id);
+          return`<div class="chk ${on?'on':''}" id="ci-${item.id}">
+            <div class="cbox" onclick="toggleItem('${item.id}')"><span class="ctick">✓</span></div>
+            <div class="ci" onclick="toggleItem('${item.id}')"><div class="cn">${item.name}</div><div class="cd">${item.desc}</div></div>
+            ${on?`<div class="qtyc" onclick="event.stopPropagation()">
+              <div class="qb ${q<=1?'qbh':''}" onclick="chgQty('${item.id}',-1)">−</div>
+              <div class="qv">${commas(q)}</div>
+              <div class="qb" onclick="chgQty('${item.id}',1)">+</div>
+            </div>`:''}
+            <div class="cp" onclick="toggleItem('${item.id}')">${fmt(effP(item.id)*(on?q:1))}</div>
+          </div>`;
         }).join('')}
       </div>`).join('')}
     <div class="cat-sec">
@@ -1150,7 +1062,7 @@ function addCustRow(){pushQuoteUndo();if(!AP.customItems)AP.customItems=[];AP.cu
 function rmCust(i){pushQuoteUndo();AP.customItems.splice(i,1);buildChecklist();buildQPanel();updMobBar();}
 async function saveConsult(){
   if(!AP)return;
-  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcQuoteTotal(AP))}`,type:'save'});
+  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcTotal(AP))}`,type:'save'});
   try{
     await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems});
     AP.saved=true;
@@ -1170,7 +1082,7 @@ function buildQPanel(){
   const p=AP,el=document.getElementById('cright');if(!el)return;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcQuoteTotal(p);
+  const total=calcTotal(p);
   const lines=[
     ...checked.map(x=>`<div class="qpl"><div><div class="qpln">${x.item.name}</div><div class="qplc">${catOf(x.item.id)}${x.q>1?` · qty ${commas(x.q)}`:''}</div></div><div class="qpla">${fmt(x.price*x.q)}</div></div>`),
     ...customs.map(c=>`<div class="qpl"><div><div class="qpln">${c.name||'Custom item'}</div><div class="qplc">Custom${(c.qty||1)>1?` · qty ${commas(c.qty)}`:''}</div></div><div class="qpla">${fmt((c.price||0)*(c.qty||1))}</div></div>`)
@@ -1189,14 +1101,14 @@ function buildQPanel(){
 }
 function updMobBar(){
   if(!AP)return;
-  document.getElementById('mob-amt').textContent=fmt(calcQuoteTotal(AP));
+  document.getElementById('mob-amt').textContent=fmt(calcTotal(AP));
   document.getElementById('mob-cnt').textContent=commas(AP.checkedItems.length)+' items';
 }
 function copyQuoteText(){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcQuoteTotal(p);
+  const total=calcTotal(p);
   const lines=[...checked.map(x=>`${x.item.name.padEnd(38)}${x.q>1?'x'+commas(x.q)+' ':'     '} ${fmt(x.price*x.q)}`),
                ...customs.map(c=>`${(c.name||'Custom').padEnd(38)}      ${fmt((c.price||0)*(c.qty||1))}`)].join('\n');
   const terms=document.getElementById('default-terms')?.value||'';
@@ -1207,7 +1119,7 @@ function printQuote(){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=(p.customItems||[]).filter(c=>c.name||c.price);
-  const total=calcQuoteTotal(p);  
+  const total=calcTotal(p);
   const terms=document.getElementById('default-terms')?.value||'';
   const rows=[
     ...checked.map(x=>`<tr><td>${catOf(x.item.id)}</td><td>${x.item.name}</td><td style="text-align:center">${commas(x.q)}</td><td style="text-align:right;font-family:monospace">${fmt(x.price)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt(x.price*x.q)}</td></tr>`),
@@ -1228,7 +1140,7 @@ function printQuote(){
   table{width:100%;border-collapse:collapse;margin-bottom:14px}
   th{padding:8px 10px;text-align:left;font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8c8c89;background:#f8f8f5;border-bottom:1px solid #dededa}
   td{padding:9px 10px;border-bottom:1px solid #f0f0ec;font-size:11pt;vertical-align:middle}
-  .tr td{background:#fff;color:#CA741F;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
+  .tr td{background:#CA741F;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
   .terms{font-size:10pt;color:#6b6b68;line-height:1.7;padding:13px 15px;background:#f8f8f5;border-radius:8px;margin-top:8px;white-space:pre-wrap}
   @media print{@page{margin:12mm}body{padding:0}}</style></head><body>
   <div class="hd">
@@ -1259,7 +1171,7 @@ function rQuote(body){
   const p=AP;
   const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
   const customs=p.customItems||[];
-  const total=calcQuoteTotal(p);
+  const total=calcTotal(p);
   const cRows=checked.map(x=>`
     <tr>
       <td style="color:var(--g500)">${catOf(x.item.id)}</td>
@@ -1421,11 +1333,6 @@ function toggleSubpartStock(itemId,index,checked){
   if(!p.stockStatus)p.stockStatus={};
   p.stockStatus[subpartStockKey(itemId,index)]=checked?1:0;
   p.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Sub-part stock changed',old:'',nv:`${itemById(itemId)?.name} sub-part ${index+1} → ${checked?'In stock':'Need to order'}`,type:'parts'});
-
-  PATCH(`/api/projects/${p.id}`,{
-  stock_status_json:JSON.stringify(p.stockStatus)
-  }).catch(e=>toast(`Stock save failed: ${errMsg(e)}`,4000));
-
   rParts(document.getElementById('tb'));
   toast(checked?'Marked in stock':'Marked need to order');
 }
@@ -1529,125 +1436,6 @@ async function deleteProject(){
 }
 
 // ══════════════════════════════════════
-// CASHFLOW TAB
-// ══════════════════════════════════════
-function cfData(p){
-  if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
-  return p.cashflow;
-}
-
-function rCashflow(body){
-  const p=AP;
-  const cf=cfData(p);
-  const totalDeposits=(cf.deposits||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);
-  const totalVendor=(cf.vendorPayments||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);
-  const quoteTotal=calcTotal(p);
-  const balanceRemaining=quoteTotal-totalDeposits;
-  const cashPosition=totalDeposits-totalVendor;
-  const bannerCls=cashPosition>0?'ok':cashPosition===0?'warn':'neg';
-  const bannerMsg=cashPosition>0?`${fmt(cashPosition)} available buffer`:cashPosition===0?'Breaking even on deposits vs spend':'⚠ Spent more than collected so far';
-
-  body.innerHTML=`
-    <div class="cf-balance-banner ${bannerCls}">
-      <div>
-        <div style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g500);margin-bottom:2px">Cash Position</div>
-        <div class="bb" style="font-size:22px;color:${cashPosition>=0?'#15803d':'#dc2626'}">${fmt(cashPosition)}</div>
-        <div style="font-size:var(--xxs);color:var(--g500);margin-top:2px">${bannerMsg}</div>
-      </div>
-      <button class="btn btn-out btn-sm" onclick="saveCashflow()">💾 Save</button>
-    </div>
-
-    <div class="cf-grid">
-      <div class="cf-card hi">
-        <div class="cf-lbl">Quote Total</div>
-        <div class="cf-val brand">${fmt(quoteTotal)}</div>
-        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">From saved quote</div>
-      </div>
-      <div class="cf-card">
-        <div class="cf-lbl">Deposits Collected</div>
-        <div class="cf-val pos">${fmt(totalDeposits)}</div>
-        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">${commas((totalDeposits/quoteTotal*100)||0)}% of quote</div>
-      </div>
-      <div class="cf-card">
-        <div class="cf-lbl">Balance Remaining</div>
-        <div class="cf-val" style="color:${balanceRemaining>0?'#f97316':'#15803d'}">${fmt(balanceRemaining)}</div>
-        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">Still to collect from customer</div>
-      </div>
-      <div class="cf-card">
-        <div class="cf-lbl">Vendor Payments</div>
-        <div class="cf-val neg">${fmt(totalVendor)}</div>
-        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">Parts & materials paid out</div>
-      </div>
-    </div>
-
-    <div class="cf-section-title">💵 Deposits Received</div>
-    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
-      <table class="cf-table">
-        <thead><tr><th>Date</th><th>Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
-        <tbody>
-          ${(cf.deposits||[]).map((d,i)=>`
-            <tr>
-              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.deposits[${i}].date=this.value"></td>
-              <td><input class="cf-input desc" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. 50% deposit" onchange="AP.cashflow.deposits[${i}].desc=this.value"></td>
-              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.deposits[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
-              <td><button class="cf-del" onclick="rmCfEntry('deposits',${i})">×</button></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <button class="btn btn-out btn-sm" onclick="addCfEntry('deposits')">+ Add Deposit</button>
-
-    <div class="cf-section-title">🧾 Vendor / Parts Payments</div>
-    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
-      <table class="cf-table">
-        <thead><tr><th>Date</th><th>Vendor / Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
-        <tbody>
-          ${(cf.vendorPayments||[]).map((d,i)=>`
-            <tr>
-              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.vendorPayments[${i}].date=this.value"></td>
-              <td><input class="cf-input" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. Bed frame steel" onchange="AP.cashflow.vendorPayments[${i}].desc=this.value"></td>
-              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.vendorPayments[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
-              <td><button class="cf-del" onclick="rmCfEntry('vendorPayments',${i})">×</button></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <button class="btn btn-out btn-sm" onclick="addCfEntry('vendorPayments')">+ Add Payment</button>
-
-    <div style="margin-top:20px;padding:13px 16px;background:var(--g50);border-radius:var(--r);font-size:var(--xs);color:var(--g500);line-height:1.8">
-      <strong style="color:var(--black)">How to read this:</strong><br>
-      <strong>Cash Position</strong> = Deposits collected − Vendor payments<br>
-      <strong>Balance Remaining</strong> = Quote total − Deposits collected<br>
-      Data is saved per project. Hit 💾 Save after making changes.
-    </div>`;
-}
-
-function addCfEntry(type){
-  const p=AP;if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
-  p.cashflow[type].push({date:new Date().toISOString().slice(0,10),desc:'',amount:0});
-  rCashflow(document.getElementById('tb'));
-}
-
-function rmCfEntry(type,i){
-  const p=AP;if(!p.cashflow)return;
-  p.cashflow[type].splice(i,1);
-  rCashflow(document.getElementById('tb'));
-}
-
-async function saveCashflow(){
-  if(!AP)return;
-  const cfJson=JSON.stringify(AP.cashflow);
-  const res=await PATCH(`/api/projects/${AP.id}`,{
-    cashflow_json:cfJson
-  });
-  if(res){
-    toast('Cashflow saved ✓');
-  }else{
-    toast('Save failed — check server');
-  }
-}
-
-// ══════════════════════════════════════
 // SETTINGS
 // ══════════════════════════════════════
 function userFromApi(row){
@@ -1666,25 +1454,6 @@ async function loadAdminSettings(opts={}){
   try{
     const data=await GET('/api/admin/settings');
     if(data?.users)USERS=data.users.map(userFromApi);
-    if(data?.consultation){
-  CATALOG = data.consultation.map(cat => ({
-    id: cat.id,
-    cat: cat.name,
-    icon: cat.icon || '📦',
-    items: (cat.items || []).map(item => ({
-      dbId: item.id,
-      id: item.slug || String(item.id),
-      slug: item.slug || String(item.id),
-      name: item.name,
-      desc: item.description || '',
-      price: Number(item.default_customer_price || 0),
-      intCost: Number(item.default_internal_cost || 0),
-      parts: item.subparts || []
-    }))
-  }));
-  renderCatalog();
-  renderPackages();
-}
     const terms=document.getElementById('default-terms');
     if(terms&&data?.quote_terms)terms.value=data.quote_terms;
     settingsLoaded=true;
@@ -1818,8 +1587,8 @@ function renderCatalog(){
             <div style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;color:var(--g400);margin-bottom:9px">Parts ordered when this item is selected:</div>
             ${(item.parts||[]).map((sp,si)=>`
               <div class="sprow">
-                <input class="spni" value="${sp.name}" placeholder="Part name" onchange="updateSP(${ci},${ii},${si},{name:this.value})">
-                <input class="spci" type="text" inputmode="numeric" value="${commas(sp.cost)}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" onchange="updateSP(${ci},${ii},${si},{cost:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
+                <input class="spni" value="${sp.name}" placeholder="Part name" onchange="CATALOG[${ci}].items[${ii}].parts[${si}].name=this.value;refreshSPTot(${ci},${ii})">
+                <input class="spci" type="text" inputmode="numeric" value="${commas(sp.cost)}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" onchange="CATALOG[${ci}].items[${ii}].parts[${si}].cost=parseMoney(this.value);this.value=commas(CATALOG[${ci}].items[${ii}].parts[${si}].cost);refreshSPTot(${ci},${ii})">
                 <button class="spdel" onclick="delSP(${ci},${ii},${si})">×</button>
               </div>`).join('')}
             <div style="display:flex;gap:7px;margin-top:9px">
@@ -1862,64 +1631,20 @@ function refreshSPTot(ci,ii){
     el.style.color=retail>t?'#15803d':'#dc2626';
   });
 }
-async function updateSP(ci,ii,si,patch){
-  const item=CATALOG[ci]?.items[ii];
-  const sp=item?.parts?.[si];
-  if(!item||!sp)return;
-
-  Object.assign(sp,patch);
-  refreshSPTot(ci,ii);
-
-  if(!sp.id)return;
-
-  try{
-    await PATCH(`/api/admin/consultation/subparts/${sp.id}`,{
-      name:sp.name,
-      cost:sp.cost,
-      sort_order:sp.sort_order||si+1,
-      active:sp.active!==0
-    });
-  }catch(e){
-    toast(`Sub-part update failed: ${errMsg(e)}`,4000);
-  }
-}
-async function addSP(ci,ii,itemId){
-  const item=CATALOG[ci]?.items[ii];
+function addSP(ci,ii,itemId){
   const ne=document.getElementById('spn-'+itemId),ce=document.getElementById('spc-'+itemId);
-  if(!item||!ne||!ce)return;
-
+  if(!ne||!ce)return;
   const name=ne.value.trim(),cost=parseMoney(ce.value);
   if(!name){toast('Enter a part name');return;}
-
-  try{
-    const dbId=item.dbId||item.item_id||item.id;
-    const saved=await POST(`/api/admin/consultation/items/${dbId}/subparts`,{name,cost});
-    if(!item.parts)item.parts=[];
-    item.parts.push(saved);
-    toast('Sub-part added ✓');
-    renderCatalog();
-    const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';
-  }catch(e){
-    toast(`Sub-part save failed: ${errMsg(e)}`,4000);
-  }
+  if(!CATALOG[ci].items[ii].parts)CATALOG[ci].items[ii].parts=[];
+  CATALOG[ci].items[ii].parts.push({name,cost});
+  toast('Sub-part added ✓');renderCatalog();
+  const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';
 }
-async function delSP(ci,ii,si){
-  const item=CATALOG[ci]?.items[ii];
-  const sp=item?.parts?.[si];
-  if(!item||!sp)return;
-
-  try{
-    if(sp.id){
-      await DELETE(`/api/admin/consultation/subparts/${sp.id}`);
-    }
-    item.parts.splice(si,1);
-    renderCatalog();
-    const itemId=item.id;
-    if(itemId){const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';}
-    toast('Sub-part deleted');
-  }catch(e){
-    toast(`Delete failed: ${errMsg(e)}`,4000);
-  }
+function delSP(ci,ii,si){
+  CATALOG[ci].items[ii].parts.splice(si,1);renderCatalog();
+  const itemId=CATALOG[ci]?.items[ii]?.id;
+  if(itemId){const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';}
 }
 function toggleSP(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
 

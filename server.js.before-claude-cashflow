@@ -191,7 +191,6 @@ function projectSummary(row) {
     stage,
     progress: stageProgress(stage),
     quote_total: totals.customer,
-    cashflow_json: row.cashflow_json || '',
     quote_cost: totals.cost,
     quote_profit: totals.profit,
     quote_count: totals.count,
@@ -477,30 +476,14 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
   const current = requireProject(req.params.id, true);
   const next = { ...current, ...req.body };
   const stage = normalizeStage(next.stage);
-  const archived = stage === '14 Archived' || bool(next.archived) ? 1 : 0; 
+  const archived = stage === '14 Archived' || bool(next.archived) ? 1 : 0;
   db.prepare(`
-  UPDATE vehicles
-  SET job_no=?,
-      owner=?,
-      name=?,
-      plate=?,
-      pkg=?,
-      stage=?,
-      designer=?,
-      priority=?,
-      progress=?,
-      start_date=?,
-      finish_date=?,
-      customer_update=?,
-      customer_action=?,
-      next_action=?,
-      notes=?,
-      cashflow_json=?,
-      stock_status_json=?,
-      archived=?,
-      updated_at=CURRENT_TIMESTAMP
-  WHERE id=?
-`).run(
+    UPDATE vehicles
+    SET job_no=?, owner=?, name=?, plate=?, pkg=?, stage=?, designer=?, priority=?,
+        progress=?, start_date=?, finish_date=?, customer_update=?, customer_action=?,
+        next_action=?, notes=?, archived=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
     text(next.job_no),
     text(next.owner),
     text(next.name),
@@ -516,8 +499,6 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
     text(next.customer_action),
     text(next.next_action),
     text(next.notes),
-    text(next.cashflow_json),
-    text(next.stock_status_json),
     archived,
     current.id
   );
@@ -559,17 +540,14 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
   `).all();
   const selected = db.prepare('SELECT * FROM quote_items WHERE vehicle_id=? AND consultation_item_id IS NOT NULL AND active=1').all(project.id);
   const selectedByItem = new Map(selected.map(row => [row.consultation_item_id, row]));
-  const subpartsByItem = consultationSubpartsByItemIds(items.map(item => item.id));
   res.json({
     project: projectSummary(project),
     categories: categories.map(category => ({
       ...category,
       items: items.filter(item => item.category_id === category.id).map(item => ({
-  	...item,
-  	parts: subpartsByItem.get(item.id) || [],
-  	subparts: subpartsByItem.get(item.id) || [],
-  	selected: selectedByItem.has(item.id),
-  	quote_item: selectedByItem.get(item.id) || null
+        ...item,
+        selected: selectedByItem.has(item.id),
+        quote_item: selectedByItem.get(item.id) || null
       }))
     })),
     quote_total: quoteTotals(project.id).customer

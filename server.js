@@ -560,6 +560,43 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
   const selected = db.prepare('SELECT * FROM quote_items WHERE vehicle_id=? AND consultation_item_id IS NOT NULL AND active=1').all(project.id);
   const selectedByItem = new Map(selected.map(row => [row.consultation_item_id, row]));
   const subpartsByItem = consultationSubpartsByItemIds(items.map(item => item.id));
+  const options = db.prepare(`
+    SELECT *
+    FROM consultation_item_options
+    WHERE active=1
+    ORDER BY consultation_item_id, sort_order, id
+  `).all();
+
+  const choices = db.prepare(`
+    SELECT *
+    FROM consultation_item_option_choices
+    WHERE active=1
+    ORDER BY option_id, sort_order, id
+  `).all();
+
+  const answers = db.prepare(`
+    SELECT *
+    FROM project_consultation_answers
+    WHERE vehicle_id=?
+  `).all(project.id);
+
+  const choicesByOption = new Map();
+  choices.forEach(choice=>{
+    if(!choicesByOption.has(choice.option_id))choicesByOption.set(choice.option_id,[]);
+    choicesByOption.get(choice.option_id).push(choice);
+  });
+
+  const answersByOption = new Map(answers.map(answer=>[answer.option_id,answer.value]));
+
+  const optionsByItem = new Map();
+  options.forEach(option=>{
+    if(!optionsByItem.has(option.consultation_item_id))optionsByItem.set(option.consultation_item_id,[]);
+    optionsByItem.get(option.consultation_item_id).push({
+      ...option,
+      value: answersByOption.get(option.id) ?? option.default_value ?? '',
+      choices: choicesByOption.get(option.id) || []
+    });
+  });
   res.json({
     project: projectSummary(project),
     categories: categories.map(category => ({
@@ -568,8 +605,9 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
   	...item,
   	parts: subpartsByItem.get(item.id) || [],
   	subparts: subpartsByItem.get(item.id) || [],
-  	selected: selectedByItem.has(item.id),
-  	quote_item: selectedByItem.get(item.id) || null
+	options: optionsByItem.get(item.id) || [],
+	selected: selectedByItem.has(item.id),
+	quote_item: selectedByItem.get(item.id) || null
       }))
     })),
     quote_total: quoteTotals(project.id).customer
@@ -1005,6 +1043,41 @@ app.get('/api/admin/settings', requireAdmin, (req, res) => {
     ORDER BY cc.sort_order, ci.sort_order, ci.id
   `).all();
   const subpartsByItem = consultationSubpartsByItemIds(items.map(item => item.id));
+  const optionRows = db.prepare(`
+  SELECT *
+  FROM consultation_item_options
+  WHERE active=1
+  ORDER BY consultation_item_id, sort_order, id
+`).all();
+
+const choiceRows = db.prepare(`
+  SELECT *
+  FROM consultation_item_option_choices
+  WHERE active=1
+  ORDER BY option_id, sort_order, id
+`).all();
+
+const choicesByOption = new Map();
+
+choiceRows.forEach(choice=>{
+  if(!choicesByOption.has(choice.option_id)){
+    choicesByOption.set(choice.option_id,[]);
+  }
+  choicesByOption.get(choice.option_id).push(choice);
+});
+
+const optionsByItem = new Map();
+
+optionRows.forEach(option=>{
+  if(!optionsByItem.has(option.consultation_item_id)){
+    optionsByItem.set(option.consultation_item_id,[]);
+  }
+
+  optionsByItem.get(option.consultation_item_id).push({
+    ...option,
+    choices: choicesByOption.get(option.id) || []
+  });
+});
   res.json({
     users,
     service_master: serviceMaster,
@@ -1012,7 +1085,11 @@ app.get('/api/admin/settings', requireAdmin, (req, res) => {
       ...category,
       items: items
         .filter(item => item.category_id === category.id)
-        .map(item => ({ ...item, subparts: subpartsByItem.get(item.id) || [] }))
+	.map(item => ({
+  	  ...item,
+  	  subparts: subpartsByItem.get(item.id) || [],
+  	  options: optionsByItem.get(item.id) || []
+	}))
     })),
     pipeline: PIPELINE_STAGES,
     quote_categories: setting('quote_categories', DEFAULT_CATEGORIES.join('\n')),
@@ -1172,6 +1249,22 @@ app.patch('/api/admin/consultation/items/:id', requireAdmin, (req, res) => {
     bool(next.active) ? 1 : 0,
     current.id
   );
+
+    db.prepare(`
+    UPDATE quote_items
+    SET customer_price=?,
+        internal_cost=?,
+        supplier=?,
+        need_order=?,
+        updated_at=CURRENT_TIMESTAMP
+    WHERE consultation_item_id=? AND active=1
+  `).run(
+    int(next.default_customer_price),
+    int(next.default_internal_cost),
+    text(next.supplier),
+    bool(next.need_order) ? 1 : 0,
+    current.id
+  );
   res.json(db.prepare('SELECT * FROM consultation_items WHERE id=?').get(current.id));
 });
 
@@ -1213,6 +1306,133 @@ app.delete('/api/admin/consultation/subparts/:id', requireAdmin, (req, res) => {
   if (!current) return res.status(404).json({ error: 'Sub-part not found' });
   db.prepare('UPDATE consultation_subparts SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(current.id);
   updateConsultationItemCostFromSubparts(current.consultation_item_id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/consultation/items/:id/options', requireAdmin, (req, res) => {
+  const item = db.prepare('SELECT * FROM consultation_items WHERE id=?').get(Number(req.params.id));
+  if (!item) return res.status(404).json({ error: 'Checklist item not found' });
+
+  const label = text(req.body.label);
+  if (!label) return res.status(400).json({ error: 'label is required' });
+
+  const baseSlug = slugify(req.body.slug || label);
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (db.prepare('SELECT id FROM consultation_item_options WHERE consultation_item_id=? AND slug=?').get(item.id, slug)) {
+    slug = `${baseSlug}-${counter++}`;
+  }
+
+  const sort = int(
+    req.body.sort_order,
+    db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM consultation_item_options WHERE consultation_item_id=?').get(item.id).next
+  );
+
+  const inputType = ['select', 'yesno', 'number', 'text'].includes(req.body.input_type) ? req.body.input_type : 'select';
+
+  const result = db.prepare(`
+    INSERT INTO consultation_item_options
+      (consultation_item_id, slug, label, input_type, default_value, sort_order, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    item.id,
+    slug,
+    label,
+    inputType,
+    text(req.body.default_value),
+    sort,
+    req.body.active === false ? 0 : 1
+  );
+
+  res.status(201).json(db.prepare('SELECT * FROM consultation_item_options WHERE id=?').get(result.lastInsertRowid));
+});
+
+app.patch('/api/admin/consultation/options/:id', requireAdmin, (req, res) => {
+  const current = db.prepare('SELECT * FROM consultation_item_options WHERE id=?').get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: 'Option not found' });
+
+  const next = { ...current, ...req.body };
+  const inputType = ['select', 'yesno', 'number', 'text'].includes(next.input_type) ? next.input_type : current.input_type;
+
+  db.prepare(`
+    UPDATE consultation_item_options
+    SET label=?, input_type=?, default_value=?, sort_order=?, active=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
+    text(next.label),
+    inputType,
+    text(next.default_value),
+    int(next.sort_order, current.sort_order),
+    bool(next.active) ? 1 : 0,
+    current.id
+  );
+
+  res.json(db.prepare('SELECT * FROM consultation_item_options WHERE id=?').get(current.id));
+});
+
+app.delete('/api/admin/consultation/options/:id', requireAdmin, (req, res) => {
+  const current = db.prepare('SELECT * FROM consultation_item_options WHERE id=?').get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: 'Option not found' });
+
+  db.prepare('UPDATE consultation_item_options SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(current.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/consultation/options/:id/choices', requireAdmin, (req, res) => {
+  const option = db.prepare('SELECT * FROM consultation_item_options WHERE id=?').get(Number(req.params.id));
+  if (!option) return res.status(404).json({ error: 'Option not found' });
+
+  const value = text(req.body.value || req.body.label);
+  const label = text(req.body.label || req.body.value);
+  if (!value && !label) return res.status(400).json({ error: 'value or label is required' });
+
+  const sort = int(
+    req.body.sort_order,
+    db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM consultation_item_option_choices WHERE option_id=?').get(option.id).next
+  );
+
+  const result = db.prepare(`
+    INSERT INTO consultation_item_option_choices
+      (option_id, value, label, sort_order, active)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    option.id,
+    value || label,
+    label || value,
+    sort,
+    req.body.active === false ? 0 : 1
+  );
+
+  res.status(201).json(db.prepare('SELECT * FROM consultation_item_option_choices WHERE id=?').get(result.lastInsertRowid));
+});
+
+app.patch('/api/admin/consultation/choices/:id', requireAdmin, (req, res) => {
+  const current = db.prepare('SELECT * FROM consultation_item_option_choices WHERE id=?').get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: 'Choice not found' });
+
+  const next = { ...current, ...req.body };
+
+  db.prepare(`
+    UPDATE consultation_item_option_choices
+    SET value=?, label=?, sort_order=?, active=?
+    WHERE id=?
+  `).run(
+    text(next.value),
+    text(next.label),
+    int(next.sort_order, current.sort_order),
+    bool(next.active) ? 1 : 0,
+    current.id
+  );
+
+  res.json(db.prepare('SELECT * FROM consultation_item_option_choices WHERE id=?').get(current.id));
+});
+
+app.delete('/api/admin/consultation/choices/:id', requireAdmin, (req, res) => {
+  const current = db.prepare('SELECT * FROM consultation_item_option_choices WHERE id=?').get(Number(req.params.id));
+  if (!current) return res.status(404).json({ error: 'Choice not found' });
+
+  db.prepare('UPDATE consultation_item_option_choices SET active=0 WHERE id=?').run(current.id);
   res.json({ ok: true });
 });
 

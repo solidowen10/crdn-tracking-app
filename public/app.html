@@ -132,7 +132,7 @@ button{cursor:pointer}
 
 /* CONSULTATION */
 .cwrap{display:flex;gap:16px}
-.cleft{flex:1;min-width:0;padding-right:316px}
+.cleft{flex:1;min-width:0;max-width:calc(100vw - 360px)}
 .cright{width:300px;flex-shrink:0;position:fixed;right:16px;top:180px;z-index:35}
 @media(max-width:700px){
   .topbar{height:64px;padding:0 14px;gap:10px}
@@ -145,14 +145,26 @@ button{cursor:pointer}
   .nav-menu{top:46px}
   .cwrap{flex-direction:column}
   .cright{width:100%;position:static}
-  .cleft{padding-right:0}
+  .cleft{max-width:100%;padding-right:0}
   .hide-sm{display:none}
   .pc-b{grid-template-columns:1fr 1fr}
   .job-pill{text-align:left}
+  .chk.has-options{grid-template-columns:28px 1fr}
+  .chk.has-options .qtyc{grid-column:2}
+  .chk.has-options .cp{grid-column:2;text-align:left}
+  .chk.has-options .item-options{grid-column:1/-1;margin-left:0;max-width:100%;box-sizing:border-box}
+  .opt-grid{grid-template-columns:1fr}
+}
+@media(max-width:1100px){
+  .opt-grid{grid-template-columns:1fr}
 }
 .cat-sec{margin-bottom:16px}
 .cat-h{font-size:var(--xxs);font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);padding:7px 0;border-bottom:1px solid var(--g100);margin-bottom:9px;display:flex;align-items:center;justify-content:space-between}
 .chk{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:var(--rs);border:1px solid var(--g200);background:var(--w);margin-bottom:7px;cursor:pointer;transition:.15s;-webkit-user-select:none;user-select:none}
+.chk.has-options{display:grid;grid-template-columns:28px 1fr auto;align-items:start}
+.chk.has-options .ci{min-width:0}
+.chk.has-options .cp{white-space:nowrap}
+.chk.has-options .item-options{grid-column:1/-1;margin-left:0;max-width:100%;box-sizing:border-box}
 .chk:hover{border-color:var(--g300)}
 .chk.on{border-color:var(--brand);background:var(--brand-f)}
 .cbox{width:24px;height:24px;border-radius:6px;border:2px solid var(--g300);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s}
@@ -250,6 +262,13 @@ button{cursor:pointer}
 .stocked-row td{color:var(--g400)}
 .stocked-row .stock-check span{text-decoration:line-through}
 .stock-note{font-size:var(--xxxs);color:var(--g400);margin-bottom:7px}
+.item-options{width:100%;max-width:100%;box-sizing:border-box;margin-top:12px;padding:12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;overflow:hidden}
+.opt-title{font-size:var(--xxs);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#c2410c;margin-bottom:10px}
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt-field{min-width:0}
+.opt-field.opt-wide{grid-column:1/-1}
+.opt-label{font-size:11px;font-weight:700;color:var(--g500);margin-bottom:5px;line-height:1.35}
+.opt-field select,.opt-field input{width:100%;border:1px solid #fdba74;border-radius:10px;padding:8px 10px;font-size:var(--xs);background:var(--w);font-family:'Noto Sans TC',sans-serif}
 
 /* TIMELINE */
 .tli{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--g100)}
@@ -697,6 +716,7 @@ const normalizeItem=(item,cat={})=>({
   intCost:Number(item.intCost??item.default_internal_cost??item.internal_cost??0),
   parts:item.parts||item.subparts||[],
   subparts:item.subparts||item.parts||[],
+  options:item.options||[],
   cat:cat.cat||cat.name||item.category||'Other'
 });
 
@@ -1063,7 +1083,6 @@ function rOverview(body){
       </select>
       <div class="sbar">${STAGES.map((s,i)=>`<div class="sbs" style="${i<=si?'background:'+s.c:''}"></div>`).join('')}</div>
       <div style="font-size:var(--sm);color:var(--g500);margin-top:8px">Progress: <strong style="color:var(--brand)">${pct}%</strong> · Stage ${si+1} of ${STAGES.length}</div>
-      ${depPaid(p)?`<div class="depbanner" style="margin-top:13px"><div class="db-ico">✅</div><div class="db-t"><strong>Deposit received</strong>Parts tab is now unlocked for the team.</div></div>`:''}
     </div>
     <div class="fc">
       <div class="fct">Dates & Notes</div>
@@ -1126,7 +1145,7 @@ function buildChecklist(){
 	const normalized=normalizeItem(item,cat);
 	const id=normalized.id;
 	const on=p.checkedItems.includes(id),q=qty(p,id);
-          return`<div class="chk ${on?'on':''}" id="ci-${id}">
+	  return`<div class="chk ${on&&normalized.options?.length?'has-options ':''}${on?'on':''}" id="ci-${id}">
   	   <div class="cbox" onclick="toggleItem('${id}')"><span class="ctick">✓</span></div>
   	   <div class="ci" onclick="toggleItem('${id}')"><div class="cn">${normalized.name}</div><div class="cd">${normalized.desc}</div></div>
   	   ${on?`<div class="qtyc" onclick="event.stopPropagation()">
@@ -1135,7 +1154,8 @@ function buildChecklist(){
     	     <div class="qb" onclick="chgQty('${id}',1)">+</div>
   	   </div>`:''}
   	   <div class="cp" onclick="toggleItem('${id}')">${fmt(effP(id)*(on?q:1))}</div>
-  	  </div>`;
+	   ${on&&normalized.options?.length?renderItemOptions(id,normalized):''}
+	   </div>`;
         }).join('')}
       </div>`).join('')}
     <div class="cat-sec">
@@ -1150,6 +1170,38 @@ function buildChecklist(){
       </div>
     </div>`;
 }
+function renderItemOptions(itemId,item){
+  return `<div class="item-options" onclick="event.stopPropagation()">
+    <div class="opt-title">🧩 Configuration Options</div>
+    <div class="opt-grid">
+      ${(item.options||[]).map(opt=>{
+        const val=opt.value ?? opt.default_value ?? '';
+        const label=`<div class="opt-label">${opt.label}</div>`;
+        if(opt.input_type==='number'){
+          return `<div class="opt-field">${label}<input type="number" value="${val}" onchange="updateItemOption('${itemId}',${opt.id},this.value)"></div>`;
+        }
+        if(opt.input_type==='text'){
+          return `<div class="opt-field opt-wide">${label}<input type="text" value="${val}" onchange="updateItemOption('${itemId}',${opt.id},this.value)"></div>`;
+        }
+        if(opt.input_type==='yesno'){
+          return `<div class="opt-field">${label}<select onchange="updateItemOption('${itemId}',${opt.id},this.value)">
+            ${['Yes','No'].map(v=>`<option value="${v}" ${String(val)===v?'selected':''}>${v}</option>`).join('')}
+          </select></div>`;
+        }
+        return `<div class="opt-field">${label}<select onchange="updateItemOption('${itemId}',${opt.id},this.value)">
+          ${(opt.choices||[]).map(c=>`<option value="${c.value}" ${String(val)===String(c.value)?'selected':''}>${c.label}</option>`).join('')}
+        </select></div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+function updateItemOption(itemId,optionId,value){
+  if(!AP.itemOptions)AP.itemOptions={};
+  if(!AP.itemOptions[itemId])AP.itemOptions[itemId]={};
+  AP.itemOptions[itemId][optionId]=value;
+  toast('Option updated — save consultation when done');
+}
+
 function toggleItem(id){
   pushQuoteUndo();
   const p=AP,idx=p.checkedItems.indexOf(id);
@@ -1715,7 +1767,8 @@ async function loadAdminSettings(opts={}){
       desc: item.description || '',
       price: Number(item.default_customer_price || 0),
       intCost: Number(item.default_internal_cost || 0),
-      parts: item.subparts || []
+      parts: item.subparts || [],
+      options: item.options || []
     }))
   }));
   renderCatalog();
@@ -1830,15 +1883,15 @@ function renderCatalog(){
         return`<div class="cprow">
           <div class="cphd">
             <div style="flex:1">
-              <input class="iedit" value="${item.name}" style="width:100%;font-size:var(--sm);font-weight:700" onchange="CATALOG[${ci}].items[${ii}].name=this.value">
-              <input class="iedit" value="${item.desc}" style="width:100%;font-size:var(--xxs);color:var(--g500);margin-top:3px" onchange="CATALOG[${ci}].items[${ii}].desc=this.value">
+              <input class="iedit" value="${item.name}" style="width:100%;font-size:var(--sm);font-weight:700" onchange="updateCatalogItem(${ci},${ii},{name:this.value})">
+	      <input class="iedit" value="${item.desc}" style="width:100%;font-size:var(--xxs);color:var(--g500);margin-top:3px" onchange="updateCatalogItem(${ci},${ii},{description:this.value,desc:this.value})">
             </div>
             <button class="btn btn-danger btn-xs" onclick="delItem(${ci},${ii})">Delete</button>
           </div>
           <div class="pgrid">
             <div class="pbox">
               <div class="plbl">Retail Price</div>
-              <input class="pinp" type="text" inputmode="numeric" value="${commas(retail)}" onfocus="this.value=parseMoney(this.value)||''" onchange="CATALOG[${ci}].items[${ii}].price=parseMoney(this.value);renderCatalog()">
+              <input class="pinp" type="text" inputmode="numeric" value="${commas(retail)}" onfocus="this.value=parseMoney(this.value)||''" onchange="updateCatalogItem(${ci},${ii},{price:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
             </div>
             <div class="pbox">
               <div class="plbl">Internal Cost</div>
@@ -1849,8 +1902,8 @@ function renderCatalog(){
               <div class="cost-display margin-${item.id}" style="color:${retail>spt?'#15803d':'#dc2626'}">${retail?Math.round((retail-spt)/retail*100)+'%':'—'}</div>
             </div>
           </div>
-          <div class="sptog" onclick="toggleSP('spw-${item.id}')">⚙ Sub-parts (${(item.parts||[]).length}) · click to edit</div>
-          <div class="spwrap" id="spw-${item.id}">
+          <div class="sptog" onclick="toggleSP('spw-${item.id}')">🔩 Sub-parts (${(item.parts||[]).length}) · click to edit</div>
+	  <div class="spwrap" id="spw-${item.id}">
             <div style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;color:var(--g400);margin-bottom:9px">Parts ordered when this item is selected:</div>
             ${(item.parts||[]).map((sp,si)=>`
               <div class="sprow">
@@ -1865,6 +1918,43 @@ function renderCatalog(){
             </div>
             <div class="sptot"><span class="sptl">Internal cost from sub-parts</span><span class="sptv spt-${item.id}">${fmt(spt)}</span></div>
           </div>
+	  <div class="sptog" onclick="toggleSP('optw-${item.id}')">🧩 Configuration Options (${(item.options||[]).length}) · click to edit</div>
+	<div class="spwrap" id="optw-${item.id}">
+  	  ${(item.options||[]).map((opt,oi)=>`
+    	   <div class="sprow" style="align-items:flex-start">
+      	  <input class="spni" value="${opt.label}" placeholder="Option label" onchange="updateOption(${ci},${ii},${oi},{label:this.value})">
+      <select class="spci" onchange="updateOption(${ci},${ii},${oi},{input_type:this.value})">
+        ${['select','yesno','number','text'].map(t=>`<option value="${t}" ${opt.input_type===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input class="spci" value="${opt.default_value||''}" placeholder="Default" onchange="updateOption(${ci},${ii},${oi},{default_value:this.value})">
+      <button class="spdel" onclick="delOption(${ci},${ii},${oi})">×</button>
+    </div>
+    ${opt.input_type==='select'?`
+      <div style="margin-left:12px;margin-bottom:10px;padding:8px;background:var(--g50);border-radius:8px">
+        <div style="font-size:var(--xxs);font-weight:700;color:var(--g400);margin-bottom:6px">Dropdown choices</div>
+        ${(opt.choices||[]).map((ch,chi)=>`
+          <div class="sprow">
+            <input class="spni" value="${ch.label}" placeholder="Choice label" onchange="updateChoice(${ci},${ii},${oi},${chi},{label:this.value,value:this.value})">
+            <button class="spdel" onclick="delChoice(${ci},${ii},${oi},${chi})">×</button>
+          </div>
+        `).join('')}
+        <div style="display:flex;gap:7px;margin-top:7px">
+          <input class="spni" id="chn-${opt.id}" placeholder="New choice">
+          <button class="btn btn-brand btn-sm" onclick="addChoice(${ci},${ii},${oi})">+ Choice</button>
+        </div>
+      </div>`:''}
+  `).join('')}
+  <div style="display:flex;gap:7px;margin-top:9px">
+    <input class="spni" id="optn-${item.id}" placeholder="New option label">
+    <select class="spci" id="optt-${item.id}">
+      <option value="select">select</option>
+      <option value="yesno">yes/no</option>
+      <option value="number">number</option>
+      <option value="text">text</option>
+    </select>
+    <button class="btn btn-brand btn-sm" onclick="addOption(${ci},${ii})">+ Option</button>
+  </div>
+</div>
         </div>`;
       }).join('')}
       <button class="btn btn-out btn-xs" style="margin-top:8px" onclick="addItem(${ci})">+ Add Item</button>
@@ -1897,6 +1987,163 @@ function refreshSPTot(ci,ii){
     el.textContent=margin;
     el.style.color=retail>t?'#15803d':'#dc2626';
   });
+}
+async function updateCatalogItem(ci,ii,patch){
+  const item=CATALOG[ci]?.items[ii];
+  if(!item?.dbId)return toast('Missing database item id');
+
+  Object.assign(item,patch);
+  if(patch.description!==undefined)item.desc=patch.description;
+
+  try{
+    const saved=await PATCH(`/api/admin/consultation/items/${item.dbId}`,{
+      category_id: CATALOG[ci].id,
+      name: item.name,
+      description: item.desc || '',
+      default_customer_price: item.price || 0,
+      default_internal_cost: item.intCost || 0,
+      supplier: item.supplier || '',
+      need_order: item.need_order ?? 1,
+      sort_order: item.sort_order || ii+1,
+      active: item.active !== 0
+    });
+    CATALOG[ci].items[ii]={
+  ...item,
+  ...saved,
+  dbId:saved.id,
+  id:saved.slug||item.id,
+  slug:saved.slug||item.slug,
+  name:saved.name||item.name,
+  desc:saved.description||item.desc,
+  price:Number(saved.default_customer_price ?? item.price ?? 0),
+  intCost:Number(saved.default_internal_cost ?? item.intCost ?? 0),
+  parts:item.parts||[],
+  options:item.options||[]
+};
+
+renderCatalog();
+toast('Catalog item saved ✓');
+  }catch(e){
+    toast(`Catalog save failed: ${errMsg(e)}`,4000);
+  }
+}
+async function addOption(ci,ii){
+  const item=CATALOG[ci]?.items[ii];
+  if(!item?.dbId)return toast('Missing database item id');
+  const ne=document.getElementById('optn-'+item.id);
+  const te=document.getElementById('optt-'+item.id);
+  const label=ne?.value.trim();
+  const input_type=te?.value||'select';
+  if(!label)return toast('Enter option label');
+
+  try{
+
+    const saved=await POST(`/api/admin/consultation/items/${item.dbId}/options`,{label,input_type});
+    if(!item.options)item.options=[];
+    item.options.push({...saved,choices:[]});
+    renderCatalog();
+    const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+    toast('Option added ✓');
+  }catch(e){
+    toast(`Option save failed: ${errMsg(e)}`,4000);
+  }
+}
+async function updateOption(ci,ii,oi,patch){
+  const item=CATALOG[ci]?.items[ii];
+  const opt=item?.options?.[oi];
+  if(!opt)return;
+  Object.assign(opt,patch);
+
+  try{
+    if(opt.id){
+      await PATCH(`/api/admin/consultation/options/${opt.id}`,{
+        label:opt.label,
+        input_type:opt.input_type,
+        default_value:opt.default_value||'',
+        sort_order:opt.sort_order||oi+1,
+        active:opt.active!==0
+      });
+    }
+    renderCatalog();
+    const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+  }catch(e){
+    toast(`Option update failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function delOption(ci,ii,oi){
+  const item=CATALOG[ci]?.items[ii];
+  const opt=item?.options?.[oi];
+  if(!opt)return;
+  if(!confirm(`Delete option "${opt.label}"?`))return;
+
+  try{
+    if(opt.id)await DELETE(`/api/admin/consultation/options/${opt.id}`);
+    item.options.splice(oi,1);
+    renderCatalog();
+    const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+    toast('Option deleted');
+  }catch(e){
+    toast(`Delete failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function addChoice(ci,ii,oi){
+  const item=CATALOG[ci]?.items[ii];
+  const opt=item?.options?.[oi];
+  if(!opt?.id)return toast('Missing option id');
+  const ne=document.getElementById('chn-'+opt.id);
+  const label=ne?.value.trim();
+  if(!label)return toast('Enter choice label');
+
+  try{
+    const saved=await POST(`/api/admin/consultation/options/${opt.id}/choices`,{label,value:label});
+    if(!opt.choices)opt.choices=[];
+    opt.choices.push(saved);
+    renderCatalog();
+    const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+    toast('Choice added ✓');
+  }catch(e){
+    toast(`Choice save failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function updateChoice(ci,ii,oi,chi,patch){
+  const item=CATALOG[ci]?.items[ii];
+  const opt=item?.options?.[oi];
+  const ch=opt?.choices?.[chi];
+  if(!ch)return;
+  Object.assign(ch,patch);
+
+  try{
+    if(ch.id){
+      await PATCH(`/api/admin/consultation/choices/${ch.id}`,{
+        label:ch.label,
+        value:ch.value,
+        sort_order:ch.sort_order||chi+1,
+        active:ch.active!==0
+      });
+    }
+  }catch(e){
+    toast(`Choice update failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function delChoice(ci,ii,oi,chi){
+  const item=CATALOG[ci]?.items[ii];
+  const opt=item?.options?.[oi];
+  const ch=opt?.choices?.[chi];
+  if(!ch)return;
+
+  try{
+    if(ch.id)await DELETE(`/api/admin/consultation/choices/${ch.id}`);
+    opt.choices.splice(chi,1);
+    renderCatalog();
+    const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+    toast('Choice deleted');
+  }catch(e){
+    toast(`Delete failed: ${errMsg(e)}`,4000);
+  }
 }
 async function updateSP(ci,ii,si,patch){
   const item=CATALOG[ci]?.items[ii];

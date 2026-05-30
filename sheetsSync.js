@@ -97,8 +97,7 @@ function rowsWithHeader(headers, rows) {
 function exportData(db) {
   const projects = db.prepare(`
     SELECT
-      id AS "Project ID",
-      job_no AS "Job #",
+      job_no AS "Project #",
       owner AS "Customer",
       name AS "Vehicle",
       plate AS "Plate / ID",
@@ -123,8 +122,7 @@ function exportData(db) {
   const quoteItems = db.prepare(`
     SELECT
       qi.id AS "Quote Item ID",
-      qi.vehicle_id AS "Project ID",
-      v.job_no AS "Job #",
+      v.job_no AS "Project #",
       v.owner AS "Customer",
       v.name AS "Vehicle",
       qi.category AS "Category",
@@ -152,8 +150,7 @@ function exportData(db) {
   const parts = db.prepare(`
     SELECT
       p.id AS "Part ID",
-      p.vehicle_id AS "Project ID",
-      v.job_no AS "Job #",
+      v.job_no AS "Project #",
       v.owner AS "Customer",
       v.name AS "Vehicle",
       p.quote_item_id AS "Quote Item ID",
@@ -202,8 +199,7 @@ function exportData(db) {
   const services = db.prepare(`
     SELECT
       ps.id AS "Project Service ID",
-      ps.vehicle_id AS "Project ID",
-      v.job_no AS "Job #",
+      v.job_no AS "Project #",
       v.owner AS "Customer",
       v.name AS "Vehicle",
       ps.name AS "Service",
@@ -220,8 +216,7 @@ function exportData(db) {
   const activity = db.prepare(`
     SELECT
       al.id AS "Activity ID",
-      al.project_id AS "Project ID",
-      v.job_no AS "Job #",
+      v.job_no AS "Project #",
       v.owner AS "Customer",
       v.name AS "Vehicle",
       al.display_name AS "User",
@@ -249,30 +244,30 @@ function exportData(db) {
 
   return {
     Projects: rowsWithHeader([
-      'Project ID', 'Job #', 'Customer', 'Vehicle', 'Plate / ID', 'Package', 'Stage',
+      'Project #', 'Customer', 'Vehicle', 'Plate / ID', 'Package', 'Stage',
       'Progress %', 'Priority', 'Designer', 'Start Date', 'Est. Finish',
       'Customer Update', 'Customer Action', 'Next Action', 'Notes', 'Archived',
       'Created At', 'Updated At'
     ], projects),
     'Quote Items': rowsWithHeader([
-      'Quote Item ID', 'Project ID', 'Job #', 'Customer', 'Vehicle', 'Category',
+      'Quote Item ID', 'Project #', 'Customer', 'Vehicle', 'Category',
       'Description', 'Quantity', 'Customer Unit Price', 'Customer Subtotal',
       'Internal Unit Cost', 'Internal Subtotal', 'Profit', 'Supplier',
       'Parts Status', 'Internal Notes', 'Active', 'Created At', 'Updated At'
     ], quoteItems),
     Parts: rowsWithHeader([
-      'Part ID', 'Project ID', 'Job #', 'Customer', 'Vehicle', 'Quote Item ID',
+      'Part ID', 'Project #', 'Customer', 'Vehicle', 'Quote Item ID',
       'Linked Quote Item', 'Part / Item', 'Supplier', 'Quantity', 'Cost',
       'Status', 'ETA', 'Arrived Date', 'Installed Date', 'Notes',
       'Created At', 'Updated At',
       'Sub-parts', 'Sub-parts Cost Total'
     ], partsExport),
     Services: rowsWithHeader([
-      'Project Service ID', 'Project ID', 'Job #', 'Customer', 'Vehicle',
+      'Project Service ID', 'Project #', 'Customer', 'Vehicle',
       'Service', 'Description', 'Active', 'Created At', 'Updated At'
     ], services),
     Activity: rowsWithHeader([
-      'Activity ID', 'Project ID', 'Job #', 'Customer', 'Vehicle', 'User',
+      'Activity ID', 'Project #', 'Customer', 'Vehicle', 'User',
       'LINE User ID', 'Action', 'Old Value', 'New Value', 'Created At'
     ], activity),
     Users: rowsWithHeader([
@@ -359,65 +354,21 @@ async function syncTab(sheets, id, tab, values, sheet) {
   const headers = values[0] || [];
   const rows = values.slice(1);
   if (!headers.length) return 0;
+
   const lastCol = columnName(headers.length);
-  const headerRange = sheetRange(tab, `A1:${lastCol}1`);
-  const bodyRange = sheetRange(tab, `A2:${lastCol}`);
+  const fullRange = sheetRange(tab, `A1:${lastCol}`);
+
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: id,
+    range: fullRange
+  });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: id,
-    range: headerRange,
+    range: sheetRange(tab, `A1:${lastCol}${values.length}`),
     valueInputOption: 'RAW',
-    requestBody: { values: [headers] }
+    requestBody: { values }
   });
-
-  const existingResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: id,
-    range: bodyRange
-  }).catch(err => {
-    if (err.code === 400 || err.status === 400) return { data: { values: [] } };
-    throw err;
-  });
-
-  const existingRows = existingResponse.data.values || [];
-  const existingByKey = new Map();
-  existingRows.forEach((row, index) => {
-    const key = keyValue(row);
-    if (key) existingByKey.set(key, index + 2);
-  });
-
-  const seen = new Set();
-  const updates = [];
-  let appendRow = existingRows.length + 2;
-  rows.forEach(row => {
-    const normalized = headers.map((_, index) => value(row[index]));
-    const key = keyValue(normalized);
-    if (!key) return;
-    const rowNumber = existingByKey.get(key) || appendRow++;
-    seen.add(key);
-    updates.push({
-      range: sheetRange(tab, `A${rowNumber}:${lastCol}${rowNumber}`),
-      values: [normalized]
-    });
-  });
-
-  existingByKey.forEach((rowNumber, key) => {
-    if (!seen.has(key)) {
-      updates.push({
-        range: sheetRange(tab, `A${rowNumber}:${lastCol}${rowNumber}`),
-        values: [headers.map(() => '')]
-      });
-    }
-  });
-
-  if (updates.length) {
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: id,
-      requestBody: {
-        valueInputOption: 'RAW',
-        data: updates
-      }
-    });
-  }
 
   await formatSyncedColumns(sheets, id, sheet, tab, headers.length);
   return rows.length;

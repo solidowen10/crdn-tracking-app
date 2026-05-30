@@ -83,17 +83,47 @@ button{cursor:pointer}
 .pc-h{padding:13px 15px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .pc-t{font-size:16px;font-weight:700}
 .pc-s{font-size:var(--xxs);color:var(--g500);margin-top:2px}
-.pc-b{padding:0 15px 11px;display:grid;grid-template-columns:minmax(145px,1.25fr) minmax(130px,1fr) minmax(86px,.7fr) minmax(78px,.55fr);gap:8px 12px;align-items:center}
-.spill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:var(--xxs);font-weight:600;white-space:nowrap}
+.pc-b{
+  padding:0 15px 11px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  align-items:center;
+}
+.spill{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  width:100%;
+  padding:3px 10px;
+  border-radius:99px;
+  font-size:var(--xxs);
+  font-weight:600;
+  white-space:nowrap;
+}
 .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .pri{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
 .pri-High{background:#fef2f2;color:#ef4444}.pri-Normal{background:var(--g100);color:var(--g500)}.pri-Low{background:#f0fdf4;color:#16a34a}
-.prog{display:flex;align-items:center;gap:6px}
+.prog{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+}
 .pbar{height:4px;background:var(--g200);border-radius:2px;overflow:hidden;min-width:64px;flex:1}
 .pfill{height:100%;background:var(--brand);border-radius:2px;transition:.4s}
 .ppct{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.04em;color:var(--g500)}
-.designer-pill{font-size:var(--xxs);color:var(--g500);white-space:nowrap}
-.job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:right}
+.designer-pill{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:var(--xxs);
+  color:var(--g500);
+  white-space:nowrap;
+}
+.job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:left}
 .pc-status{font-size:var(--xxxs);padding:2px 8px;border-radius:99px;width:max-content}
 .pc-status.unsaved{background:#fff7ed;color:#f97316}
 .pc-status.archived{background:#fef3c7;color:#92400e}
@@ -147,7 +177,7 @@ button{cursor:pointer}
   .cright{width:100%;position:static}
   .cleft{max-width:100%;padding-right:0}
   .hide-sm{display:none}
-  .pc-b{grid-template-columns:1fr 1fr}
+  .pc-b{grid-template-columns:1fr}
   .job-pill{text-align:left}
   .chk.has-options{grid-template-columns:28px 1fr}
   .chk.has-options .qtyc{grid-column:2}
@@ -189,7 +219,7 @@ button{cursor:pointer}
 .crn:focus,.crp:focus{outline:none;border-color:var(--brand)}
 .crdel{background:none;border:none;color:var(--g300);cursor:pointer;font-size:20px;line-height:1;padding:2px 5px;border-radius:3px;flex-shrink:0}
 .crdel:hover{color:var(--danger)}
-
+w
 /* QUOTE PANEL */
 .qpanel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
 .qph{background:var(--black);color:#fff;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
@@ -1000,14 +1030,13 @@ function renderDash(filter='All'){
     const d=document.createElement('div');d.className='pcard';
     d.innerHTML=`
       <div class="pc-h">
-        <div><div class="pc-t">${p.vehicle}</div><div class="pc-s">${p.owner} · ${p.plate||'—'}</div></div>
+        <div><div class="job-pill">${p.jobNo}</div><div class="pc-t">${p.vehicle}</div><div class="pc-s">${p.owner} · ${p.plate||'—'}</div></div>
         <span class="pri pri-${p.priority}">${p.priority}</span>
       </div>
       <div class="pc-b">
         <span class="spill" style="background:${col}18;color:${col}"><span class="sdot" style="background:${col}"></span>${p.stage}</span>
         <div class="prog"><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div><span class="ppct">${pct}%</span></div>
         <span class="designer-pill">👤 ${p.designer||'—'}</span>
-        <span class="job-pill">${p.jobNo}</span>
         ${p.archived?'<span class="pc-status archived">Archived</span>':''}
       </div>
       <div class="pc-f">
@@ -1058,7 +1087,7 @@ function rOverview(body){
       <div class="fr"><span class="fl">Vehicle</span><input class="fi" value="${p.vehicle}" onchange="AP.vehicle=this.value;savePatch({vehicle:this.value})"></div>
       <div class="fr"><span class="fl">Plate</span><input class="fi" value="${p.plate||''}" onchange="AP.plate=this.value;savePatch({plate:this.value})"></div>
       <div class="fr"><span class="fl">Package</span>
-  	<select class="fsel" onchange="AP.pkg=this.value;savePatch({pkg:this.value})">
+	<select class="fsel" onchange="changeProjectPackage(this.value)">
     	  <option value="" ${!p.pkg?'selected':''}>— No package —</option>
     	  ${PACKAGES.map(pk=>`<option value="${pk.name}" ${p.pkg===pk.name?'selected':''}>${pk.name}</option>`).join('')}
   	</select>
@@ -1113,6 +1142,42 @@ async function savePatch(data){
     }
   }catch(e){
     toast(`Save failed: ${errMsg(e)}`,4000);
+  }
+}
+async function changeProjectPackage(pkgName){
+  if(!AP)return;
+
+  const pk=PACKAGES.find(p=>p.name===pkgName);
+  const items=(pk?.items||[]).map(String);
+
+  const ok=confirm('Changing package will reset all quotation items for this project. Continue?');
+  if(!ok){
+    rOverview(document.getElementById('tb'));
+    return;
+  }
+
+  try{
+    AP.pkg=pkgName;
+    AP.checkedItems=items;
+    AP.itemQtys={};
+    AP.customItems=[];
+    AP.saved=false;
+
+    await savePatch({pkg:pkgName});
+    await POST(`/api/projects/${AP.id}/consultation`,{
+      checkedItems:items,
+      itemQtys:{},
+      customItems:[]
+    });
+
+    AP=await fetchProject(AP.id);
+    projects=projects.map(p=>p.id===AP.id?AP:p);
+
+    rOverview(document.getElementById('tb'));
+    renderDash(currentFilter);
+    toast('Package changed and quotation reset ✓');
+  }catch(e){
+    toast(`Package change failed: ${errMsg(e)}`,4500);
   }
 }
 function changeStage(val){
@@ -1610,10 +1675,13 @@ async function archiveProject(){
 }
 async function deleteProject(){
   const p=AP;if(!p)return;
-  if(!confirm(`Delete ${p.jobNo} — ${p.vehicle} (${p.owner})?\n\nThis cannot be undone.`))return;
-  await DELETE(`/api/projects/${p.id}`);
+  if(!confirm(`Permanently delete ${p.jobNo} — ${p.vehicle} (${p.owner})?\n\nAll project data will be lost. This cannot be undone.`))return;
+  await DELETE(`/api/projects/${p.id}/permanent`);
   projects=projects.filter(x=>x.id!==p.id);
-  AP=null;goHome();toast('Project deleted');
+  AP=null;
+  await refreshDashboard('All');
+  goHome();
+  toast('Project permanently deleted');
 }
 
 // ══════════════════════════════════════
@@ -2357,6 +2425,15 @@ async function createProject(){
   try{
     const res=await POST('/api/projects',{owner,name:vehicle,vehicle,plate,pkg,designer,stage:'02 Consultation',priority:'Normal'});
     const p=projectFromApi(res);
+    const packageItems=(window._selectedPkgItems||[]).map(String);
+    if(packageItems.length){
+      await POST(`/api/projects/${p.id}/consultation`,{
+        checkedItems:packageItems,
+        itemQtys:{},
+        customItems:[]
+      });
+    }
+
     closeModal('modal-new');
     ['m-owner','m-vehicle','m-plate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     await refreshDashboard('All');

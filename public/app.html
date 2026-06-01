@@ -45,6 +45,7 @@ button{cursor:pointer}
 .userrow.pending{background:#fff7ed;margin:0 -6px;padding-left:6px;padding-right:6px;border-radius:var(--rs)}
 .role-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;text-transform:capitalize}
 .role-admin{background:#fef3c7;color:#d97706}.role-member{background:#f0fdf4;color:#15803d}.role-pending{background:#fff7ed;color:#f97316}.role-disabled{background:#f3f4f6;color:#6b7280}
+.role-select{border:1px solid var(--g200);border-radius:99px;padding:4px 8px;background:var(--w);font-size:var(--xxs);font-weight:700;text-transform:capitalize}
 
 /* BUTTONS */
 .btn{padding:8px 15px;border-radius:var(--rs);font-size:var(--xs);font-weight:500;border:none;transition:.15s;line-height:1;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -353,6 +354,32 @@ w
 .st-ok{color:#15803d}.st-err{color:#dc2626}.st-off{color:var(--g400)}
 .synctabs{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .stchip{font-size:11px;padding:2px 9px;border-radius:99px;background:var(--brand-l);color:var(--brand-d);font-weight:500}
+/* Cashflow */
+.cf-balance-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;border-radius:var(--r);padding:15px 16px;margin-bottom:14px;border:1px solid var(--g200);background:var(--w)}
+.cf-balance-banner.ok{border-color:#bbf7d0;background:#f0fdf4}.cf-balance-banner.warn{border-color:#fde68a;background:#fffbeb}.cf-balance-banner.neg{border-color:#fecaca;background:#fef2f2}
+.cf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:17px}
+.cf-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px}
+.cf-card.hi{border-left:3px solid var(--brand)}
+.cf-lbl{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:7px}
+.cf-val{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.04em;line-height:1}.cf-val.brand{color:var(--brand)}.cf-val.pos{color:#15803d}.cf-val.neg{color:#dc2626}
+.cf-section-title{font-size:var(--xxs);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--g500);margin:18px 0 8px}
+.cf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cf-table{width:100%;border-collapse:collapse}.cf-table th{padding:10px 11px;background:var(--g50);font-size:var(--xxxs);text-align:left;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);border-bottom:1px solid var(--g100)}.cf-table td{padding:8px 11px;border-bottom:1px solid var(--g100);vertical-align:middle}.cf-table tr:last-child td{border-bottom:none}
+.cf-input{border:1px solid var(--g200);border-radius:var(--rs);padding:7px 9px;font-size:var(--sm);background:var(--w);width:100%}.cf-input.amt{text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em}.cf-input:focus{outline:none;border-color:var(--brand)}
+.cf-del{border:none;background:transparent;color:var(--g300);font-size:20px;line-height:1;padding:3px 7px;border-radius:4px}.cf-del:hover{background:var(--dl);color:var(--danger)}
+@media(max-width:760px){.cf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cf-table{min-width:560px}.cf-balance-banner{align-items:flex-start;flex-direction:column}}
+/* Master Cashflow */
+.mcf-page{width:min(1180px,100%);margin:0 auto;padding:18px 18px 100px}
+.mcf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.mcf-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em}
+.mcf-actions{display:flex;gap:8px;flex-wrap:wrap}.mcf-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.mcf-filter{border:1px solid var(--g200);background:var(--w);color:var(--g500);border-radius:99px;padding:7px 13px;font-size:var(--xxs);font-weight:700}.mcf-filter.on{background:var(--brand);border-color:var(--brand);color:#fff}.mcf-date{border:1px solid var(--g200);border-radius:99px;padding:7px 11px;font-size:var(--xxs);background:var(--w)}
+.mcf-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:15px}.mcf-kpi{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:15px}.mcf-kpi.hi{border-left:3px solid var(--brand)}.mcf-label{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:7px}.mcf-num{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;line-height:1}.mcf-in{color:#15803d}.mcf-out{color:#dc2626}.mcf-brand{color:var(--brand)}
+.mcf-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.mcf-section{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;margin-bottom:13px}.mcf-section.full{grid-column:1/-1}.mcf-section-h{padding:13px 15px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;gap:10px}.mcf-section-h strong{font-size:var(--sm)}.mcf-mini-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.mcf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.mcf-table{width:100%;border-collapse:collapse;min-width:680px}.mcf-table.compact{min-width:900px}.mcf-table th{padding:9px 11px;background:var(--g50);font-size:var(--xxxs);font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);border-bottom:1px solid var(--g100);white-space:nowrap}.mcf-table td{padding:8px 11px;border-bottom:1px solid var(--g100);vertical-align:middle;font-size:var(--sm)}.mcf-table tr:last-child td{border-bottom:none}.mcf-empty{padding:22px;text-align:center;color:var(--g300);font-size:var(--sm)}
+.mcf-input,.mcf-select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 9px;background:var(--w);font-size:var(--sm)}.mcf-input.amt{text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em}.mcf-input:focus,.mcf-select:focus{outline:none;border-color:var(--brand)}
+.mcf-del{border:none;background:transparent;color:var(--g300);font-size:20px;line-height:1;padding:3px 7px;border-radius:4px}.mcf-del:hover{background:var(--dl);color:var(--danger)}
+.mcf-chip{display:inline-flex;align-items:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}.mcf-chip.income{background:#ecfdf5;color:#15803d}.mcf-chip.expense{background:#fef2f2;color:#dc2626}
+.mcf-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:14px}.mcf-sum{background:var(--g50);border-radius:var(--rs);padding:11px 12px}.mcf-sum span{display:block;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:5px}.mcf-sum strong{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em}
+@media(max-width:860px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr 1fr}.mcf-summary{grid-template-columns:1fr}.mcf-page{padding:14px 14px 100px}}@media(max-width:620px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr}.mcf-title{font-size:25px}.mcf-head{align-items:flex-start}.mcf-actions{width:100%}.mcf-actions .btn{flex:1;justify-content:center}}
 /* Package setting rows */
 .pkgrow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--g100)}
 .pkgrow:last-child{border-bottom:none}
@@ -407,6 +434,7 @@ w
     <span class="tlogo-name">CREATIVE DEN <span>STUDIO</span></span>
   </div>
   <div class="tright">
+    <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
       <button class="menu-btn" onclick="toggleNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
@@ -415,7 +443,9 @@ w
       <div class="nav-menu" id="nav-menu">
         <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
+        <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Master Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
+        <button onclick="logout()">Logout</button>
       </div>
     </div>
     <div class="upill"><div class="udot"></div><span id="uname">...</span></div>
@@ -521,6 +551,11 @@ w
       </div>
     </div>
   </div>
+</div>
+
+<!-- ══════ MASTER CASHFLOW ══════ -->
+<div class="view" id="v-mastercf">
+  <div id="mastercf-body" class="mcf-page"></div>
 </div>
 
 </div><!-- /layout -->
@@ -685,6 +720,13 @@ let projects=[];
 
 let AP=null, activeTab='overview', currentFilter='All', dashboardSummaryState=null, settingsLoaded=false;
 let currentUser={displayName:'Owen',role:'admin'};
+const MASTER_CF_ROLES=['admin'];
+let MCF_ENTRIES=[];
+let MCF_PERIOD='all';
+let MCF_LOADED=false;
+let MCF_CUSTOM_FROM='';
+let MCF_CUSTOM_TO='';
+let cfSaveTimer=null;
 
 // ══════════════════════════════════════
 // API LAYER
@@ -720,6 +762,10 @@ async function loadUser(){
     currentUser=u;
     document.getElementById('uname').textContent=u.displayName||'User';
     const menuName=document.getElementById('uname-menu');if(menuName)menuName.textContent=`${u.displayName||'User'} · ${u.role||'member'}`;
+    const mcfBtn=document.getElementById('btn-mastercf');
+    if(mcfBtn)mcfBtn.style.display=canSeeMasterCF()?'':'none';
+    const navMcf=document.getElementById('nav-mastercf');
+    if(navMcf)navMcf.style.display=canSeeMasterCF()?'':'none';
   }
 }
 
@@ -729,6 +775,14 @@ async function loadUser(){
 const commas=n=>Math.round(n||0).toLocaleString('en-US');
 const fmt=n=>'NT$'+commas(n);
 const parseMoney=v=>Number(String(v??'').replace(/[^\d.-]/g,''))||0;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function formatMoneyInput(el){
+  const raw=String(el.value||'');
+  const trailingDot=raw.endsWith('.');
+  const value=parseMoney(raw);
+  el.value=value?commas(value):(raw.trim()?raw.replace(/[^\d.-]/g,''):'');
+  if(trailingDot)el.value+='.';
+}
 const sObj=l=>STAGES.find(s=>s.l===l)||STAGES[0];
 const sIdx=l=>STAGES.findIndex(s=>s.l===l);
 const sPct=l=>sObj(l).pct;
@@ -967,11 +1021,16 @@ function updatePendingBadge(){
 // NAVIGATION
 // ══════════════════════════════════════
 function showView(v){
+  if(v==='mastercf'&&!canSeeMasterCF()){
+    toast('Admin access required');
+    v='dash';
+  }
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('v-'+v).classList.add('active');
   document.getElementById('mobbar').classList.toggle('show',v==='detail'&&activeTab==='consult');
   closeNavMenu();
   if(v==='settings')renderSettings();
+  if(v==='mastercf')renderMasterCF();
   if(v==='dash')refreshDashboard(currentFilter);
 }
 function goHome(){AP=null;showView('dash');}
@@ -986,6 +1045,13 @@ function toggleNavMenu(event){
 function closeNavMenu(){
   document.getElementById('nav-menu')?.classList.remove('open');
   document.querySelector('.menu-btn')?.setAttribute('aria-expanded','false');
+}
+async function logout(){
+  try{
+    await fetch('/auth/logout',{method:'POST',credentials:'include'});
+  }finally{
+    location.href='/login';
+  }
 }
 function setFilter(el,f){
   document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
@@ -1710,7 +1776,7 @@ function rCashflow(body){
         <div class="bb" style="font-size:22px;color:${cashPosition>=0?'#15803d':'#dc2626'}">${fmt(cashPosition)}</div>
         <div style="font-size:var(--xxs);color:var(--g500);margin-top:2px">${bannerMsg}</div>
       </div>
-      <button class="btn btn-out btn-sm" onclick="saveCashflow()">💾 Save</button>
+      <button class="btn btn-out btn-sm" id="cf-save-btn" onclick="saveCashflow()">💾 Save</button>
     </div>
 
     <div class="cf-grid">
@@ -1737,36 +1803,40 @@ function rCashflow(body){
     </div>
 
     <div class="cf-section-title">💵 Deposits Received</div>
-    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
+    <div class="fc" style="padding:0;margin-bottom:4px">
+      <div class="cf-table-wrap">
       <table class="cf-table">
         <thead><tr><th>Date</th><th>Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
         <tbody>
           ${(cf.deposits||[]).map((d,i)=>`
             <tr>
-              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.deposits[${i}].date=this.value"></td>
-              <td><input class="cf-input desc" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. 50% deposit" onchange="AP.cashflow.deposits[${i}].desc=this.value"></td>
-              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.deposits[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
+              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="updateCfField('deposits',${i},'date',this.value)"></td>
+              <td><input class="cf-input desc" style="width:100%;min-width:80px" value="${esc(d.desc||'')}" placeholder="e.g. 50% deposit" oninput="updateCfField('deposits',${i},'desc',this.value)" onchange="updateCfField('deposits',${i},'desc',this.value)"></td>
+              <td class="r"><input class="cf-input amt" type="text" inputmode="numeric" value="${commas(d.amount||0)}" placeholder="0" oninput="updateCfAmountLive('deposits',${i},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="updateCfAmount('deposits',${i},this.value)"></td>
               <td><button class="cf-del" onclick="rmCfEntry('deposits',${i})">×</button></td>
             </tr>`).join('')}
         </tbody>
       </table>
+      </div>
     </div>
     <button class="btn btn-out btn-sm" onclick="addCfEntry('deposits')">+ Add Deposit</button>
 
     <div class="cf-section-title">🧾 Vendor / Parts Payments</div>
-    <div class="fc" style="padding:0;overflow:hidden;margin-bottom:4px">
+    <div class="fc" style="padding:0;margin-bottom:4px">
+      <div class="cf-table-wrap">
       <table class="cf-table">
         <thead><tr><th>Date</th><th>Vendor / Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
         <tbody>
           ${(cf.vendorPayments||[]).map((d,i)=>`
             <tr>
-              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="AP.cashflow.vendorPayments[${i}].date=this.value"></td>
-              <td><input class="cf-input" style="width:100%;min-width:80px" value="${d.desc||''}" placeholder="e.g. Bed frame steel" onchange="AP.cashflow.vendorPayments[${i}].desc=this.value"></td>
-              <td class="r"><input class="cf-input amt" type="number" value="${d.amount||''}" placeholder="0" min="0" onchange="AP.cashflow.vendorPayments[${i}].amount=parseFloat(this.value)||0;rCashflow(document.getElementById('tb'))"></td>
+              <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="updateCfField('vendorPayments',${i},'date',this.value)"></td>
+              <td><input class="cf-input" style="width:100%;min-width:80px" value="${esc(d.desc||'')}" placeholder="e.g. Bed frame steel" oninput="updateCfField('vendorPayments',${i},'desc',this.value)" onchange="updateCfField('vendorPayments',${i},'desc',this.value)"></td>
+              <td class="r"><input class="cf-input amt" type="text" inputmode="numeric" value="${commas(d.amount||0)}" placeholder="0" oninput="updateCfAmountLive('vendorPayments',${i},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="updateCfAmount('vendorPayments',${i},this.value)"></td>
               <td><button class="cf-del" onclick="rmCfEntry('vendorPayments',${i})">×</button></td>
             </tr>`).join('')}
         </tbody>
       </table>
+      </div>
     </div>
     <button class="btn btn-out btn-sm" onclick="addCfEntry('vendorPayments')">+ Add Payment</button>
 
@@ -1774,7 +1844,7 @@ function rCashflow(body){
       <strong style="color:var(--black)">How to read this:</strong><br>
       <strong>Cash Position</strong> = Deposits collected − Vendor payments<br>
       <strong>Balance Remaining</strong> = Quote total − Deposits collected<br>
-      Data is saved per project. Hit 💾 Save after making changes.
+      Data auto-saves per project after each change. Use 💾 Save to force-save now.
     </div>`;
 }
 
@@ -1782,24 +1852,333 @@ function addCfEntry(type){
   const p=AP;if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
   p.cashflow[type].push({date:new Date().toISOString().slice(0,10),desc:'',amount:0});
   rCashflow(document.getElementById('tb'));
+  scheduleCashflowSave();
 }
 
 function rmCfEntry(type,i){
   const p=AP;if(!p.cashflow)return;
   p.cashflow[type].splice(i,1);
   rCashflow(document.getElementById('tb'));
+  scheduleCashflowSave();
 }
 
-async function saveCashflow(){
+function updateCfField(type,i,key,value){
+  if(!AP?.cashflow?.[type]?.[i])return;
+  AP.cashflow[type][i][key]=value;
+  scheduleCashflowSave();
+}
+
+function updateCfAmountLive(type,i,el){
+  if(!AP?.cashflow?.[type]?.[i])return;
+  formatMoneyInput(el);
+  AP.cashflow[type][i].amount=parseMoney(el.value);
+  scheduleCashflowSave();
+}
+
+function updateCfAmount(type,i,value){
+  if(!AP?.cashflow?.[type]?.[i])return;
+  AP.cashflow[type][i].amount=parseMoney(value);
+  rCashflow(document.getElementById('tb'));
+  scheduleCashflowSave();
+}
+
+function setCfSaveState(label,disabled=false){
+  const btn=document.getElementById('cf-save-btn');
+  if(btn){btn.textContent=label;btn.disabled=disabled;}
+}
+
+function scheduleCashflowSave(){
+  clearTimeout(cfSaveTimer);
+  setCfSaveState('Saving…',true);
+  cfSaveTimer=setTimeout(()=>saveCashflow({silent:true}),450);
+}
+
+async function saveCashflow(opts={}){
   if(!AP)return;
+  clearTimeout(cfSaveTimer);
   const cfJson=JSON.stringify(AP.cashflow);
-  const res=await PATCH(`/api/projects/${AP.id}`,{
-    cashflow_json:cfJson
+  try{
+    const res=await PATCH(`/api/projects/${AP.id}`,{cashflow_json:cfJson});
+    AP=projectFromApi({...res,consultationCategories:AP.consultationCategories,checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems,timeline:AP.timeline});
+    projects=projects.map(p=>p.id===AP.id?AP:p);
+    setCfSaveState('Saved ✓');
+    if(!opts.silent)toast('Cashflow saved ✓');
+    if(document.getElementById('v-mastercf')?.classList.contains('active'))renderMasterCF();
+  }catch(e){
+    setCfSaveState('Save failed');
+    toast(`Cashflow save failed: ${errMsg(e)}`,4000);
+  }
+}
+
+// ══════════════════════════════════════
+// MASTER CASHFLOW
+// ══════════════════════════════════════
+function canSeeMasterCF(){
+  return currentUser&&MASTER_CF_ROLES.includes(currentUser.role);
+}
+
+async function openMasterCF(){
+  if(!canSeeMasterCF()){toast('Admin access required');return;}
+  await loadMCFEntries();
+  await refreshDashboard('All');
+  showView('mastercf');
+}
+
+async function loadMCFEntries(){
+  if(!canSeeMasterCF())return;
+  try{
+    const data=await GET('/api/admin/settings');
+    if(data?.master_cashflow_entries){
+      const parsed=JSON.parse(data.master_cashflow_entries||'[]');
+      MCF_ENTRIES=Array.isArray(parsed)?parsed:[];
+    }
+    MCF_LOADED=true;
+  }catch(e){
+    MCF_LOADED=false;
+    toast(`Cashflow settings failed to load: ${errMsg(e)}`,4000);
+  }
+}
+
+async function saveMCFEntries(){
+  if(!canSeeMasterCF())return;
+  try{
+    await PATCH('/api/admin/settings',{master_cashflow_entries:JSON.stringify(MCF_ENTRIES)});
+    MCF_LOADED=true;
+    toast('Master cashflow saved ✓');
+  }catch(e){
+    toast(`Master cashflow save failed: ${errMsg(e)}`,4000);
+  }
+}
+
+function setMCFPeriod(el,period){
+  MCF_PERIOD=period;
+  document.querySelectorAll('.mcf-filter').forEach(btn=>btn.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderMasterCF();
+}
+
+function mcfDateFilter(dateStr){
+  if(MCF_PERIOD==='all')return true;
+  if(!dateStr)return false;
+  const d=new Date(`${dateStr}T00:00:00`);
+  if(Number.isNaN(d.getTime()))return false;
+  const now=new Date();
+  const y=d.getFullYear(),m=d.getMonth();
+  if(MCF_PERIOD==='month')return y===now.getFullYear()&&m===now.getMonth();
+  if(MCF_PERIOD==='lastMonth'){
+    const last=new Date(now.getFullYear(),now.getMonth()-1,1);
+    return y===last.getFullYear()&&m===last.getMonth();
+  }
+  if(MCF_PERIOD==='year')return y===now.getFullYear();
+  if(MCF_PERIOD==='custom'){
+    const from=MCF_CUSTOM_FROM?new Date(`${MCF_CUSTOM_FROM}T00:00:00`):null;
+    const to=MCF_CUSTOM_TO?new Date(`${MCF_CUSTOM_TO}T23:59:59`):null;
+    return (!from||d>=from)&&(!to||d<=to);
+  }
+  return true;
+}
+
+function mcfProjectRows(){
+  return projects
+    .filter(p=>!p.archived&&p.stage!=='14 Archived')
+    .flatMap(p=>{
+      const source=`${p.jobNo||''} · ${p.vehicle||''} — ${p.owner||''}`;
+      const cf=cfData(p);
+      const deposits=(cf.deposits||[]).map(entry=>({
+        date:entry.date||'',
+        type:'Project deposit',
+        category:'Project deposit',
+        desc:entry.desc||'Deposit collected',
+        source,
+        inAmt:parseMoney(entry.amount),
+        outAmt:0
+      }));
+      const vendor=(cf.vendorPayments||[]).map(entry=>({
+        date:entry.date||'',
+        type:'Project vendor payment',
+        category:'Vendor / parts',
+        desc:entry.desc||'Vendor payment',
+        source,
+        inAmt:0,
+        outAmt:parseMoney(entry.amount)
+      }));
+      return [...deposits,...vendor];
+    });
+}
+
+function mcfCompanyRows(){
+  return MCF_ENTRIES.map((entry,index)=>({
+    ...entry,
+    _index:index,
+    date:entry.date||'',
+    type:entry.type==='expense'?'Company expense':'Company income',
+    category:entry.category||'',
+    desc:entry.desc||'',
+    source:entry.note||'Company',
+    inAmt:entry.type==='income'?parseMoney(entry.amount):0,
+    outAmt:entry.type==='expense'?parseMoney(entry.amount):0
+  }));
+}
+
+function mcfAllRows(){
+  return [...mcfProjectRows(),...mcfCompanyRows()]
+    .filter(row=>mcfDateFilter(row.date))
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}
+
+function renderMasterCF(){
+  const el=document.getElementById('mastercf-body');if(!el)return;
+  if(!canSeeMasterCF()){el.innerHTML='<div class="mcf-empty">Admin access required.</div>';return;}
+  const activeProjects=projects.filter(p=>!p.archived&&p.stage!=='14 Archived');
+  const allRows=mcfAllRows();
+  const projectRows=mcfProjectRows().filter(row=>mcfDateFilter(row.date));
+  const companyIncome=MCF_ENTRIES.map((entry,index)=>({...entry,_index:index})).filter(e=>e.type==='income'&&mcfDateFilter(e.date));
+  const companyExpense=MCF_ENTRIES.map((entry,index)=>({...entry,_index:index})).filter(e=>e.type==='expense'&&mcfDateFilter(e.date));
+  const projectDepositTotal=projectRows.filter(r=>r.inAmt).reduce((s,r)=>s+r.inAmt,0);
+  const projectVendorTotal=projectRows.filter(r=>r.outAmt).reduce((s,r)=>s+r.outAmt,0);
+  const companyIncomeTotal=companyIncome.reduce((s,e)=>s+parseMoney(e.amount),0);
+  const companyExpenseTotal=companyExpense.reduce((s,e)=>s+parseMoney(e.amount),0);
+  const totalIn=projectDepositTotal+companyIncomeTotal;
+  const totalOut=projectVendorTotal+companyExpenseTotal;
+  const netCash=totalIn-totalOut;
+  const activeQuoteTotal=activeProjects.reduce((s,p)=>s+projectQuoteTotal(p),0);
+  const activeDepositTotal=activeProjects.reduce((sum,p)=>sum+(cfData(p).deposits||[]).reduce((s,d)=>s+parseMoney(d.amount),0),0);
+  const outstanding=Math.max(activeQuoteTotal-activeDepositTotal,0);
+  const ifAllPaid=netCash+outstanding;
+  const filters=[
+    ['all','All Time'],['month','This Month'],['lastMonth','Last Month'],['year','This Year'],['custom','Custom']
+  ];
+  el.innerHTML=`
+    <div class="mcf-head">
+      <div class="mcf-title">📊 Master Cashflow</div>
+      <div class="mcf-actions">
+        <button class="btn btn-brand btn-sm" id="mcf-sync-btn" onclick="syncMasterCashflowSheet()">Sync Sheet</button>
+        <button class="btn btn-out btn-sm" onclick="goHome()">← Back</button>
+      </div>
+    </div>
+    <div class="mcf-filters">
+      ${filters.map(([key,label])=>`<button class="mcf-filter ${MCF_PERIOD===key?'on':''}" onclick="setMCFPeriod(this,'${key}')">${label}</button>`).join('')}
+      <input class="mcf-date" type="date" value="${MCF_CUSTOM_FROM}" onchange="MCF_CUSTOM_FROM=this.value;MCF_PERIOD='custom';renderMasterCF()">
+      <input class="mcf-date" type="date" value="${MCF_CUSTOM_TO}" onchange="MCF_CUSTOM_TO=this.value;MCF_PERIOD='custom';renderMasterCF()">
+    </div>
+    <div class="mcf-kpis">
+      <div class="mcf-kpi hi"><div class="mcf-label">Total In</div><div class="mcf-num mcf-in">${fmt(totalIn)}</div></div>
+      <div class="mcf-kpi"><div class="mcf-label">Total Out</div><div class="mcf-num mcf-out">${fmt(totalOut)}</div></div>
+      <div class="mcf-kpi"><div class="mcf-label">Net Cash Position</div><div class="mcf-num ${netCash>=0?'mcf-in':'mcf-out'}">${fmt(netCash)}</div></div>
+      <div class="mcf-kpi"><div class="mcf-label">Outstanding To Collect</div><div class="mcf-num mcf-brand">${fmt(outstanding)}</div></div>
+    </div>
+    <div class="mcf-grid">
+      <div class="mcf-section full">
+        <div class="mcf-section-h"><strong>Project Cashflows</strong><span style="font-size:var(--xxs);color:var(--g400)">${commas(projectRows.length)} rows</span></div>
+        <div class="mcf-table-wrap">${projectRows.length?`
+          <table class="mcf-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Source / Note</th><th class="r">In</th><th class="r">Out</th></tr></thead><tbody>
+            ${projectRows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(row.type)}</td><td>${esc(row.desc)}</td><td>${esc(row.source)}</td><td class="r mcf-in">${row.inAmt?fmt(row.inAmt):''}</td><td class="r mcf-out">${row.outAmt?fmt(row.outAmt):''}</td></tr>`).join('')}
+          </tbody></table>`:'<div class="mcf-empty">No project cashflow entries in this period.</div>'}</div>
+      </div>
+      ${mcfEditableSection('income',companyIncome)}
+      ${mcfEditableSection('expense',companyExpense)}
+      <div class="mcf-section full">
+        <div class="mcf-section-h"><strong>Period Summary</strong><span style="font-size:var(--xxs);color:var(--g400)">${MCF_PERIOD==='all'?'All Time':MCF_PERIOD}</span></div>
+        <div class="mcf-summary">
+          <div class="mcf-sum"><span>Project deposits collected</span><strong class="mcf-in">${fmt(projectDepositTotal)}</strong></div>
+          <div class="mcf-sum"><span>Company income</span><strong class="mcf-in">${fmt(companyIncomeTotal)}</strong></div>
+          <div class="mcf-sum"><span>Project vendor payments</span><strong class="mcf-out">${fmt(projectVendorTotal)}</strong></div>
+          <div class="mcf-sum"><span>Company expenses</span><strong class="mcf-out">${fmt(companyExpenseTotal)}</strong></div>
+          <div class="mcf-sum"><span>Net cash position</span><strong class="${netCash>=0?'mcf-in':'mcf-out'}">${fmt(netCash)}</strong></div>
+          <div class="mcf-sum"><span>If all projects fully paid</span><strong class="mcf-brand">${fmt(ifAllPaid)}</strong></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function mcfEditableSection(type,rows){
+  const isIncome=type==='income';
+  const title=isIncome?'Company Income':'Company Expenses';
+  const cats=isIncome
+    ? ['Other income','Grant / subsidy','Loan received','Equipment sale','Rental income']
+    : ['Rent / studio','Salaries','Equipment','Utilities','Marketing','Insurance','Tax / accounting','Tools & consumables','Other expense'];
+  return `<div class="mcf-section full">
+    <div class="mcf-section-h">
+      <strong>${title}</strong>
+      <div class="mcf-mini-actions">
+        <button class="btn btn-out btn-xs" onclick="addMCFEntry('${type}')">+ Add</button>
+        <button class="btn btn-brand btn-xs" onclick="saveMCFEntries()">Save</button>
+      </div>
+    </div>
+    <div class="mcf-table-wrap">${rows.length?`
+      <table class="mcf-table compact"><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Note</th><th class="r">In</th><th class="r">Out</th><th></th></tr></thead><tbody>
+        ${rows.map(entry=>`<tr>
+          <td><input class="mcf-input" type="date" value="${esc(entry.date||'')}" onchange="MCF_ENTRIES[${entry._index}].date=this.value;renderMasterCF()"></td>
+          <td><span class="mcf-chip ${isIncome?'income':'expense'}">${isIncome?'Income':'Expense'}</span></td>
+          <td><select class="mcf-select" onchange="MCF_ENTRIES[${entry._index}].category=this.value;renderMasterCF()">${cats.map(cat=>`<option ${cat===(entry.category||'')?'selected':''}>${cat}</option>`).join('')}</select></td>
+          <td><input class="mcf-input" value="${esc(entry.desc||'')}" placeholder="Description" oninput="MCF_ENTRIES[${entry._index}].desc=this.value" onchange="MCF_ENTRIES[${entry._index}].desc=this.value"></td>
+          <td><input class="mcf-input" value="${esc(entry.note||'')}" placeholder="Optional note" oninput="MCF_ENTRIES[${entry._index}].note=this.value" onchange="MCF_ENTRIES[${entry._index}].note=this.value"></td>
+          <td>${isIncome?`<input class="mcf-input amt" inputmode="numeric" value="${commas(entry.amount||0)}" oninput="updateMCFAmountLive(${entry._index},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="MCF_ENTRIES[${entry._index}].amount=parseMoney(this.value);renderMasterCF()">`:''}</td>
+          <td>${isIncome?'':`<input class="mcf-input amt" inputmode="numeric" value="${commas(entry.amount||0)}" oninput="updateMCFAmountLive(${entry._index},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="MCF_ENTRIES[${entry._index}].amount=parseMoney(this.value);renderMasterCF()">`}</td>
+          <td><button class="mcf-del" onclick="delMCFEntry('${type}',${entry._index})">×</button></td>
+        </tr>`).join('')}
+      </tbody></table>`:'<div class="mcf-empty">No entries in this period.</div>'}</div>
+  </div>`;
+}
+
+function addMCFEntry(type){
+  const isIncome=type==='income';
+  MCF_ENTRIES.push({
+    id:uid(),
+    date:new Date().toISOString().slice(0,10),
+    type,
+    category:isIncome?'Other income':'Other expense',
+    desc:'',
+    amount:0,
+    note:''
   });
-  if(res){
-    toast('Cashflow saved ✓');
-  }else{
-    toast('Save failed — check server');
+  MCF_PERIOD='all';
+  renderMasterCF();
+}
+
+function updateMCFAmountLive(index,el){
+  if(!MCF_ENTRIES[index])return;
+  formatMoneyInput(el);
+  MCF_ENTRIES[index].amount=parseMoney(el.value);
+}
+
+function delMCFEntry(type,visibleIndex){
+  const entry=MCF_ENTRIES[visibleIndex];
+  if(!entry||entry.type!==type)return;
+  if(!confirm('Delete this cashflow entry?'))return;
+  MCF_ENTRIES.splice(visibleIndex,1);
+  renderMasterCF();
+  saveMCFEntries();
+}
+
+function exportMCF(){
+  const rows=mcfAllRows();
+  const csvRows=[['Date','Type','Category','Description','Source/Note','In (NT$)','Out (NT$)']];
+  rows.forEach(row=>csvRows.push([row.date,row.type,row.category,row.desc,row.source,row.inAmt||'',row.outAmt||'']));
+  const csv=csvRows.map(row=>row.map(cell=>`"${String(cell??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`CRDN_Cashflow_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
+
+async function syncMasterCashflowSheet(){
+  if(!canSeeMasterCF()){toast('Admin access required');return;}
+  const btn=document.getElementById('mcf-sync-btn');
+  const old=btn?.textContent||'Sync Sheet';
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Syncing…';}
+    await PATCH('/api/admin/settings',{master_cashflow_entries:JSON.stringify(MCF_ENTRIES)});
+    MCF_LOADED=true;
+    const data=await POST('/api/admin/cashflow/sync',{});
+    const tabCount=(data.tabs||[]).length;
+    toast(`Cashflow synced to ${commas(tabCount)} monthly tab${tabCount===1?'':'s'} ✓`,4500);
+  }catch(e){
+    toast(`Cashflow sync failed: ${errMsg(e)}`,6000);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old;}
   }
 }
 
@@ -1841,9 +2220,16 @@ async function loadAdminSettings(opts={}){
   }));
   renderCatalog();
   renderPackages();
-}
+    }
     const terms=document.getElementById('default-terms');
     if(terms&&data?.quote_terms)terms.value=data.quote_terms;
+    if(data?.master_cashflow_entries!==undefined){
+      try{
+        const parsed=JSON.parse(data.master_cashflow_entries||'[]');
+        MCF_ENTRIES=Array.isArray(parsed)?parsed:[];
+        MCF_LOADED=true;
+      }catch(e){MCF_ENTRIES=[];}
+    }
     settingsLoaded=true;
     updatePendingBadge();
     return data;
@@ -2296,7 +2682,9 @@ function renderUsers(){
         <div style="font-size:11px;font-family:monospace;color:var(--g400)">${u.lineId}</div>
         ${u.lastLoginAt?`<div style="font-size:11px;color:var(--g400)">Last login ${new Date(u.lastLoginAt).toLocaleString('zh-TW')}</div>`:''}
       </div>
-      <span class="role-badge role-${u.role}">${u.role}</span>
+      <select class="role-select role-${u.role}" onchange="updateUserRole(${i},this.value)" ${u.lineId===currentUser.userId?'disabled title="You cannot change your own role"':''}>
+        ${['admin','member','pending','disabled'].map(role=>`<option value="${role}" ${u.role===role?'selected':''}>${role}</option>`).join('')}
+      </select>
       ${u.role==='pending'?`<button class="btn btn-green btn-xs" onclick="updateUserRole(${i},'member')">Approve</button>`:''}
       ${u.role!=='disabled'&&u.lineId!==currentUser.userId?`<button class="btn btn-amber btn-xs" onclick="updateUserRole(${i},'disabled')">Disable</button>`:''}
       ${u.role==='disabled'?`<button class="btn btn-out btn-xs" onclick="updateUserRole(${i},'member')">Enable</button>`:''}
@@ -2306,12 +2694,14 @@ function renderUsers(){
 }
 async function updateUserRole(i,role){
   const u=USERS[i];if(!u)return;
+  if(u.role===role)return;
   try{
     const res=await PATCH(`/api/admin/users/${u.id}`,{display_name:u.name,role});
     USERS[i]=userFromApi(res);
     renderUsers();
     toast(role==='member'&&u.role==='pending'?`${u.name} approved ✓`:`${u.name} updated`);
   }catch(e){
+    renderUsers();
     toast(`User update failed: ${errMsg(e)}`,4000);
   }
 }

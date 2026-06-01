@@ -22,6 +22,7 @@ const {
   testGoogleSheetsConnection,
   syncGoogleSheets
 } = require('./sheetsSync');
+const { syncMasterCashflow } = require('./cashflowSync');
 
 init();
 
@@ -1095,12 +1096,13 @@ optionRows.forEach(option=>{
     quote_categories: setting('quote_categories', DEFAULT_CATEGORIES.join('\n')),
     parts_categories: setting('parts_categories', DEFAULT_CATEGORIES.join('\n')),
     quote_terms: setting('quote_terms'),
-    google_sheets_sync: setting('google_sheets_sync', 'Not connected')
+    google_sheets_sync: setting('google_sheets_sync', 'Not connected'),
+    master_cashflow_entries: setting('master_cashflow_entries', '[]')
   });
 });
 
 app.patch('/api/admin/settings', requireAdmin, (req, res) => {
-  ['quote_categories', 'parts_categories', 'quote_terms', 'google_sheets_sync'].forEach(key => {
+  ['quote_categories', 'parts_categories', 'quote_terms', 'google_sheets_sync', 'master_cashflow_entries'].forEach(key => {
     if (req.body[key] !== undefined) setSetting(key, req.body[key]);
   });
   res.json({ ok: true });
@@ -1139,6 +1141,20 @@ app.post('/api/admin/google-sheets/sync', requireAdmin, async (req, res) => {
       error: message,
       status: googleSheetsStatus(setting('google_sheets_last_synced_at'), message)
     });
+  }
+});
+
+app.post('/api/admin/cashflow/sync', requireAdmin, async (req, res) => {
+  try {
+    const result = await syncMasterCashflow(db);
+    setSetting('master_cashflow_last_synced_at', result.synced_at);
+    setSetting('master_cashflow_last_error', '');
+    logActivity(null, actor(req).userId || null, actor(req).displayName || null, 'Master cashflow synced', null, result.synced_at);
+    res.json(result);
+  } catch (err) {
+    const message = syncErrorMessage(err);
+    setSetting('master_cashflow_last_error', message);
+    res.status(err.status || 502).json({ error: message });
   }
 });
 

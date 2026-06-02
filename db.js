@@ -314,6 +314,7 @@ function migrate() {
   `);
 
   addColumn('vehicles', 'job_no', 'TEXT');
+  addColumn('quote_items', 'option_values_json', "TEXT NOT NULL DEFAULT '{}'");
   addColumn('vehicles', 'priority', "TEXT NOT NULL DEFAULT 'Normal'");
   addColumn('vehicles', 'progress', 'INTEGER NOT NULL DEFAULT 5');
   addColumn('vehicles', 'start_date', 'TEXT');
@@ -322,7 +323,15 @@ function migrate() {
   addColumn('vehicles', 'next_action', 'TEXT');
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
+  addColumn('consultation_items', 'slug', 'TEXT');
 
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_consultation_items_active_name
+    ON consultation_items(category_id, active, name);
+
+    CREATE INDEX IF NOT EXISTS idx_consultation_items_slug_lookup
+    ON consultation_items(slug);
+  `);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_vehicles_job_no ON vehicles(job_no);
     CREATE INDEX IF NOT EXISTS idx_quote_items_vehicle ON quote_items(vehicle_id);

@@ -35,6 +35,8 @@ const allowedLineIds = new Set((process.env.ALLOWED_LINE_IDS || '').split(',').m
 const PART_STATUSES = ['Not Needed', 'Need to Order', 'Ordered', 'Arrived', 'Installed', 'Backordered', 'Cancelled'];
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 
+function slugify(value){return String(value||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'item';}
+
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
@@ -156,6 +158,152 @@ function quoteRows(vehicleId) {
   return db.prepare('SELECT * FROM quote_items WHERE vehicle_id=? AND active=1 ORDER BY sort_order, id').all(vehicleId);
 }
 
+const PACKAGE_NOTE_PREFIX = 'PACKAGE_META:';
+const DELETED_CUSTOM_NOTE = 'DELETED_CUSTOM_ITEM';
+
+function parsePackageMeta(note) {
+  const raw = text(note);
+  if (!raw.startsWith(PACKAGE_NOTE_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(raw.slice(PACKAGE_NOTE_PREFIX.length));
+    const items = Array.isArray(parsed.items) ? parsed.items.map(String) : [];
+    return {
+      id: text(parsed.id),
+      name: text(parsed.name),
+      price: int(parsed.price),
+      items
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+function packageMetaForVehicle(vehicleId) {
+  const row = db.prepare(`
+    SELECT *
+    FROM quote_items
+    WHERE vehicle_id=? AND active=1 AND consultation_item_id IS NULL AND internal_notes LIKE ?
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+  `).get(vehicleId, `${PACKAGE_NOTE_PREFIX}%`);
+  const meta = row ? parsePackageMeta(row.internal_notes) : null;
+  return meta ? { ...meta, quote_item: row } : null;
+}
+
+function normalizePackageSettings(raw) {
+  let list = raw;
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw || '[]');
+    } catch (err) {
+      list = [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((pkg, index) => ({
+      id: text(pkg.id),
+      name: text(pkg.name) || `Package ${index + 1}`,
+      price: int(pkg.retail_price ?? pkg.price),
+      active: pkg.active === undefined ? true : bool(pkg.active),
+      sort_order: int(pkg.sort_order, index + 1),
+      items: Array.isArray(pkg.items) ? pkg.items.map(String) : []
+    }))
+    .filter(pkg => pkg.active);
+}
+
+function packageNoteFromSettings(pkg) {
+  return `${PACKAGE_NOTE_PREFIX}${JSON.stringify({
+    id: pkg.id,
+    name: pkg.name,
+    price: pkg.price,
+    items: pkg.items
+  })}`;
+}
+
+function consultationItemByKey(key) {
+  return db.prepare(`
+    SELECT ci.*, cc.name AS category
+    FROM consultation_items ci
+    JOIN consultation_categories cc ON cc.id=ci.category_id
+    WHERE ci.active=1 AND cc.active=1 AND (ci.slug=? OR ci.id=?)
+    LIMIT 1
+  `).get(String(key), Number(key) || 0);
+}
+
+function syncPackageQuoteRows(rawPackages) {
+  const packages = normalizePackageSettings(rawPackages);
+  if (!packages.length) return 0;
+  const byId = new Map(packages.map(pkg => [pkg.id, pkg]));
+  const byName = new Map(packages.map(pkg => [pkg.name, pkg]));
+  const rows = db.prepare(`
+    SELECT *
+    FROM quote_items
+    WHERE consultation_item_id IS NULL AND internal_notes LIKE ? AND active=1
+  `).all(`${PACKAGE_NOTE_PREFIX}%`);
+  const tx = db.transaction(() => {
+    rows.forEach(row => {
+      const previous = parsePackageMeta(row.internal_notes);
+      if (!previous) return;
+      const pkg = byId.get(previous.id) || byName.get(previous.name);
+      if (!pkg) return;
+      const nextItems = new Set(pkg.items.map(String));
+      db.prepare(`
+        UPDATE quote_items
+        SET description=?, customer_price=?, internal_notes=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(pkg.name, pkg.price, packageNoteFromSettings(pkg), row.id);
+
+      previous.items
+        .map(String)
+        .filter(itemKey => !nextItems.has(itemKey))
+        .forEach(itemKey => {
+          const item = consultationItemByKey(itemKey);
+          if (!item) return;
+          const existing = db.prepare(`
+            SELECT *
+            FROM quote_items
+            WHERE vehicle_id=? AND consultation_item_id=?
+            LIMIT 1
+          `).get(row.vehicle_id, item.id);
+          if (existing && existing.active && int(existing.customer_price) === 0) {
+            db.prepare('UPDATE quote_items SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(existing.id);
+          }
+        });
+
+      pkg.items.forEach(itemKey => {
+        const item = consultationItemByKey(itemKey);
+        if (!item) return;
+        const existing = db.prepare(`
+          SELECT *
+          FROM quote_items
+          WHERE vehicle_id=? AND consultation_item_id=?
+          LIMIT 1
+        `).get(row.vehicle_id, item.id);
+        const partsStatus = item.need_order ? 'Need to Order' : 'Not Needed';
+        if (existing) {
+          db.prepare(`
+            UPDATE quote_items
+            SET category=?, description=?, customer_price=0, internal_cost=?, supplier=?,
+                need_order=?, parts_status=?, active=1, updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+          `).run(item.category, item.name, int(item.default_internal_cost), text(item.supplier), item.need_order ? 1 : 0, partsStatus, existing.id);
+        } else {
+          db.prepare(`
+            INSERT INTO quote_items (
+              vehicle_id, consultation_item_id, category, description, quantity, customer_price,
+              internal_cost, supplier, need_order, parts_status, option_values_json, sort_order
+            )
+            VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?, '{}', ?)
+          `).run(row.vehicle_id, item.id, item.category, item.name, int(item.default_internal_cost), text(item.supplier), item.need_order ? 1 : 0, partsStatus, nextSort('quote_items', row.vehicle_id));
+        }
+      });
+    });
+  });
+  tx();
+  return rows.length;
+}
+
 function quoteTotals(vehicleId) {
   const rows = quoteRows(vehicleId);
   return rows.reduce((acc, row) => {
@@ -258,9 +406,13 @@ function updateConsultationItemCostFromSubparts(itemId) {
     FROM consultation_subparts
     WHERE consultation_item_id=? AND active=1
   `).get(item.id);
-  if (row.count > 0) {
-    db.prepare('UPDATE consultation_items SET default_internal_cost=? WHERE id=?').run(int(row.total), item.id);
-  }
+  const cost = row.count > 0 ? int(row.total) : 0;
+  db.prepare('UPDATE consultation_items SET default_internal_cost=? WHERE id=?').run(cost, item.id);
+  db.prepare(`
+    UPDATE quote_items
+    SET internal_cost=?, updated_at=CURRENT_TIMESTAMP
+    WHERE consultation_item_id=? AND active=1
+  `).run(cost, item.id);
   return db.prepare('SELECT * FROM consultation_items WHERE id=?').get(item.id);
 }
 
@@ -555,11 +707,25 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
     SELECT ci.*, cc.name AS category
     FROM consultation_items ci
     JOIN consultation_categories cc ON cc.id=ci.category_id
-    WHERE ci.active=1
+    WHERE ci.active=1 AND cc.active=1
     ORDER BY cc.sort_order, ci.sort_order, ci.id
   `).all();
   const selected = db.prepare('SELECT * FROM quote_items WHERE vehicle_id=? AND consultation_item_id IS NOT NULL AND active=1').all(project.id);
+  const customItems = db.prepare(`
+    SELECT *
+    FROM quote_items
+    WHERE vehicle_id=? AND consultation_item_id IS NULL
+      AND (internal_notes IS NULL OR internal_notes NOT LIKE ?)
+    ORDER BY active DESC, sort_order, id
+  `).all(project.id, `${DELETED_CUSTOM_NOTE}%`);
   const selectedByItem = new Map(selected.map(row => [row.consultation_item_id, row]));
+  const optionValuesByItem = new Map(selected.map(row => {
+  try {
+    return [row.consultation_item_id, JSON.parse(row.option_values_json || '{}')];
+  } catch (err) {
+    return [row.consultation_item_id, {}];
+  }
+}));
   const subpartsByItem = consultationSubpartsByItemIds(items.map(item => item.id));
   const options = db.prepare(`
     SELECT *
@@ -575,11 +741,7 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
     ORDER BY option_id, sort_order, id
   `).all();
 
-  const answers = db.prepare(`
-    SELECT *
-    FROM project_consultation_answers
-    WHERE vehicle_id=?
-  `).all(project.id);
+  const answers = [];
 
   const choicesByOption = new Map();
   choices.forEach(choice=>{
@@ -594,7 +756,7 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
     if(!optionsByItem.has(option.consultation_item_id))optionsByItem.set(option.consultation_item_id,[]);
     optionsByItem.get(option.consultation_item_id).push({
       ...option,
-      value: answersByOption.get(option.id) ?? option.default_value ?? '',
+      value: optionValuesByItem.get(option.consultation_item_id)?.[option.id] ?? option.default_value ?? '',
       choices: choicesByOption.get(option.id) || []
     });
   });
@@ -610,10 +772,11 @@ app.get('/api/projects/:id/consultation', requireAuth, (req, res) => {
 	selected: selectedByItem.has(item.id),
 	quote_item: selectedByItem.get(item.id) || null
       }))
-    })),
-    quote_total: quoteTotals(project.id).customer
-  });
-});
+	    })),
+	    custom_items: customItems,
+	    quote_total: quoteTotals(project.id).customer
+	  });
+	});
 
 app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
   const project = requireProject(req.params.id, true);
@@ -629,8 +792,11 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
       .map(String);
 
   const checkedSet = new Set(checkedItems);
-  const itemQtys = req.body.itemQtys || {};
-  const warnings = [];
+	  const itemQtys = req.body.itemQtys || {};
+	  const itemOptions = req.body.itemOptions || {};
+	  const warnings = [];
+	  const packageMeta = packageMetaForVehicle(project.id);
+	  const packageItemIds = new Set((packageMeta?.items || []).map(String));
 
   const items = db.prepare(`
     SELECT
@@ -647,7 +813,7 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
       cc.name AS category
     FROM consultation_items ci
     JOIN consultation_categories cc ON cc.id=ci.category_id
-    WHERE ci.active=1
+    WHERE ci.active=1 AND cc.active=1
     ORDER BY cc.sort_order, ci.sort_order, ci.id
   `).all();
 
@@ -660,21 +826,24 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
       checkedSet.has(String(item.id)) ||
       checkedSet.has(String(item.slug));
 
-    if (selected) {
-      const qtyRaw = itemQtys[item.id] ?? itemQtys[String(item.id)] ?? existing?.quantity ?? 1;
-      const qty = Math.max(0.01, number(qtyRaw, 1));
-      const customerPrice = int(existing?.customer_price ?? item.default_customer_price);
-      const internalCost = int(existing?.internal_cost ?? item.default_internal_cost);
+	    if (selected) {
+	      const qtyRaw = itemQtys[item.id] ?? itemQtys[String(item.id)] ?? existing?.quantity ?? 1;
+	      const qty = Math.max(0.01, number(qtyRaw, 1));
+	      const packageIncluded = packageItemIds.has(String(item.id)) || packageItemIds.has(String(item.slug));
+	      const existingPrice = existing && int(existing.customer_price) > 0 ? existing.customer_price : undefined;
+	      const customerPrice = packageIncluded ? 0 : int(existingPrice ?? item.default_customer_price);
+	      const internalCost = int(existing?.internal_cost ?? item.default_internal_cost);
       const supplier = text(existing?.supplier ?? item.supplier);
       const needOrder = !!item.need_order;
       const partsStatus = needOrder ? 'Need to Order' : 'Not Needed';
+      const optionValues = itemOptions[item.slug] || itemOptions[String(item.id)] || {};
+      const optionValuesJson = JSON.stringify(optionValues);
 
       if (existing) {
         db.prepare(`
           UPDATE quote_items
-          SET category=?, description=?, quantity=?, customer_price=?, internal_cost=?, supplier=?,
-              need_order=?, parts_status=?, active=1, updated_at=CURRENT_TIMESTAMP
-          WHERE id=?
+	  SET category=?, description=?, quantity=?, customer_price=?, internal_cost=?, supplier=?,
+   	      need_order=?, parts_status=?, option_values_json=?, active=1, updated_at=CURRENT_TIMESTAMP          WHERE id=?
         `).run(
           item.category,
           item.name,
@@ -684,15 +853,16 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
           supplier,
           needOrder ? 1 : 0,
           partsStatus,
+	  optionValuesJson,
           existing.id
         );
       } else {
         db.prepare(`
           INSERT INTO quote_items (
             vehicle_id, consultation_item_id, category, description, quantity, customer_price,
-            internal_cost, supplier, need_order, parts_status, sort_order
+	    internal_cost, supplier, need_order, parts_status, option_values_json, sort_order
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           project.id,
           item.id,
@@ -704,6 +874,7 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
           supplier,
           needOrder ? 1 : 0,
           partsStatus,
+	  optionValuesJson,
           nextSort('quote_items', project.id)
         );
       }
@@ -722,7 +893,82 @@ app.post('/api/projects/:id/consultation', requireAuth, (req, res) => {
     }
   }
 
-  activity(req, project.id, 'consultation saved', null, `${checkedItems.length} items selected`);
+  const customItems = Array.isArray(req.body.customItems) ? req.body.customItems : [];
+  let activeCustomCount = 0;
+
+  for (const custom of customItems) {
+    const idFromString = String(custom.id || '').match(/^custom-(\d+)$/);
+    const quoteItemId = Number(custom.quoteItemId || custom.quote_item_id || custom.dbId || (idFromString ? idFromString[1] : 0));
+    const current = quoteItemId
+      ? db.prepare('SELECT * FROM quote_items WHERE id=? AND vehicle_id=? AND consultation_item_id IS NULL').get(quoteItemId, project.id)
+      : null;
+    if (quoteItemId && !current) {
+      return res.status(400).json({ error: 'Custom item does not belong to this project' });
+    }
+    if (current && parsePackageMeta(current.internal_notes)) {
+      return res.status(400).json({ error: 'Package rows cannot be saved as custom items' });
+    }
+    const description = text(custom.description ?? custom.name ?? current?.description);
+    const active = custom.active !== false && custom.active !== 0 && custom.selected !== false;
+
+    if (!description && !current) continue;
+    if (active) activeCustomCount += 1;
+
+    const needOrder = bool(custom.need_order ?? current?.need_order);
+    const partsStatus = needOrder
+      ? (PART_STATUSES.includes(custom.parts_status) ? custom.parts_status : (PART_STATUSES.includes(current?.parts_status) ? current.parts_status : 'Need to Order'))
+      : 'Not Needed';
+    const category = text(custom.category ?? custom.cat ?? current?.category) || 'Custom';
+    const qty = Math.max(0.01, number(custom.quantity ?? custom.qty ?? current?.quantity, 1));
+    const customerPrice = int(custom.customer_price ?? custom.price ?? current?.customer_price);
+    const internalCost = int(custom.internal_cost ?? custom.cost ?? current?.internal_cost);
+    const supplier = text(custom.supplier ?? current?.supplier);
+    const notes = text(custom.internal_notes ?? current?.internal_notes) || 'Custom consultation item';
+
+    if (current) {
+      db.prepare(`
+        UPDATE quote_items
+        SET category=?, description=?, quantity=?, customer_price=?, internal_cost=?, supplier=?,
+            need_order=?, parts_status=?, internal_notes=?, active=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND vehicle_id=?
+      `).run(
+        category,
+        description,
+        qty,
+        customerPrice,
+        internalCost,
+        supplier,
+        needOrder ? 1 : 0,
+        partsStatus,
+        notes,
+        active ? 1 : 0,
+        current.id,
+        project.id
+      );
+    } else if (active) {
+      db.prepare(`
+        INSERT INTO quote_items (
+          vehicle_id, category, description, quantity, customer_price, internal_cost,
+          supplier, need_order, parts_status, internal_notes, sort_order
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        project.id,
+        category,
+        description,
+        qty,
+        customerPrice,
+        internalCost,
+        supplier,
+        needOrder ? 1 : 0,
+        partsStatus,
+        notes,
+        nextSort('quote_items', project.id)
+      );
+    }
+  }
+
+  activity(req, project.id, 'consultation saved', null, `${checkedItems.length + activeCustomCount} items selected`);
 
   if (project.stage === '05 Deposit Paid' || stageProgress(project.stage) > stageProgress('05 Deposit Paid')) {
     activatePartsAfterDeposit(project.id, req);
@@ -871,7 +1117,11 @@ app.delete('/api/projects/:id/quote/:quoteItemId', requireAuth, (req, res) => {
   const project = requireProject(req.params.id, true);
   const current = db.prepare('SELECT * FROM quote_items WHERE id=? AND vehicle_id=?').get(Number(req.params.quoteItemId), project.id);
   if (!current) return res.status(404).json({ error: 'Quote item not found' });
-  db.prepare('UPDATE quote_items SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(current.id);
+  const isProjectCustom = !current.consultation_item_id && !parsePackageMeta(current.internal_notes);
+  const notes = isProjectCustom
+    ? `${DELETED_CUSTOM_NOTE}:${text(current.internal_notes) || current.description || current.id}`
+    : current.internal_notes;
+  db.prepare('UPDATE quote_items SET active=0, internal_notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(notes, current.id);
   activity(req, project.id, 'quote item deleted', current.description, null);
   res.json({ ok: true });
 });
@@ -1011,6 +1261,17 @@ app.get('/api/projects/:id/activity', requireAuth, (req, res) => {
   res.json(db.prepare('SELECT * FROM activity_log WHERE project_id=? ORDER BY created_at DESC, id DESC LIMIT 200').all(project.id));
 });
 
+app.get('/api/packages', requireAuth, (req, res) => {
+  let packages = [];
+  try {
+    const parsed = JSON.parse(setting('packages', '[]') || '[]');
+    packages = Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    packages = [];
+  }
+  res.json({ packages });
+});
+
 app.post('/api/projects/:id/activity', requireAuth, (req, res) => {
   const project = requireProject(req.params.id, true);
   const note = text(req.body.note);
@@ -1036,11 +1297,12 @@ app.get('/api/projects/:id/customer-quote', requireAuth, (req, res) => {
 app.get('/api/admin/settings', requireAdmin, (req, res) => {
   const users = db.prepare('SELECT id, line_user_id, display_name, role, last_login_at, created_at FROM users ORDER BY created_at DESC').all();
   const serviceMaster = db.prepare('SELECT * FROM services_master ORDER BY sort_order, id').all();
-  const categories = db.prepare('SELECT * FROM consultation_categories ORDER BY sort_order, id').all();
+  const categories = db.prepare('SELECT * FROM consultation_categories WHERE active=1 ORDER BY sort_order, id').all();
   const items = db.prepare(`
     SELECT ci.*, cc.name AS category
     FROM consultation_items ci
     JOIN consultation_categories cc ON cc.id=ci.category_id
+    WHERE ci.active=1 AND cc.active=1
     ORDER BY cc.sort_order, ci.sort_order, ci.id
   `).all();
   const subpartsByItem = consultationSubpartsByItemIds(items.map(item => item.id));
@@ -1095,16 +1357,20 @@ optionRows.forEach(option=>{
     pipeline: PIPELINE_STAGES,
     quote_categories: setting('quote_categories', DEFAULT_CATEGORIES.join('\n')),
     parts_categories: setting('parts_categories', DEFAULT_CATEGORIES.join('\n')),
-    quote_terms: setting('quote_terms'),
-    google_sheets_sync: setting('google_sheets_sync', 'Not connected'),
-    master_cashflow_entries: setting('master_cashflow_entries', '[]')
-  });
-});
-
-app.patch('/api/admin/settings', requireAdmin, (req, res) => {
-  ['quote_categories', 'parts_categories', 'quote_terms', 'google_sheets_sync', 'master_cashflow_entries'].forEach(key => {
-    if (req.body[key] !== undefined) setSetting(key, req.body[key]);
-  });
+	    quote_terms: setting('quote_terms'),
+	    packages: setting('packages', '[]'),
+	    google_sheets_sync: setting('google_sheets_sync', 'Not connected'),
+	    master_cashflow_entries: setting('master_cashflow_entries', '[]')
+	  });
+	});
+	
+	app.patch('/api/admin/settings', requireAdmin, (req, res) => {
+	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries'].forEach(key => {
+	    if (req.body[key] !== undefined) setSetting(key, req.body[key]);
+	  });
+  if (req.body.packages !== undefined) {
+    syncPackageQuoteRows(req.body.packages);
+  }
   res.json({ ok: true });
 });
 
@@ -1283,7 +1549,110 @@ app.patch('/api/admin/consultation/items/:id', requireAdmin, (req, res) => {
   );
   res.json(db.prepare('SELECT * FROM consultation_items WHERE id=?').get(current.id));
 });
+app.post('/api/admin/consultation/items/:id/duplicate', requireAdmin, (req, res) => {
+  const source = db.prepare('SELECT * FROM consultation_items WHERE id=?').get(Number(req.params.id));
+  if (!source) return res.status(404).json({ error: 'Item not found' });
 
+  let newName = text(req.body.name) || `${source.name} Copy`;
+  let suffix = 2;
+
+  while (
+    db.prepare(
+      'SELECT id FROM consultation_items WHERE category_id=? AND name=?'
+    ).get(source.category_id, newName)
+  ) {
+    newName = `${source.name} Copy ${suffix++}`;
+  }
+  const baseSlug = slugify(newName);
+  let slug = baseSlug;
+  let counter = 1;
+  while (db.prepare('SELECT id FROM consultation_items WHERE slug=?').get(slug)) {
+    slug = `${baseSlug}-${counter++}`;
+  }
+
+  const sort = int(
+    req.body.sort_order,
+    db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM consultation_items WHERE category_id=?').get(source.category_id).next
+  );
+
+  const tx = db.transaction(() => {
+    const itemResult = db.prepare(`
+      INSERT INTO consultation_items (
+        category_id, slug, name, description, default_customer_price, default_internal_cost,
+        supplier, need_order, sort_order, active
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `).run(
+      source.category_id,
+      slug,
+      newName,
+      source.description || '',
+      int(source.default_customer_price),
+      int(source.default_internal_cost),
+      text(source.supplier),
+      bool(source.need_order) ? 1 : 0,
+      sort
+    );
+
+    const newItemId = itemResult.lastInsertRowid;
+
+    const subparts = db.prepare('SELECT * FROM consultation_subparts WHERE consultation_item_id=? AND active=1 ORDER BY sort_order, id').all(source.id);
+    const insertSubpart = db.prepare(`
+      INSERT INTO consultation_subparts (consultation_item_id, name, cost, sort_order, active)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    subparts.forEach(sp => {
+      insertSubpart.run(newItemId, text(sp.name), int(sp.cost), int(sp.sort_order), 1);
+    });
+
+    const options = db.prepare('SELECT * FROM consultation_item_options WHERE consultation_item_id=? AND active=1 ORDER BY sort_order, id').all(source.id);
+    const insertOption = db.prepare(`
+      INSERT INTO consultation_item_options
+        (consultation_item_id, slug, label, input_type, default_value, sort_order, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertChoice = db.prepare(`
+      INSERT INTO consultation_item_option_choices
+        (option_id, value, label, sort_order, active)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    options.forEach(opt => {
+      let optSlug = opt.slug || slugify(opt.label);
+      let optCounter = 1;
+      while (db.prepare('SELECT id FROM consultation_item_options WHERE consultation_item_id=? AND slug=?').get(newItemId, optSlug)) {
+        optSlug = `${opt.slug || slugify(opt.label)}-${optCounter++}`;
+      }
+
+      const optResult = insertOption.run(
+        newItemId,
+        optSlug,
+        text(opt.label),
+        text(opt.input_type) || 'select',
+        text(opt.default_value),
+        int(opt.sort_order),
+        1
+      );
+
+      const choices = db.prepare('SELECT * FROM consultation_item_option_choices WHERE option_id=? AND active=1 ORDER BY sort_order, id').all(opt.id);
+      choices.forEach(choice => {
+        insertChoice.run(
+          optResult.lastInsertRowid,
+          text(choice.value),
+          text(choice.label),
+          int(choice.sort_order),
+          1
+        );
+      });
+    });
+
+    updateConsultationItemCostFromSubparts(newItemId);
+    return newItemId;
+  });
+
+  const newItemId = tx();
+  res.status(201).json(db.prepare('SELECT * FROM consultation_items WHERE id=?').get(newItemId));
+});
 app.post('/api/admin/consultation/items/:id/subparts', requireAdmin, (req, res) => {
   const item = db.prepare('SELECT * FROM consultation_items WHERE id=?').get(Number(req.params.id));
   if (!item) return res.status(404).json({ error: 'Checklist item not found' });

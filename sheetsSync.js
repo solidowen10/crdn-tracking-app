@@ -116,7 +116,7 @@ function exportData(db) {
       created_at AS "Created At",
       updated_at AS "Updated At"
     FROM vehicles
-    ORDER BY archived, updated_at DESC, id DESC
+    ORDER BY id ASC
   `).all();
 
   const quoteItems = db.prepare(`
@@ -299,7 +299,30 @@ async function ensureSheets(sheets, id) {
     sheets: sheetInfo
   };
 }
+function moneyColumnIndexes(tab, headers) {
+  const moneyNames = new Set([
+    'Quote Total',
+    'Customer Price',
+    'Internal Cost',
+    'Subtotal',
+    'Sub-parts Cost Total',
+    'Cost',
+    'Price',
+    'Amount',
+    'In (NT$)',
+    'Out (NT$)',
+    'Balance',
+    'Deposits',
+    'Outstanding'
+  ]);
 
+  return headers
+  .map((header,index)=>{
+    const h=String(header).trim();
+    return (moneyNames.has(h)||h.includes('Price')||h.includes('Cost')||h.includes('Subtotal')||h.includes('Profit')||h.includes('Total')||h.includes('Amount')||h.includes('Balance')||h.includes('Deposits')||h.includes('Outstanding')) ? index : -1;
+  })
+  .filter(index=>index>=0);
+}
 async function formatSyncedColumns(sheets, id, sheet, tab, headerCount) {
   const sheetId = sheet?.properties?.sheetId;
   if (sheetId === undefined || !headerCount) return;
@@ -311,41 +334,67 @@ async function formatSyncedColumns(sheets, id, sheet, tab, headerCount) {
   const protectedRange = {
     range: { sheetId, startColumnIndex: 0, endColumnIndex: headerCount },
     description,
-    warningOnly: false
+    warningOnly: true
   };
-  if (email) protectedRange.editors = { users: [email] };
+  // if (email) protectedRange.editors = { users: [email] };
+  
+    const headers = await sheets.spreadsheets.values.get({
+    spreadsheetId: id,
+    range: sheetRange(tab, `A1:${columnName(headerCount)}1`)
+  }).then(res => res.data.values?.[0] || []);
+
+  const moneyFormatRequests = moneyColumnIndexes(tab, headers).map(index => ({
+    repeatCell: {
+      range: {
+        sheetId,
+        startRowIndex: 1,
+        startColumnIndex: index,
+        endColumnIndex: index + 1
+      },
+      cell: {
+        userEnteredFormat: {
+          numberFormat: {
+            type: 'CURRENCY',
+            pattern: '"$"#,##0'
+          }
+        }
+      },
+      fields: 'userEnteredFormat.numberFormat'
+    }
+  }));
 
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: id,
     requestBody: {
-      requests: [
-        ...deleteExisting,
-        {
-          repeatCell: {
-            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
-            cell: {
-              note: SYNC_NOTE,
-              userEnteredFormat: {
-                backgroundColor: { red: 0.82, green: 0.82, blue: 0.82 },
-                textFormat: { bold: true }
-              }
-            },
-            fields: 'note,userEnteredFormat(backgroundColor,textFormat)'
-          }
-        },
-        {
-          repeatCell: {
-            range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: { red: 0.94, green: 0.94, blue: 0.94 }
-              }
-            },
-            fields: 'userEnteredFormat.backgroundColor'
-          }
-        },
-        { addProtectedRange: { protectedRange } }
-      ]
+requests: [
+  ...deleteExisting,
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
+      cell: {
+        note: SYNC_NOTE,
+        userEnteredFormat: {
+          backgroundColor: { red: 0.82, green: 0.82, blue: 0.82 },
+          textFormat: { bold: true }
+        }
+      },
+      fields: 'note,userEnteredFormat(backgroundColor,textFormat)'
+    }
+  },
+  {
+    repeatCell: {
+      range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: headerCount },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.94, green: 0.94, blue: 0.94 }
+        }
+      },
+      fields: 'userEnteredFormat.backgroundColor'
+    }
+  },
+  ...moneyFormatRequests,
+  { addProtectedRange: { protectedRange } }
+]
     }
   });
 }
@@ -356,11 +405,12 @@ async function syncTab(sheets, id, tab, values, sheet) {
   if (!headers.length) return 0;
 
   const lastCol = columnName(headers.length);
-  const fullRange = sheetRange(tab, `A1:${lastCol}`);
+  const previousHeaderCount = Math.max(...(sheet?.protectedRanges||[]).filter(r=>r.description===`CRDN auto-synced columns: ${tab}`).map(r=>r.range?.endColumnIndex||0),0);
+  const clearLastCol = columnName(Math.max(headers.length, previousHeaderCount));
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: id,
-    range: fullRange
+    range: sheetRange(tab, `A:${clearLastCol}`)
   });
 
   await sheets.spreadsheets.values.update({

@@ -17,6 +17,7 @@
   --fs:16px;--sm:15px;--xs:14px;--xxs:13px;--xxxs:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{font-family:'Noto Sans TC',sans-serif;background:var(--g50);color:var(--black);font-size:var(--fs);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 input,select,textarea,button{font-family:'Noto Sans TC',sans-serif;font-size:var(--fs)}
 button{cursor:pointer}
@@ -62,7 +63,7 @@ button{cursor:pointer}
 
 /* LAYOUT */
 .layout{flex:1;overflow:hidden;display:flex;position:relative}
-.view{position:absolute;inset:0;overflow-y:auto;display:none;flex-direction:column}
+.view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column}
 .view.active{display:flex}
 
 /* DASHBOARD */
@@ -163,7 +164,7 @@ button{cursor:pointer}
 
 /* CONSULTATION */
 .cwrap{display:flex;gap:16px}
-.cleft{flex:1;min-width:0;max-width:calc(100vw - 360px)}
+.cleft{flex:1;min-width:0;max-width:calc(100vw - 360px);max-height:calc(100vh - 180px);overflow-y:auto;padding-right:6px}
 .cright{width:300px;flex-shrink:0;position:fixed;right:16px;top:180px;z-index:35}
 @media(max-width:700px){
   .topbar{height:64px;padding:0 14px;gap:10px}
@@ -215,12 +216,17 @@ button{cursor:pointer}
 .qv{min-width:32px;height:28px;border-top:1px solid var(--g200);border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:center;font-size:var(--xs);font-weight:700;background:var(--w);padding:0 4px}
 .qbh + .qv,.qbh + .qvs{border-left:1px solid var(--g200);border-radius:var(--rs) 0 0 var(--rs)}
 .crow{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--rs);border:1px solid var(--brand);background:var(--brand-f);margin-bottom:7px}
+.custom-row{align-items:flex-start}
+.cust-fields{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cust-fields .crn{min-width:190px}
+.crcost{white-space:nowrap}
 .crn{flex:1;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:var(--sm);background:var(--w);color:var(--black)}
 .crp{width:115px;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:var(--sm);text-align:right;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;background:var(--w);color:var(--black)}
+.custom-row{align-items:center}.cust-fields,.custom-row .qtyc{align-items:center}.crn,.crp,.crcost,.custom-row .qtyc,.custom-row .cp{height:42px;display:flex;align-items:center}.crp{width:130px}.crcost{justify-content:center}.custom-row .cp{min-width:130px;justify-content:flex-end}
 .crn:focus,.crp:focus{outline:none;border-color:var(--brand)}
 .crdel{background:none;border:none;color:var(--g300);cursor:pointer;font-size:20px;line-height:1;padding:2px 5px;border-radius:3px;flex-shrink:0}
 .crdel:hover{color:var(--danger)}
-w
+@media(max-width:700px){.custom-row{gap:8px}.custom-row .ci{flex-basis:100%}.cust-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;width:100%}.cust-fields .crn{grid-column:1/-1;min-width:0;width:100%}.cust-fields .crp{width:100%;min-width:0}.crcost{justify-content:center}}
 /* QUOTE PANEL */
 .qpanel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
 .qph{background:var(--black);color:#fff;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
@@ -328,13 +334,15 @@ w
 .cpname{font-size:var(--sm);font-weight:700}
 .cpdesc{font-size:var(--xxs);color:var(--g500);margin-top:2px}
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:12px;margin-bottom:9px;align-items:end}
+.pkg-grid{grid-template-columns:repeat(4,minmax(120px,1fr))}
 .pbox{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pkg-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center;min-height:37px}
 .plbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g400)}
 .pval{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.04em;color:var(--brand)}
 .pinp{border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;width:100%;text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em;color:var(--black)}
 .pinp:focus{outline:none;border-color:var(--brand)}
 .cost-display{border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;min-height:37px;background:var(--g50);display:flex;align-items:center;justify-content:flex-end;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em;color:var(--black)}
-@media(max-width:620px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.pkg-grid{grid-template-columns:1fr}}
 .sptog{font-size:var(--xxs);color:var(--brand);cursor:pointer;text-decoration:underline}
 .spwrap{background:var(--g50);border-radius:var(--rs);padding:11px 13px;margin-top:9px;display:none}
 .sprow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
@@ -367,19 +375,100 @@ w
 .cf-table{width:100%;border-collapse:collapse}.cf-table th{padding:10px 11px;background:var(--g50);font-size:var(--xxxs);text-align:left;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);border-bottom:1px solid var(--g100)}.cf-table td{padding:8px 11px;border-bottom:1px solid var(--g100);vertical-align:middle}.cf-table tr:last-child td{border-bottom:none}
 .cf-input{border:1px solid var(--g200);border-radius:var(--rs);padding:7px 9px;font-size:var(--sm);background:var(--w);width:100%}.cf-input.amt{text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em}.cf-input:focus{outline:none;border-color:var(--brand)}
 .cf-del{border:none;background:transparent;color:var(--g300);font-size:20px;line-height:1;padding:3px 7px;border-radius:4px}.cf-del:hover{background:var(--dl);color:var(--danger)}
-@media(max-width:760px){.cf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cf-table{min-width:560px}.cf-balance-banner{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){
+  .cf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cf-table{min-width:560px}
+  .cf-balance-banner{align-items:flex-start;flex-direction:column}
+  .cf-val{
+    font-size:21px;
+    line-height:1.05;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+}
 /* Master Cashflow */
-.mcf-page{width:min(1180px,100%);margin:0 auto;padding:18px 18px 100px}
+.mcf-page{width:min(1180px,100%);max-width:100%;margin:0 auto;padding:18px 18px 100px;overflow-x:hidden}
 .mcf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}.mcf-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em}
-.mcf-actions{display:flex;gap:8px;flex-wrap:wrap}.mcf-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.mcf-filter{border:1px solid var(--g200);background:var(--w);color:var(--g500);border-radius:99px;padding:7px 13px;font-size:var(--xxs);font-weight:700}.mcf-filter.on{background:var(--brand);border-color:var(--brand);color:#fff}.mcf-date{border:1px solid var(--g200);border-radius:99px;padding:7px 11px;font-size:var(--xxs);background:var(--w)}
+.mcf-actions{display:flex;gap:8px;flex-wrap:wrap}.mcf-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.mcf-filter{border:1px solid var(--g200);background:var(--w);color:var(--g500);border-radius:99px;padding:7px 13px;font-size:var(--xxs);font-weight:700}.mcf-filter.on{background:var(--brand);border-color:var(--brand);color:#fff}.mcf-date-field{display:flex;align-items:center;gap:6px;min-width:0}.mcf-date-field span{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--g400);white-space:nowrap}.mcf-date{border:1px solid var(--g200);border-radius:99px;padding:7px 11px;font-size:var(--xxs);background:var(--w);color:var(--black);min-width:0;width:145px;color-scheme:light}.mcf-date::-webkit-calendar-picker-indicator{opacity:1}
 .mcf-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:15px}.mcf-kpi{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:15px}.mcf-kpi.hi{border-left:3px solid var(--brand)}.mcf-label{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:7px}.mcf-num{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;line-height:1}.mcf-in{color:#15803d}.mcf-out{color:#dc2626}.mcf-brand{color:var(--brand)}
 .mcf-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.mcf-section{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;margin-bottom:13px}.mcf-section.full{grid-column:1/-1}.mcf-section-h{padding:13px 15px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;gap:10px}.mcf-section-h strong{font-size:var(--sm)}.mcf-mini-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-.mcf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.mcf-table{width:100%;border-collapse:collapse;min-width:680px}.mcf-table.compact{min-width:900px}.mcf-table th{padding:9px 11px;background:var(--g50);font-size:var(--xxxs);font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);border-bottom:1px solid var(--g100);white-space:nowrap}.mcf-table td{padding:8px 11px;border-bottom:1px solid var(--g100);vertical-align:middle;font-size:var(--sm)}.mcf-table tr:last-child td{border-bottom:none}.mcf-empty{padding:22px;text-align:center;color:var(--g300);font-size:var(--sm)}
-.mcf-input,.mcf-select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 9px;background:var(--w);font-size:var(--sm)}.mcf-input.amt{text-align:right;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:.04em}.mcf-input:focus,.mcf-select:focus{outline:none;border-color:var(--brand)}
+.mcf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}.mcf-table{width:100%;border-collapse:collapse;min-width:680px}.mcf-table.compact{min-width:900px}.mcf-table.mcf-company-table{min-width:720px;table-layout:auto}.mcf-table th{padding:9px 11px;background:var(--g50);font-size:var(--xxxs);font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);border-bottom:1px solid var(--g100);white-space:nowrap}.mcf-table td{padding:8px 11px;border-bottom:1px solid var(--g100);vertical-align:middle;font-size:var(--sm)}.mcf-table tr:last-child td{border-bottom:none}.mcf-empty{padding:22px;text-align:center;color:var(--g300);font-size:var(--sm)}
+.mcf-input,.mcf-select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 9px;background:var(--w);font-size:var(--sm)}.mcf-input.amt{text-align:right;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.04em;min-width:150px}.mcf-input:focus,.mcf-select:focus{outline:none;border-color:var(--brand)}.mcf-cat-cell,.mcf-cat-cell .mcf-select{min-width:220px;white-space:normal;overflow:visible;text-overflow:unset;word-break:break-word}.mcf-company-table .mcf-date-col{width:145px}.mcf-company-table .mcf-cat-col{width:30%;min-width:220px}.mcf-company-table .mcf-desc-col{width:38%;min-width:220px}.mcf-company-table .mcf-amt-col{width:190px;min-width:190px}
 .mcf-del{border:none;background:transparent;color:var(--g300);font-size:20px;line-height:1;padding:3px 7px;border-radius:4px}.mcf-del:hover{background:var(--dl);color:var(--danger)}
 .mcf-chip{display:inline-flex;align-items:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}.mcf-chip.income{background:#ecfdf5;color:#15803d}.mcf-chip.expense{background:#fef2f2;color:#dc2626}
+.mcf-company-list{display:flex;flex-direction:column;gap:10px;padding:12px}.mcf-company-row{display:grid;grid-template-columns:125px 96px minmax(0,1fr) 160px 88px;gap:12px;align-items:center;padding:12px;border:1px solid var(--g100);border-radius:var(--rs);background:var(--g50)}.mcf-company-date{font-size:var(--xxs);font-weight:800;color:var(--g500);white-space:nowrap}.mcf-company-main{min-width:0}.mcf-company-cat{font-weight:800;line-height:1.35;white-space:normal;overflow:visible;text-overflow:unset;word-break:break-word}.mcf-company-desc{font-size:var(--xs);color:var(--g500);line-height:1.45;margin-top:3px;white-space:normal;word-break:break-word}.mcf-company-note{font-size:var(--xxs);color:var(--g400);line-height:1.45;margin-top:5px;white-space:normal;word-break:break-word}.mcf-company-amount{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.04em;text-align:right;white-space:nowrap}.mcf-row-buttons{display:flex;justify-content:flex-end;gap:5px}.mcf-edit{border:1px solid var(--g200);background:var(--w);color:var(--g500);font-size:var(--xxxs);font-weight:800;border-radius:var(--rs);padding:5px 7px}.mcf-edit:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-f)}.mcf-company-form{margin:12px;padding:13px;border:1px solid var(--brand);background:var(--brand-f);border-radius:var(--r)}.mcf-form-grid{display:grid;grid-template-columns:150px 150px 190px minmax(0,1fr) 160px;gap:10px;align-items:end}.mcf-form-note{margin-top:10px}.mcf-form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.mcf-field label{display:block;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:5px}
 .mcf-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:14px}.mcf-sum{background:var(--g50);border-radius:var(--rs);padding:11px 12px}.mcf-sum span{display:block;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:5px}.mcf-sum strong{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em}
-@media(max-width:860px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr 1fr}.mcf-summary{grid-template-columns:1fr}.mcf-page{padding:14px 14px 100px}}@media(max-width:620px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr}.mcf-title{font-size:25px}.mcf-head{align-items:flex-start}.mcf-actions{width:100%}.mcf-actions .btn{flex:1;justify-content:center}}
+@media(max-width:768px){
+  .mcf-company-form,
+  .mcf-company-form *{
+    box-sizing:border-box;
+  }
+
+  .mcf-company-form{
+    overflow:hidden;
+  }
+
+  .mcf-company-form .mcf-input,
+  .mcf-company-form .mcf-select{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+
+  .mcf-company-list{
+    padding:8px;
+    gap:8px;
+  }
+
+  .mcf-company-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:6px 10px;
+    padding:10px 11px;
+    align-items:start;
+  }
+
+  .mcf-company-date{
+    margin-bottom:0;
+    font-size:13px;
+  }
+
+  .mcf-company-main{
+    grid-column:1/-1;
+    margin-top:2px;
+  }
+
+  .mcf-company-cat{
+    font-size:17px;
+    line-height:1.2;
+  }
+
+  .mcf-company-desc{
+    font-size:13px;
+    line-height:1.25;
+    margin-top:2px;
+  }
+
+  .mcf-company-note{
+    font-size:12px;
+    line-height:1.25;
+    margin-top:3px;
+  }
+
+  .mcf-company-amount{
+    text-align:left;
+    margin-top:2px;
+    font-size:24px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  .mcf-row-buttons{
+    justify-content:flex-end;
+    margin-top:0;
+  }
+}
+@media(max-width:860px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr 1fr}.mcf-summary{grid-template-columns:1fr}.mcf-page{padding:14px 14px 100px}.mcf-company-row{grid-template-columns:105px 90px minmax(0,1fr) 140px 82px}.mcf-form-grid{grid-template-columns:1fr 1fr}}@media(max-width:768px){.mcf-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.mcf-filter{width:100%;min-width:0}.mcf-filter[data-period="custom"]{grid-column:1/-1}.mcf-date-field{grid-column:1/-1;display:grid;grid-template-columns:88px minmax(0,1fr);width:100%;min-width:0}.mcf-date{width:100%;min-width:0;border-radius:var(--rs);padding:9px 11px}.mcf-company-list{padding:10px}.mcf-company-row{display:block;padding:13px}.mcf-company-date{margin-bottom:8px}.mcf-company-main{margin-top:9px}.mcf-company-amount{text-align:left;margin-top:11px;font-size:26px}.mcf-row-buttons{justify-content:flex-start;margin-top:10px}.mcf-company-form{margin:10px}.mcf-form-grid{grid-template-columns:1fr;gap:11px}.mcf-form-actions{justify-content:stretch}.mcf-form-actions .btn{flex:1;justify-content:center}.mcf-company-form .mcf-input,.mcf-company-form .mcf-select{min-width:0;width:100%}}@media(max-width:620px){.mcf-kpis,.mcf-grid{grid-template-columns:1fr}.mcf-title{font-size:25px}.mcf-head{align-items:flex-start}.mcf-actions{width:100%}.mcf-actions .btn{flex:1;justify-content:center}}@media(max-width:430px){.mcf-filters{grid-template-columns:1fr}.mcf-mini-actions{width:100%;justify-content:flex-start}.mcf-section-h{align-items:flex-start;flex-direction:column}}
 /* Package setting rows */
 .pkgrow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--g100)}
 .pkgrow:last-child{border-bottom:none}
@@ -390,6 +479,9 @@ w
 .iedit:focus{outline:none;background:var(--w);border:1px solid var(--brand);padding:2px 4px}
 /* cat header row in settings */
 .catrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--g100);background:var(--g50);margin:0 -16px;padding-left:16px;padding-right:16px}
+.cat-toggle{width:28px;height:28px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);display:flex;align-items:center;justify-content:center;color:var(--g500);font-size:var(--xs);font-weight:800}
+.cat-toggle:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-f)}
+.cat-body.collapsed{display:none}
 
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:200;display:none;align-items:flex-end;justify-content:center}
@@ -421,6 +513,10 @@ w
 }
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--g200);border-radius:2px}
+@media(max-width:760px){.cf-table th:nth-child(5),.cf-table td:nth-child(5){width:105px;min-width:105px}.cf-input.amt{font-size:14px!important;padding:7px 4px!important;min-width:0!important;width:100%!important;letter-spacing:.02em!important}.cf-table th,.cf-table td{padding-left:6px!important;padding-right:6px!important}}
+@media(max-width:700px){#v-settings .tb{width:100%;max-width:100%;margin:0;padding:14px 12px 100px!important;overflow-x:hidden}#v-settings .ss{max-width:100%;overflow-x:hidden}#v-settings input,#v-settings select,#v-settings textarea{max-width:100%;min-width:0}#v-settings .pgrid,#v-settings .pkgrow,#v-settings .catrow,#v-settings .cphd,#v-settings .sprow{max-width:100%}#v-settings .pgrid{grid-template-columns:1fr!important}#v-settings .sprow{flex-wrap:wrap}#v-settings .spci,#v-settings .pinp{width:100%!important}}
+@media(min-width:701px) and (max-width:1024px){html,body,.layout,.view{width:100vw!important;max-width:100vw!important;overflow-x:hidden!important}.tb,.mcf-page,#v-settings .tb{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}.cf-table-wrap,.mcf-table-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important}.cf-table,.mcf-table{max-width:none!important}}
+.consult-sticky-head{position:sticky;top:0;z-index:20;background:var(--g50);padding:10px 0;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -443,7 +539,7 @@ w
       <div class="nav-menu" id="nav-menu">
         <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
-        <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Master Cashflow</button>
+        <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
         <button onclick="logout()">Logout</button>
       </div>
@@ -470,7 +566,7 @@ w
   </div>
   <div class="sgrid">
     <div class="sc hi"><div class="sl">Active</div><div class="sn" id="s-active">—</div><div class="ss-sub">In progress</div></div>
-    <div class="sc"><div class="sl">Waiting Parts</div><div class="sn" id="s-parts">—</div><div class="ss-sub">Ordered / backorder</div></div>
+    <div class="sc" onclick="renderWaitingPartsOverview()" style="cursor:pointer"><div class="sl">Waiting Parts</div><div class="sn" id="s-parts">—</div><div class="ss-sub">Click to view parts</div></div>
     <div class="sc"><div class="sl">Due This Week</div><div class="sn" id="s-due" style="color:#ef4444">—</div><div class="ss-sub">Nearing deadline</div></div>
     <div class="sc"><div class="sl">Total Quoted</div><div class="sn" id="s-total" style="font-size:20px">—</div><div class="ss-sub">Active jobs</div></div>
   </div>
@@ -720,13 +816,40 @@ let projects=[];
 
 let AP=null, activeTab='overview', currentFilter='All', dashboardSummaryState=null, settingsLoaded=false;
 let currentUser={displayName:'Owen',role:'admin'};
+const CATALOG_COLLAPSED=new Set();
+const CATALOG_COLLAPSE_SEEN=new Set();
 const MASTER_CF_ROLES=['admin'];
 let MCF_ENTRIES=[];
-let MCF_PERIOD='all';
+let MCF_PERIOD='thismonth';
 let MCF_LOADED=false;
 let MCF_CUSTOM_FROM='';
 let MCF_CUSTOM_TO='';
+let MCF_FORM_TYPE='';
+let MCF_EDIT_ID='';
 let cfSaveTimer=null;
+const CASH_IN_CATEGORIES=[
+  'Customer Deposit',
+  'Customer Balance Payment',
+  'Full Payment',
+  'Refund Received',
+  'Company Income',
+  'Loan / Capital Injection',
+  'Equipment Sale',
+  'Other Income'
+];
+const CASH_OUT_CATEGORIES=[
+  'Parts / Materials',
+  'Vendor Payment',
+  'Labour / Contractor',
+  'Rent / Studio',
+  'Tools / Equipment',
+  'Utilities',
+  'Marketing',
+  'Insurance',
+  'Tax / Accounting',
+  'Refund to Customer',
+  'Other Expense'
+];
 
 // ══════════════════════════════════════
 // API LAYER
@@ -821,6 +944,35 @@ const itemById=id=>{
   return null;
 };
 
+const PACKAGE_NOTE_PREFIX='PACKAGE_META:';
+const DELETED_CUSTOM_NOTE='DELETED_CUSTOM_ITEM';
+function cleanPackageName(value){
+  const name=String(value||'').trim();
+  return /^—?\s*No package\s*—?$/i.test(name)?'':name;
+}
+
+function normalizePackage(pk,index=0){
+  const items=Array.isArray(pk?.items)?pk.items.map(String):[];
+  const rawPrice=pk?.retail_price??pk?.price;
+  return {
+    id:String(pk?.id||uid()),
+    name:pk?.name||`Package ${index+1}`,
+    retail_price:Number(rawPrice===undefined?items.reduce((sum,id)=>sum+(itemById(id)?.price||0),0):rawPrice),
+    active:pk?.active===undefined?true:!!pk.active,
+    sort_order:Number(pk?.sort_order||index+1),
+    items
+  };
+}
+
+function activePackages(){
+  return PACKAGES.map(normalizePackage).filter(pk=>pk.active!==false).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+}
+
+function packageByIdOrName(value){
+  const key=String(value||'');
+  return activePackages().find(pk=>String(pk.id)===key||pk.name===key)||null;
+}
+
 const catOf=id=>{
   const item=itemById(id);
   return item?.cat||'Other';
@@ -828,8 +980,50 @@ const catOf=id=>{
 
 const effP=id=>itemById(id)?.price||0;
 const qty=(p,id)=>(p.itemQtys||{})[id]||1;
+const customDeleted=ci=>String(ci?.internal_notes||'').startsWith(DELETED_CUSTOM_NOTE)||ci?.deleted===true;
+const customSelected=ci=>!customDeleted(ci)&&ci?.active!==false&&ci?.active!==0&&ci?.selected!==false;
+const selectedCustomItems=p=>(p?.customItems||[]).map((ci,index)=>({...ci,_index:index})).filter(ci=>customSelected(ci)&&(ci.name||ci.price));
 const partCost=item=>(item?.parts||[]).reduce((s,sp)=>s+(parseFloat(sp.cost)||0),0);
 const spTot=id=>partCost(itemById(id));
+function packageMetaFromNote(note){
+  const raw=String(note||'');
+  if(!raw.startsWith(PACKAGE_NOTE_PREFIX))return null;
+  try{
+    const parsed=JSON.parse(raw.slice(PACKAGE_NOTE_PREFIX.length));
+    return {
+      id:String(parsed.id||''),
+      name:parsed.name||'Package',
+      price:Number(parsed.price||0),
+      items:Array.isArray(parsed.items)?parsed.items.map(String):[]
+    };
+  }catch(e){return null;}
+}
+function packageNote(pk){
+  const p=normalizePackage(pk);
+  return PACKAGE_NOTE_PREFIX+JSON.stringify({id:p.id,name:p.name,price:Number(p.retail_price||0),items:p.items});
+}
+function hasPackage(p){
+  return !!(p?.packageQuote&&customSelected(p.packageQuote)&&cleanPackageName(p.packageQuote.name||p.pkg));
+}
+function packagePrice(p){
+  return hasPackage(p)?Number(p.packageQuote.price||0):0;
+}
+function packageItemSet(p){
+  return new Set((p?.packageQuote?.packageItems||[]).map(String));
+}
+function isPackageItem(p,id){
+  return hasPackage(p)&&packageItemSet(p).has(String(id));
+}
+function checkedCatalogEntries(p){
+  return (p?.checkedItems||[]).map(id=>({item:itemById(id),price:effP(id),q:qty(p,id),id})).filter(x=>x.item);
+}
+function packageIncludedEntries(p){
+  return checkedCatalogEntries(p).filter(x=>isPackageItem(p,x.id));
+}
+function addOnEntries(p){
+  return checkedCatalogEntries(p).filter(x=>!isPackageItem(p,x.id));
+}
+const selectedQuoteCount=p=>(hasPackage(p)?1:0)+addOnEntries(p).length+selectedCustomItems(p).length;
 const depPaid=p=>true;
 const nowStr=()=>new Date().toISOString().slice(0,16).replace('T',' ');
 const calcTotal=p=>{
@@ -840,9 +1034,9 @@ const calcTotal=p=>{
 
 const calcQuoteTotal=p=>{
   if(!p)return 0;
-  const c=(p.checkedItems||[]).reduce((s,id)=>s+effP(id)*qty(p,id),0);
-  const x=(p.customItems||[]).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
-  return c+x;
+  const c=addOnEntries(p).reduce((s,x)=>s+x.price*x.q,0);
+  const x=selectedCustomItems(p).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
+  return packagePrice(p)+c+x;
 };
 
 const projectQuoteTotal=p=>Number(p?.quote_total||p?.quoteTotal||p?.serverTotal||0);
@@ -920,7 +1114,7 @@ function projectFromApi(row){
     owner:p.owner||p.customer||'',
     vehicle:p.vehicle||p.name||'',
     plate:p.plate||'',
-    pkg:p.pkg||p.package||'',
+    pkg:cleanPackageName(p.pkg||p.package||''),
     stage:p.stage||'01 Intake',
     priority:p.priority||'Normal',
     designer:p.designer||'',
@@ -949,6 +1143,140 @@ function parseCashflow(p){
     try{return JSON.parse(p.cashflow_json);}catch(e){}
   }
   return {deposits:[],vendorPayments:[]};
+}
+
+function customFromQuoteRow(row){
+  const pkgMeta=packageMetaFromNote(row.internal_notes);
+  if(pkgMeta){
+    return {
+      id:`package-${row.id}`,
+      quoteItemId:row.id,
+      isPackage:true,
+      packageId:pkgMeta.id,
+      packageItems:pkgMeta.items,
+      cat:'Package',
+      name:pkgMeta.name||row.description||'Package',
+      price:Number(row.customer_price||pkgMeta.price||0),
+      cost:Number(row.internal_cost||0),
+      qty:1,
+      internal_notes:row.internal_notes||'',
+      active:row.active===undefined?true:(row.active===1||row.active===true)
+    };
+  }
+  return {
+    id:`custom-${row.id}`,
+    quoteItemId:row.id,
+    cat:row.category||'Custom',
+    name:row.description||'Custom item',
+    price:Number(row.customer_price||0),
+    cost:Number(row.internal_cost||0),
+    qty:Number(row.quantity||1),
+    supplier:row.supplier||'',
+    need_order:!!row.need_order,
+    parts_status:row.parts_status||'Not Needed',
+    internal_notes:row.internal_notes||'Custom consultation item',
+    deleted:String(row.internal_notes||'').startsWith(DELETED_CUSTOM_NOTE),
+    active:row.active===undefined?true:(row.active===1||row.active===true)
+  };
+}
+
+function customPayload(ci){
+  return {
+    category:ci.cat||ci.category||'Custom',
+    description:ci.name||ci.description||'Custom item',
+    quantity:Math.max(0.01,Number(ci.qty||ci.quantity||1)),
+    customer_price:parseMoney(ci.price||ci.customer_price||0),
+    internal_cost:parseMoney(ci.cost||ci.internal_cost||0),
+    supplier:ci.supplier||'',
+    need_order:!!ci.need_order,
+    parts_status:ci.need_order?(ci.parts_status||'Need to Order'):'Not Needed',
+    internal_notes:customDeleted(ci)?`${DELETED_CUSTOM_NOTE}:${ci.name||ci.description||''}`:(ci.internal_notes||'Custom consultation item'),
+    active:customSelected(ci)
+  };
+}
+
+function packagePayload(pk){
+  const p=normalizePackage(pk);
+  return {
+    category:'Package',
+    description:p.name,
+    quantity:1,
+    customer_price:Number(p.retail_price||0),
+    internal_cost:0,
+    supplier:'',
+    need_order:false,
+    parts_status:'Not Needed',
+    internal_notes:packageNote(p),
+    active:true
+  };
+}
+
+async function upsertProjectPackage(project,pk){
+  if(!project)return null;
+  if(!pk){
+    if(project.packageQuote?.quoteItemId){
+      await PATCH(`/api/projects/${project.id}/quote/${project.packageQuote.quoteItemId}`,{...packagePayload({name:project.packageQuote.name||'Package',retail_price:project.packageQuote.price||0,items:project.packageQuote.packageItems||[]}),active:false});
+    }
+    project.packageQuote=null;
+    project.pkg='';
+    return null;
+  }
+  const payload=packagePayload(pk);
+  const saved=project.packageQuote?.quoteItemId
+    ? await PATCH(`/api/projects/${project.id}/quote/${project.packageQuote.quoteItemId}`,payload)
+    : await POST(`/api/projects/${project.id}/quote`,payload);
+  const row=customFromQuoteRow(saved);
+  project.packageQuote=row;
+  project.pkg=row.name;
+  return row;
+}
+
+function refreshPackageSurfaces(pk){
+  const normalized=pk?normalizePackage(pk):null;
+  if(AP&&normalized&&AP.packageQuote?.packageId===normalized.id){
+    const oldPackageItems=packageItemSet(AP);
+    const addOns=(AP.checkedItems||[]).filter(id=>!oldPackageItems.has(String(id)));
+    AP.packageQuote={...AP.packageQuote,name:normalized.name,price:Number(normalized.retail_price||0),packageItems:[...normalized.items]};
+    AP.pkg=normalized.name;
+    AP.checkedItems=[...new Set([...normalized.items,...addOns])];
+    AP.itemQtys=Object.fromEntries(Object.entries(AP.itemQtys||{}).filter(([id])=>!oldPackageItems.has(String(id))));
+  }
+  refreshPricingSurfaces();
+}
+
+function refreshPricingSurfaces(){
+  renderPackages();
+  if(AP){
+    const total=calcQuoteTotal(AP);
+    AP.quote_total=total;
+    AP.quoteTotal=total;
+    AP.serverTotal=total;
+    projects=projects.map(p=>p.id===AP.id?{...p,quote_total:total,quoteTotal:total,serverTotal:total}:p);
+    if(activeTab==='consult')buildChecklist();
+    else if(activeTab==='quote')rQuote(document.getElementById('tb'));
+    else if(activeTab==='admin')rAdmin(document.getElementById('tb'));
+    else if(activeTab==='overview')rOverview(document.getElementById('tb'));
+    buildQPanel();
+    updMobBar();
+    renderDash(currentFilter);
+  }
+}
+
+async function persistActivePackageSetting(pk){
+  if(!AP||!pk)return;
+  const normalized=normalizePackage(pk);
+  if(AP.packageQuote?.packageId!==normalized.id)return;
+  await upsertProjectPackage(AP,normalized);
+  await POST(`/api/projects/${AP.id}/consultation`,{
+    checkedItems:AP.checkedItems||[],
+    itemQtys:AP.itemQtys||{},
+    customItems:AP.customItems||[],
+    itemOptions:AP.itemOptions||{}
+  });
+  const fresh=await fetchProject(AP.id);
+  AP={...fresh};
+  projects=projects.map(p=>p.id===AP.id?AP:p);
+  refreshPricingSurfaces();
 }
 
 function apiFilter(f){
@@ -983,10 +1311,19 @@ async function fetchProject(id){
       .filter(item=>item.selected)
       .map(item=>item.slug||String(item.id));
 
-    p.itemQtys={};
-    p.partsStatus={};
-
-    items.forEach(item=>{
+	    p.itemQtys={};
+	    p.partsStatus={};
+	    const customRows=(consultation.custom_items||[]).map(customFromQuoteRow);
+	    p.packageQuote=customRows.find(row=>row.isPackage&&customSelected(row))||null;
+	    if(p.packageQuote)p.pkg=p.packageQuote.name;
+	    p.customItems=customRows.filter(row=>!row.isPackage);
+	    if(consultation.quote_total!==undefined){
+	      p.quote_total=Number(consultation.quote_total||0);
+	      p.quoteTotal=p.quote_total;
+	      p.serverTotal=p.quote_total;
+	    }
+	
+	    items.forEach(item=>{
       const key=item.slug||String(item.id);
       if(item.selected&&item.quote_item){
         p.itemQtys[key]=item.quote_item.quantity||1;
@@ -1020,7 +1357,12 @@ function updatePendingBadge(){
 // ══════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════
+function canSeeSettings(){return currentUser&&currentUser.role==='admin';}
 function showView(v){
+  if(v==='settings'&&!canSeeSettings()){
+    toast('Settings is admin-only');
+    v='dash';
+  }
   if(v==='mastercf'&&!canSeeMasterCF()){
     toast('Admin access required');
     v='dash';
@@ -1087,8 +1429,8 @@ function renderDash(filter='All'){
   const quoted=Number(summary.total_quoted||0);
   document.getElementById('s-total').textContent=quoted>=1000?'NT$'+commas(Math.round(quoted/1000))+'K':fmt(quoted);
 
-  let shown=projects;
-
+  let shown=[...projects].sort((a,b)=>Number(b.id||0)-Number(a.id||0));
+  
   const list=document.getElementById('plist');list.innerHTML='';
   if(!shown.length){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">No projects found</div>';return;}
   shown.forEach(p=>{
@@ -1113,7 +1455,97 @@ function renderDash(filter='All'){
     list.appendChild(d);
   });
 }
+async function openProjectParts(id){
+  const p=projects.find(x=>String(x.id)===String(id))||{id};
+  await openDetail(p);
+  st('parts',document.querySelectorAll('#dtbar .dtab')[3]);
+}
 
+async function renderWaitingPartsOverview(){
+  currentFilter='PartsOverview';
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  const list=document.getElementById('plist');
+  list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">Loading parts to order…</div>';
+
+  const statuses=new Set(['Need to Order','Backordered']);
+  const rows=[];
+
+  for(const base of projects.filter(p=>!p.archived)){
+    let p=base;
+    try{p=await fetchProject(base.id);}catch(e){}
+    const cats=p.consultationCategories||[];
+    cats.forEach(cat=>{
+      (cat.items||[]).forEach(item=>{
+        const key=item.slug||String(item.id);
+        if(!p.checkedItems?.includes(key))return;
+        if(LABOUR_IDS.includes(key))return;
+        const status=p.partsStatus?.[key]||item.quote_item?.parts_status||'Need to Order';
+        if(!statuses.has(status))return;
+        const subparts=item.subparts||item.parts||[];
+        const cost=subparts.reduce((s,sp)=>s+(parseMoney(sp.cost)||0),0);
+        rows.push({project:p,item,cat,status,subparts,cost});
+      });
+    });
+  }
+
+  list.innerHTML=`
+    <div class="fc" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="fct">Parts To Order</div>
+          <div style="font-size:var(--sm);color:var(--g500)">${commas(rows.length)} item${rows.length!==1?'s':''} need ordering / backorder</div>
+        </div>
+        <button class="btn btn-out btn-sm" onclick="refreshDashboard('All')">← Back to Projects</button>
+      </div>
+    </div>
+  `;
+
+  if(!rows.length){
+    list.innerHTML+='<div style="padding:40px;text-align:center;color:var(--g300)">No parts need ordering right now.</div>';
+    return;
+  }
+
+  const byProject=new Map();
+  rows.forEach(row=>{
+    const id=row.project.id;
+    if(!byProject.has(id))byProject.set(id,[]);
+    byProject.get(id).push(row);
+  });
+
+  byProject.forEach((items,id)=>{
+    const p=items[0].project;
+    const card=document.createElement('div');
+    card.className='pcard';
+    card.style.cursor='default';
+    card.innerHTML=`
+      <div class="pc-h">
+        <div>
+          <div class="job-pill">${esc(p.jobNo)}</div>
+          <div class="pc-t">${esc(p.vehicle)}</div>
+          <div class="pc-s">${esc(p.owner)} · ${esc(p.plate||'—')}</div>
+        </div>
+        <button class="btn btn-brand btn-xs parts-open">Open Parts</button>
+      </div>
+      <div style="padding:0 15px 14px;display:grid;gap:9px">
+        ${items.map(row=>`
+          <div style="border:1px solid var(--g100);border-radius:var(--rs);padding:10px;background:var(--g50)">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+              <div>
+                <div style="font-weight:800;font-size:var(--sm)">${esc(row.item.name||'Part item')}</div>
+                <div style="font-size:var(--xxs);color:var(--g500);margin-top:2px">${esc(row.cat.name||row.cat.cat||row.item.category||'Other')}</div>
+              </div>
+              <span class="stchip">${esc(row.status)}</span>
+            </div>
+            ${row.subparts.length?`<div style="font-size:var(--xxs);color:var(--g500);margin-top:8px;line-height:1.6">${row.subparts.map(sp=>`• ${esc(sp.name||'Sub-part')} ${sp.cost?`— ${fmt(sp.cost)}`:''}`).join('<br>')}</div>`:'<div style="font-size:var(--xxs);color:var(--g300);margin-top:8px">No sub-parts listed</div>'}
+            <div style="font-size:var(--xxs);color:var(--brand);font-weight:800;margin-top:7px">Sub-part cost: ${fmt(row.cost)}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    card.querySelector('.parts-open').onclick=()=>openProjectParts(id);
+    list.appendChild(card);
+  });
+}
 // ══════════════════════════════════════
 // DETAIL
 // ══════════════════════════════════════
@@ -1153,10 +1585,10 @@ function rOverview(body){
       <div class="fr"><span class="fl">Vehicle</span><input class="fi" value="${p.vehicle}" onchange="AP.vehicle=this.value;savePatch({vehicle:this.value})"></div>
       <div class="fr"><span class="fl">Plate</span><input class="fi" value="${p.plate||''}" onchange="AP.plate=this.value;savePatch({plate:this.value})"></div>
       <div class="fr"><span class="fl">Package</span>
-	<select class="fsel" onchange="changeProjectPackage(this.value)">
-    	  <option value="" ${!p.pkg?'selected':''}>— No package —</option>
-    	  ${PACKAGES.map(pk=>`<option value="${pk.name}" ${p.pkg===pk.name?'selected':''}>${pk.name}</option>`).join('')}
-  	</select>
+		<select class="fsel" onchange="changeProjectPackage(this.value)">
+	    	  <option value="" ${!p.pkg?'selected':''}>— No package —</option>
+	    	  ${activePackages().map(pk=>`<option value="${pk.id}" ${p.pkg===pk.name?'selected':''}>${pk.name}${pk.retail_price?` — ${fmt(pk.retail_price)}`:''}</option>`).join('')}
+	  	</select>
       </div>
       <div class="fr"><span class="fl">Designer</span>
         <select class="fsel" onchange="AP.designer=this.value;savePatch({designer:this.value})">
@@ -1196,9 +1628,10 @@ async function savePatch(data){
       AP={
   	...next,
   	checkedItems: AP.checkedItems || [],
-  	itemQtys: AP.itemQtys || {},
-  	customItems: AP.customItems || [],
-  	consultationCategories: AP.consultationCategories || [],
+	  	itemQtys: AP.itemQtys || {},
+	  	customItems: AP.customItems || [],
+	  	packageQuote: AP.packageQuote || null,
+	  	consultationCategories: AP.consultationCategories || [],
   	partsStatus: AP.partsStatus || {},
   	stockStatus: AP.stockStatus || {},
   	timeline: AP.timeline || []
@@ -1213,27 +1646,30 @@ async function savePatch(data){
 async function changeProjectPackage(pkgName){
   if(!AP)return;
 
-  const pk=PACKAGES.find(p=>p.name===pkgName);
+  const pk=packageByIdOrName(pkgName);
   const items=(pk?.items||[]).map(String);
 
-  const ok=confirm('Changing package will reset all quotation items for this project. Continue?');
+  const ok=confirm('Changing package will reset package-included items and package price. Items outside the package and custom add-ons can remain. Continue?');
   if(!ok){
     rOverview(document.getElementById('tb'));
     return;
   }
 
   try{
-    AP.pkg=pkgName;
-    AP.checkedItems=items;
-    AP.itemQtys={};
-    AP.customItems=[];
+    const oldPackageItems=packageItemSet(AP);
+    const existingAddOns=(AP.checkedItems||[]).filter(id=>!oldPackageItems.has(String(id)));
+    AP.pkg=pk?.name||'';
+    await upsertProjectPackage(AP,pk);
+    AP.checkedItems=[...new Set([...items,...existingAddOns])];
+    AP.itemQtys=Object.fromEntries(Object.entries(AP.itemQtys||{}).filter(([id])=>!oldPackageItems.has(String(id))));
     AP.saved=false;
 
-    await savePatch({pkg:pkgName});
+    await savePatch({pkg:AP.pkg});
     await POST(`/api/projects/${AP.id}/consultation`,{
-      checkedItems:items,
-      itemQtys:{},
-      customItems:[]
+      checkedItems:AP.checkedItems,
+      itemQtys:AP.itemQtys,
+      customItems:AP.customItems,
+      itemOptions:AP.itemOptions||{}
     });
 
     AP=await fetchProject(AP.id);
@@ -1241,7 +1677,7 @@ async function changeProjectPackage(pkgName){
 
     rOverview(document.getElementById('tb'));
     renderDash(currentFilter);
-    toast('Package changed and quotation reset ✓');
+    toast('Package changed ✓');
   }catch(e){
     toast(`Package change failed: ${errMsg(e)}`,4500);
   }
@@ -1258,14 +1694,14 @@ function changeStage(val){
 // ══════════════════════════════════════
 function rConsult(body){
   body.innerHTML=`<div class="cwrap"><div class="cleft" id="cleft"></div><div class="cright" id="cright"></div></div>`;
-  buildChecklist();buildQPanel();
+  buildChecklist();buildQPanel();updMobBar();
 }
 function buildChecklist(){
   const p=AP,el=document.getElementById('cleft');if(!el)return;
   const catalog=liveCatalog();
   el.innerHTML=`
-    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(p.checkedItems.length)} item${p.checkedItems.length!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcQuoteTotal(p))}</strong></div>
+    <div class="consult-sticky-head" style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+	      <div style="flex:1;font-size:var(--sm);color:var(--g500)">${commas(selectedQuoteCount(p))} item${selectedQuoteCount(p)!==1?'s':''} · <strong style="color:var(--brand)">${fmt(calcQuoteTotal(p))}</strong></div>
       <button class="btn btn-out btn-sm" onclick="undoQuoteChange()" ${quoteUndoCount()?'':'disabled'}>↶ Undo</button>
       <button class="btn btn-green btn-sm" onclick="saveConsult()">💾 Save</button>
     </div>
@@ -1284,26 +1720,41 @@ function buildChecklist(){
     	     <div class="qv">${commas(q)}</div>
     	     <div class="qb" onclick="chgQty('${id}',1)">+</div>
   	   </div>`:''}
-  	   <div class="cp" onclick="toggleItem('${id}')">${fmt(effP(id)*(on?q:1))}</div>
+	  	   <div class="cp" onclick="toggleItem('${id}')">${isPackageItem(p,id)?'Included':fmt(effP(id)*(on?q:1))}</div>
 	   ${on&&normalized.options?.length?renderItemOptions(id,normalized):''}
 	   </div>`;
         }).join('')}
       </div>`).join('')}
-    <div class="cat-sec">
-      <div class="cat-h"><span>✏️ Custom Items</span><button class="btn btn-out btn-xs" onclick="addCustRow()">+ Add</button></div>
-      <div id="cust-rows">
-        ${(p.customItems||[]).map((ci,i)=>`
-          <div class="crow">
-            <input class="crn" value="${ci.name}" placeholder="Item description" onchange="pushQuoteUndo();AP.customItems[${i}].name=this.value;buildQPanel()">
-            <input class="crp" type="number" value="${ci.price||''}" placeholder="0" min="0" onchange="pushQuoteUndo();AP.customItems[${i}].price=parseFloat(this.value)||0;buildQPanel();updMobBar()">
-            <button class="crdel" onclick="rmCust(${i})">×</button>
-          </div>`).join('')}
-      </div>
-    </div>`;
+	    <div class="cat-sec">
+	      <div class="cat-h"><span>✏️ Custom Items</span><span style="color:var(--g300)">${selectedCustomItems(p).length}/${(p.customItems||[]).filter(ci=>!customDeleted(ci)).length}</span><button class="btn btn-out btn-xs" onclick="openAddQ()">+ Add</button></div>
+	      <div id="cust-rows">
+	        ${(p.customItems||[]).map((ci,i)=>({...ci,_index:i})).filter(ci=>!customDeleted(ci)).map(ci=>{
+	          const i=ci._index;
+	          const on=customSelected(ci),q=Number(ci.qty||1);
+	          return `<div class="chk custom-row ${on?'on':''}" id="cust-${ci.quoteItemId||i}">
+	            <div class="cbox" onclick="toggleCustomItem(${i})"><span class="ctick">✓</span></div>
+	            <div class="ci" onclick="event.stopPropagation()">
+	              <div class="cust-fields">
+	                <input class="crn" value="${esc(ci.name)}" placeholder="Item description" onchange="updateCustomField(${i},{name:this.value})">
+			<input class="crp" type="text" inputmode="numeric" value="${ci.price?commas(ci.price):''}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" oninput="formatMoneyInput(this)" onchange="updateCustomField(${i},{price:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
+			<button class="btn btn-out btn-xs crcost" onclick="event.stopPropagation();editCustomCost(${i})">Edit Cost</button>
+	              </div>
+	            </div>
+	            ${on?`<div class="qtyc" onclick="event.stopPropagation()">
+	              <div class="qb ${q<=1?'qbh':''}" onclick="chgCustomQuoteQty(${i},-1)">−</div>
+	              <div class="qv">${commas(q)}</div>
+	              <div class="qb" onclick="chgCustomQuoteQty(${i},1)">+</div>
+	            </div>`:''}
+	            <div class="cp" onclick="toggleCustomItem(${i})">${fmt((ci.price||0)*(on?q:1))}</div>
+	            <button class="delbtn" style="margin-left:6px" onclick="event.stopPropagation();deleteCustomItem(${i})">×</button>
+	          </div>`;
+	        }).join('')}
+	      </div>
+	    </div>`;
 }
 function renderItemOptions(itemId,item){
   return `<div class="item-options" onclick="event.stopPropagation()">
-    <div class="opt-title">🧩 Configuration Options</div>
+    <div class="opt-title">🧩 Configuration</div>
     <div class="opt-grid">
       ${(item.options||[]).map(opt=>{
         const val=opt.value ?? opt.default_value ?? '';
@@ -1349,21 +1800,109 @@ function chgQty(id,delta){
   if(nxt<1){const idx=p.checkedItems.indexOf(id);if(idx>=0){p.checkedItems.splice(idx,1);delete p.itemQtys[id];}p.saved=false;buildChecklist();buildQPanel();updMobBar();return;}
   p.itemQtys[id]=nxt;p.saved=false;buildChecklist();buildQPanel();updMobBar();
 }
-function addCustRow(){pushQuoteUndo();if(!AP.customItems)AP.customItems=[];AP.customItems.push({name:'',price:0,qty:1});buildChecklist();buildQPanel();}
-function rmCust(i){pushQuoteUndo();AP.customItems.splice(i,1);buildChecklist();buildQPanel();updMobBar();}
+function addCustRow(){openAddQ();}
+async function saveCustomQuoteItem(i,{silent=false}={}){
+  if(!AP?.customItems?.[i])return null;
+  const ci=AP.customItems[i];
+  if(!ci.name&&!ci.price&&!ci.quoteItemId)return null;
+  try{
+    const saved=ci.quoteItemId
+      ? await PATCH(`/api/projects/${AP.id}/quote/${ci.quoteItemId}`,customPayload(ci))
+      : await POST(`/api/projects/${AP.id}/quote`,customPayload(ci));
+    AP.customItems[i]=customFromQuoteRow(saved);
+    AP.saved=false;
+    return AP.customItems[i];
+  }catch(e){
+    if(!silent)toast(`Custom item not saved: ${errMsg(e)}`,4500);
+    throw e;
+  }
+}
+function refreshCustomSurfaces(){
+  const tb=document.getElementById('tb');
+  if(activeTab==='consult')buildChecklist();
+  else if(activeTab==='quote'&&tb)rQuote(tb);
+  else if(activeTab==='admin'&&tb)rAdmin(tb);
+  buildQPanel();
+  updMobBar();
+  renderDash(currentFilter);
+}
+async function updateCustomField(i,patch){
+  if(!AP?.customItems?.[i])return;
+  pushQuoteUndo();
+  Object.assign(AP.customItems[i],patch);
+  AP.saved=false;
+  refreshCustomSurfaces();
+  try{
+    await saveCustomQuoteItem(i,{silent:true});
+    refreshCustomSurfaces();
+    toast('Custom item saved ✓',1600);
+  }catch(e){
+    toast(`Custom item not saved: ${errMsg(e)}`,4500);
+  }
+}
+async function editCustomCost(i){
+  const ci=AP?.customItems?.[i];
+  if(!ci)return;
+  const value=prompt('Internal cost (NT$)', commas(ci.cost||0));
+  if(value===null)return;
+  await updateCustomField(i,{cost:parseMoney(value)});
+}
+async function toggleCustomItem(i,force){
+  if(!AP?.customItems?.[i])return;
+  pushQuoteUndo();
+  const prev=AP.customItems[i].active;
+  AP.customItems[i].active=force===undefined?!customSelected(AP.customItems[i]):!!force;
+  AP.saved=false;
+  buildChecklist();buildQPanel();updMobBar();
+  try{
+    await saveCustomQuoteItem(i,{silent:true});
+  }catch(e){
+    AP.customItems[i].active=prev;
+    buildChecklist();buildQPanel();updMobBar();
+    toast(`Custom item not updated: ${errMsg(e)}`,4500);
+  }
+}
+async function persistCustomQuoteItems(){
+  if(!AP?.customItems?.length)return;
+  for(let i=0;i<AP.customItems.length;i++){
+    if(AP.customItems[i]?.name||AP.customItems[i]?.price||AP.customItems[i]?.quoteItemId){
+      await saveCustomQuoteItem(i,{silent:true});
+    }
+  }
+}
+function rmCust(i){toggleCustomItem(i,false);}
+async function deleteCustomItem(i,{confirmUser=true}={}){
+  if(!AP?.customItems?.[i])return;
+  const item=AP.customItems[i];
+  if(confirmUser&&!confirm('Delete this custom item from this project?'))return;
+  pushQuoteUndo();
+  AP.customItems.splice(i,1);
+  AP.saved=false;
+  refreshCustomSurfaces();
+  try{
+    if(item.quoteItemId)await DELETE(`/api/projects/${AP.id}/quote/${item.quoteItemId}`);
+    toast('Custom item deleted ✓',1800);
+  }catch(e){
+    AP.customItems.splice(i,0,item);
+    refreshCustomSurfaces();
+    toast(`Custom item not deleted: ${errMsg(e)}`,4500);
+  }
+}
 async function saveConsult(){
   if(!AP)return;
-  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(AP.checkedItems.length)} items · ${fmt(calcQuoteTotal(AP))}`,type:'save'});
+  AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Consultation saved',old:'',nv:`${commas(selectedQuoteCount(AP))} items · ${fmt(calcQuoteTotal(AP))}`,type:'save'});
   try{
-    await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems});
+    await POST(`/api/projects/${AP.id}/consultation`,{checkedItems:AP.checkedItems,itemQtys:AP.itemQtys,customItems:AP.customItems,itemOptions:AP.itemOptions||{}});
+    await persistCustomQuoteItems();
     AP.saved=true;
-const fresh=await fetchProject(AP.id);
-AP={...fresh};
+	const fresh=await fetchProject(AP.id);
+	AP={...fresh};
 projects=projects.map(p=>p.id===AP.id?AP:p);
 
-toast('Consultation saved ✓');
-buildChecklist();
-renderDash(currentFilter);
+	toast('Consultation saved ✓');
+	buildChecklist();
+	buildQPanel();
+	renderDash(currentFilter);
   }catch(e){
     AP.saved=false;
     toast(`Consultation not saved: ${errMsg(e)}`,4500);
@@ -1371,16 +1910,19 @@ renderDash(currentFilter);
 }
 function buildQPanel(){
   const p=AP,el=document.getElementById('cright');if(!el)return;
-  const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
-  const customs=(p.customItems||[]).filter(c=>c.name||c.price);
+  const included=packageIncludedEntries(p);
+  const checked=addOnEntries(p);
+  const customs=selectedCustomItems(p);
   const total=calcQuoteTotal(p);
   const lines=[
+    hasPackage(p)?`<div class="qpl"><div><div class="qpln">${p.packageQuote.name||p.pkg||'Package'}</div><div class="qplc">Included: ${commas(included.length)} item${included.length!==1?'s':''}</div></div><div class="qpla">${fmt(packagePrice(p))}</div></div>`:'',
+    checked.length&&hasPackage(p)?`<div style="padding:8px 15px 2px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g400)">Add-ons</div>`:'',
     ...checked.map(x=>`<div class="qpl"><div><div class="qpln">${x.item.name}</div><div class="qplc">${catOf(x.item.id)}${x.q>1?` · qty ${commas(x.q)}`:''}</div></div><div class="qpla">${fmt(x.price*x.q)}</div></div>`),
     ...customs.map(c=>`<div class="qpl"><div><div class="qpln">${c.name||'Custom item'}</div><div class="qplc">Custom${(c.qty||1)>1?` · qty ${commas(c.qty)}`:''}</div></div><div class="qpla">${fmt((c.price||0)*(c.qty||1))}</div></div>`)
   ].join('');
   el.innerHTML=`
     <div class="qpanel">
-      <div class="qph"><div class="qpt">Live Quote</div><div class="qpn">${commas(checked.length+customs.length)} items</div></div>
+	      <div class="qph"><div class="qpt">Live Quote</div><div class="qpn">${commas(selectedQuoteCount(p))} items</div></div>
       <div class="qpb">${lines||'<div class="qpe">Tap items to build the quote</div>'}</div>
       <div class="qptotal"><div class="qptl">Total</div><div class="qpta">${fmt(total)}</div></div>
       <div class="qpact">
@@ -1393,14 +1935,19 @@ function buildQPanel(){
 function updMobBar(){
   if(!AP)return;
   document.getElementById('mob-amt').textContent=fmt(calcQuoteTotal(AP));
-  document.getElementById('mob-cnt').textContent=commas(AP.checkedItems.length)+' items';
+  document.getElementById('mob-cnt').textContent=commas(selectedQuoteCount(AP))+' items';
 }
 function copyQuoteText(){
   const p=AP;
-  const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
-  const customs=(p.customItems||[]).filter(c=>c.name||c.price);
+  const included=packageIncludedEntries(p);
+  const checked=addOnEntries(p);
+  const customs=selectedCustomItems(p);
   const total=calcQuoteTotal(p);
-  const lines=[...checked.map(x=>`${x.item.name.padEnd(38)}${x.q>1?'x'+commas(x.q)+' ':'     '} ${fmt(x.price*x.q)}`),
+  const packageLines=hasPackage(p)
+    ? [`${(p.packageQuote.name||p.pkg||'Package').padEnd(38)}      ${fmt(packagePrice(p))}`,`Included:`,...included.map(x=>`- ${x.item.name}`),...(checked.length||customs.length?['','Additional Options:']:[])]
+    : [];
+  const lines=[...packageLines,
+               ...checked.map(x=>`${x.item.name.padEnd(38)}${x.q>1?'x'+commas(x.q)+' ':'     '} ${fmt(x.price*x.q)}`),
                ...customs.map(c=>`${(c.name||'Custom').padEnd(38)}      ${fmt((c.price||0)*(c.qty||1))}`)].join('\n');
   const terms=document.getElementById('default-terms')?.value||'';
   const txt=`CREATIVE DEN STUDIO\n報價單 Quote\n${p.owner}  ${p.vehicle}  ${p.plate||''}\n${p.jobNo}  ${new Date().toLocaleDateString('zh-TW')}\n${'─'.repeat(55)}\n${lines}\n${'─'.repeat(55)}\n總計 Total: ${fmt(total)}\n\n${terms}`;
@@ -1408,11 +1955,14 @@ function copyQuoteText(){
 }
 function printQuote(){
   const p=AP;
-  const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
-  const customs=(p.customItems||[]).filter(c=>c.name||c.price);
+  const included=packageIncludedEntries(p);
+  const checked=addOnEntries(p);
+  const customs=selectedCustomItems(p);
   const total=calcQuoteTotal(p);  
   const terms=document.getElementById('default-terms')?.value||'';
   const rows=[
+    hasPackage(p)?`<tr><td>Package</td><td><strong>${p.packageQuote.name||p.pkg||'Package'}</strong><div style="margin-top:5px;color:#6b6b68;font-size:10pt;line-height:1.5">Included:<br>${included.map(x=>`- ${x.item.name}`).join('<br>')||'- Included package items'}</div></td><td style="text-align:center">1</td><td style="text-align:right;font-family:monospace">${fmt(packagePrice(p))}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt(packagePrice(p))}</td></tr>`:'',
+    hasPackage(p)&&(checked.length||customs.length)?`<tr><td colspan="5" style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8c8c89;background:#f8f8f5">Additional Options</td></tr>`:'',
     ...checked.map(x=>`<tr><td>${catOf(x.item.id)}</td><td>${x.item.name}</td><td style="text-align:center">${commas(x.q)}</td><td style="text-align:right;font-family:monospace">${fmt(x.price)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt(x.price*x.q)}</td></tr>`),
     ...customs.map(c=>`<tr><td>Custom</td><td>${c.name||'Custom item'}</td><td style="text-align:center">${commas(c.qty||1)}</td><td style="text-align:right;font-family:monospace">${fmt(c.price||0)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt((c.price||0)*(c.qty||1))}</td></tr>`)
   ].join('');
@@ -1460,9 +2010,20 @@ function printQuote(){
 // ══════════════════════════════════════
 function rQuote(body){
   const p=AP;
-  const checked=p.checkedItems.map(id=>({item:itemById(id),price:effP(id),q:qty(p,id)})).filter(x=>x.item);
-  const customs=p.customItems||[];
+  const included=packageIncludedEntries(p);
+  const checked=addOnEntries(p);
+  const customs=selectedCustomItems(p);
   const total=calcQuoteTotal(p);
+  const packageRows=hasPackage(p)?`
+    <tr>
+      <td style="color:var(--g500)">Package</td>
+      <td style="font-weight:600">${p.packageQuote.name||p.pkg||'Package'}<div style="font-size:var(--xxs);color:var(--g400);font-weight:400;margin-top:3px">Included: ${included.map(x=>x.item.name).join(', ')||'package items'}</div></td>
+      <td class="c">1</td>
+      <td class="r bb" style="font-size:16px">${fmt(packagePrice(p))}</td>
+      <td class="r bb" style="font-size:16px;color:var(--brand)">${fmt(packagePrice(p))}</td>
+      <td></td>
+    </tr>
+    ${(checked.length||customs.length)?`<tr><td colspan="6" style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;color:var(--g400);background:var(--g50)">Additional Options</td></tr>`:''}`:'';
   const cRows=checked.map(x=>`
     <tr>
       <td style="color:var(--g500)">${catOf(x.item.id)}</td>
@@ -1481,13 +2042,16 @@ function rQuote(body){
       <td style="color:var(--g500)">Custom</td>
       <td style="font-weight:600">${e.name||'Custom item'}</td>
       <td class="c"><div class="qtyc-sm">
-        <div class="qbs" onclick="chgCustomQuoteQty(${i},-1)">−</div>
+        <div class="qbs" onclick="chgCustomQuoteQty(${e._index},-1)">−</div>
         <div class="qvs">${commas(e.qty||1)}</div>
-        <div class="qbs" onclick="chgCustomQuoteQty(${i},1)">+</div>
+        <div class="qbs" onclick="chgCustomQuoteQty(${e._index},1)">+</div>
       </div></td>
       <td class="r bb" style="font-size:16px">${fmt(e.price||0)}</td>
       <td class="r bb" style="font-size:16px;color:var(--brand)">${fmt((e.price||0)*(e.qty||1))}</td>
-      <td><button class="delbtn" onclick="rmCustomQuoteItem(${i})">×</button></td>
+      <td><div style="display:flex;gap:5px;justify-content:flex-end;align-items:center">
+        <button class="btn btn-out btn-xs" onclick="editCustomCost(${e._index})">Cost</button>
+        <button class="delbtn" onclick="rmCustomQuoteItem(${e._index})">×</button>
+      </div></td>
     </tr>`).join('');
   const terms=document.getElementById('default-terms')?.value||'';
   body.innerHTML=`
@@ -1503,7 +2067,7 @@ function rQuote(body){
     <div class="qtwrap">
       <table class="qt">
         <thead><tr><th>Category</th><th>Description</th><th class="c">Qty</th><th class="r">Unit Price</th><th class="r">Subtotal</th><th></th></tr></thead>
-        <tbody>${cRows+xRows||`<tr><td colspan="6" style="text-align:center;padding:26px;color:var(--g300);font-style:italic">No items — use Consultation tab</td></tr>`}</tbody>
+	        <tbody>${packageRows+cRows+xRows||`<tr><td colspan="6" style="text-align:center;padding:26px;color:var(--g300);font-style:italic">No items — use Consultation tab</td></tr>`}</tbody>
         <tfoot class="qtfoot"><tr>
           <td colspan="4" style="color:var(--g500);font-size:var(--xxs)">總計 Total</td>
           <td class="r bb" style="font-size:20px;color:var(--brand)">${fmt(total)}</td>
@@ -1519,29 +2083,32 @@ function rmChecked(id){
   if(idx>=0){AP.checkedItems.splice(idx,1);delete AP.itemQtys[id];}
   AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Quote item removed',old:itemById(id)?.name||id,nv:'',type:'quote'});
 }
-function chgCustomQuoteQty(i,delta){
+async function chgCustomQuoteQty(i,delta){
   if(!AP?.customItems?.[i])return;
   pushQuoteUndo();
   const cur=AP.customItems[i].qty||1,nxt=cur+delta;
-  if(nxt<1)AP.customItems.splice(i,1);
-  else AP.customItems[i].qty=nxt;
+  if(nxt<1){
+    await deleteCustomItem(i,{confirmUser:false});
+    rQuote(document.getElementById('tb'));
+    return;
+  }
+  AP.customItems[i].qty=nxt;
   AP.saved=false;
   buildQPanel();updMobBar();rQuote(document.getElementById('tb'));
+  try{await saveCustomQuoteItem(i,{silent:true});}
+  catch(e){toast(`Quantity not saved: ${errMsg(e)}`,4500);}
 }
 function rmCustomQuoteItem(i){
   if(!AP?.customItems?.[i])return;
-  pushQuoteUndo();
-  AP.customItems.splice(i,1);
-  AP.saved=false;
-  buildQPanel();updMobBar();rQuote(document.getElementById('tb'));
+  deleteCustomItem(i).then(()=>rQuote(document.getElementById('tb')));
 }
 function openAddQ(){
   // populate cat dropdown from live catalog
   const sel=document.getElementById('aq-cat');
-  sel.innerHTML=CATALOG.map(c=>`<option>${c.cat}</option>`).join('');
+  sel.innerHTML=liveCatalog().map(c=>`<option value="${esc(c.cat||c.name||'Custom')}">${esc(c.cat||c.name||'Custom')}</option>`).join('');
   document.getElementById('modal-addq').classList.add('open');
 }
-function addCustomItem(){
+async function addCustomItem(){
   const p=AP;if(!p)return;
   const name=document.getElementById('aq-name').value.trim();
   const price=parseFloat(document.getElementById('aq-price').value)||0;
@@ -1550,11 +2117,20 @@ function addCustomItem(){
   if(!name){toast('Enter an item name');return;}
   pushQuoteUndo();
   if(!p.customItems)p.customItems=[];
-  p.customItems.push({name,price,cost,qty:1,cat});
-  p.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Custom item added',old:'',nv:name+' — '+fmt(price),type:'quote'});
-  closeModal('modal-addq');
-  ['aq-name','aq-price','aq-cost'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  rQuote(document.getElementById('tb'));
+  const draft={name,price,cost,qty:1,cat,active:true,internal_notes:'Custom consultation item'};
+  p.customItems.push(draft);
+  const idx=p.customItems.length-1;
+  try{
+    await saveCustomQuoteItem(idx);
+    p.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Custom item added',old:'',nv:name+' — '+fmt(price),type:'quote'});
+    closeModal('modal-addq');
+    ['aq-name','aq-price','aq-cost'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    refreshQuoteSurfaces();
+    toast('Custom item saved ✓');
+  }catch(e){
+    p.customItems.splice(idx,1);
+    refreshQuoteSurfaces();
+  }
 }
 
 // ══════════════════════════════════════
@@ -1683,18 +2259,19 @@ async function addNote(){
 // ══════════════════════════════════════
 function rAdmin(body){
   const p=AP;
-  const checked=p.checkedItems.map(id=>({item:itemById(id),cust:effP(id),cost:spTot(id),q:qty(p,id)})).filter(x=>x.item);
-  const customs=(p.customItems||[]).map(e=>({item:{name:e.name||'Custom item'},cust:e.price||0,cost:e.cost||0,q:e.qty||1}));
-  const all=[...checked,...customs];
-  const totC=all.reduce((s,x)=>s+x.cust*x.q,0);
+  const checked=checkedCatalogEntries(p).map(x=>({item:x.item,cust:isPackageItem(p,x.id)?0:x.price,cost:spTot(x.id),q:x.q,included:isPackageItem(p,x.id)}));
+  const customs=selectedCustomItems(p).map(e=>({item:{name:e.name||'Custom item'},cust:e.price||0,cost:e.cost||0,q:e.qty||1}));
+  const packageRow=hasPackage(p)?[{item:{name:p.packageQuote.name||p.pkg||'Package'},cust:packagePrice(p),cost:0,q:1,included:false}]:[];
+  const all=[...packageRow,...checked,...customs];
+  const totC=calcQuoteTotal(p);
   const totCo=all.reduce((s,x)=>s+x.cost*x.q,0);
   const profit=totC-totCo,margin=totC?Math.round(profit/totC*100):0;
   const rows=all.map(x=>{
     const xP=(x.cust-x.cost)*x.q,xM=x.cust?Math.round((x.cust-x.cost)/x.cust*100):0;
     return`<tr>
-      <td style="font-weight:600">${x.item.name}</td>
-      <td class="c">${commas(x.q)}</td>
-      <td class="r bb" style="font-size:15px">${fmt(x.cust*x.q)}</td>
+	      <td style="font-weight:600">${x.item.name}${x.included?'<div style="font-size:var(--xxs);color:var(--g400);font-weight:400">Package included</div>':''}</td>
+	      <td class="c">${commas(x.q)}</td>
+	      <td class="r bb" style="font-size:15px">${x.included?'Included':fmt(x.cust*x.q)}</td>
       <td class="r bb" style="font-size:15px;color:var(--g500)">${fmt(x.cost*x.q)}</td>
       <td class="c bb" style="font-size:15px;color:${xP>=0?'#15803d':'#dc2626'}">${fmt(xP)}</td>
       <td class="c bb" style="font-size:15px;color:var(--brand)">${xM}%</td>
@@ -1758,6 +2335,29 @@ function cfData(p){
   return p.cashflow;
 }
 
+function cashflowDirection(type){
+  return ['deposits','income','in'].includes(type)?'in':'out';
+}
+
+function cashflowTypeLabel(type){
+  return cashflowDirection(type)==='in'?'in':'out';
+}
+
+function cashflowCategories(type){
+  return cashflowDirection(type)==='in'?CASH_IN_CATEGORIES:CASH_OUT_CATEGORIES;
+}
+
+function cashflowDefaultCategory(type){
+  return cashflowDirection(type)==='in'?'Customer Deposit':'Parts / Materials';
+}
+
+function cashflowCategoryOptions(type,current=''){
+  const categories=cashflowCategories(type);
+  const active=String(current||cashflowDefaultCategory(type));
+  const options=active&&!categories.includes(active)?[active,...categories]:categories;
+  return options.map(cat=>`<option value="${esc(cat)}" ${cat===active?'selected':''}>${esc(cat)}</option>`).join('');
+}
+
 function rCashflow(body){
   const p=AP;
   const cf=cfData(p);
@@ -1806,12 +2406,14 @@ function rCashflow(body){
     <div class="fc" style="padding:0;margin-bottom:4px">
       <div class="cf-table-wrap">
       <table class="cf-table">
-        <thead><tr><th>Date</th><th>Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Note</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
         <tbody>
           ${(cf.deposits||[]).map((d,i)=>`
             <tr>
               <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="updateCfField('deposits',${i},'date',this.value)"></td>
+              <td><select class="cf-input" style="min-width:185px" onchange="updateCfField('deposits',${i},'category',this.value)">${cashflowCategoryOptions('deposits',d.category)}</select></td>
               <td><input class="cf-input desc" style="width:100%;min-width:80px" value="${esc(d.desc||'')}" placeholder="e.g. 50% deposit" oninput="updateCfField('deposits',${i},'desc',this.value)" onchange="updateCfField('deposits',${i},'desc',this.value)"></td>
+              <td><input class="cf-input" style="width:100%;min-width:120px" value="${esc(d.note||'')}" placeholder="Optional" oninput="updateCfField('deposits',${i},'note',this.value)" onchange="updateCfField('deposits',${i},'note',this.value)"></td>
               <td class="r"><input class="cf-input amt" type="text" inputmode="numeric" value="${commas(d.amount||0)}" placeholder="0" oninput="updateCfAmountLive('deposits',${i},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="updateCfAmount('deposits',${i},this.value)"></td>
               <td><button class="cf-del" onclick="rmCfEntry('deposits',${i})">×</button></td>
             </tr>`).join('')}
@@ -1825,12 +2427,14 @@ function rCashflow(body){
     <div class="fc" style="padding:0;margin-bottom:4px">
       <div class="cf-table-wrap">
       <table class="cf-table">
-        <thead><tr><th>Date</th><th>Vendor / Description</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Category</th><th>Vendor / Description</th><th>Note</th><th class="r">Amount (NT$)</th><th></th></tr></thead>
         <tbody>
           ${(cf.vendorPayments||[]).map((d,i)=>`
             <tr>
               <td><input class="cf-input" style="width:130px" type="date" value="${d.date||''}" onchange="updateCfField('vendorPayments',${i},'date',this.value)"></td>
+              <td><select class="cf-input" style="min-width:185px" onchange="updateCfField('vendorPayments',${i},'category',this.value)">${cashflowCategoryOptions('vendorPayments',d.category)}</select></td>
               <td><input class="cf-input" style="width:100%;min-width:80px" value="${esc(d.desc||'')}" placeholder="e.g. Bed frame steel" oninput="updateCfField('vendorPayments',${i},'desc',this.value)" onchange="updateCfField('vendorPayments',${i},'desc',this.value)"></td>
+              <td><input class="cf-input" style="width:100%;min-width:120px" value="${esc(d.note||'')}" placeholder="Optional" oninput="updateCfField('vendorPayments',${i},'note',this.value)" onchange="updateCfField('vendorPayments',${i},'note',this.value)"></td>
               <td class="r"><input class="cf-input amt" type="text" inputmode="numeric" value="${commas(d.amount||0)}" placeholder="0" oninput="updateCfAmountLive('vendorPayments',${i},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="updateCfAmount('vendorPayments',${i},this.value)"></td>
               <td><button class="cf-del" onclick="rmCfEntry('vendorPayments',${i})">×</button></td>
             </tr>`).join('')}
@@ -1850,7 +2454,13 @@ function rCashflow(body){
 
 function addCfEntry(type){
   const p=AP;if(!p.cashflow)p.cashflow={deposits:[],vendorPayments:[]};
-  p.cashflow[type].push({date:new Date().toISOString().slice(0,10),desc:'',amount:0});
+  p.cashflow[type].push({
+    date:new Date().toISOString().slice(0,10),
+    category:cashflowDefaultCategory(type),
+    desc:'',
+    amount:0,
+    note:''
+  });
   rCashflow(document.getElementById('tb'));
   scheduleCashflowSave();
 }
@@ -1964,7 +2574,7 @@ function mcfDateFilter(dateStr){
   if(Number.isNaN(d.getTime()))return false;
   const now=new Date();
   const y=d.getFullYear(),m=d.getMonth();
-  if(MCF_PERIOD==='month')return y===now.getFullYear()&&m===now.getMonth();
+  if(MCF_PERIOD==='thismonth'||MCF_PERIOD==='month')return y===now.getFullYear()&&m===now.getMonth();
   if(MCF_PERIOD==='lastMonth'){
     const last=new Date(now.getFullYear(),now.getMonth()-1,1);
     return y===last.getFullYear()&&m===last.getMonth();
@@ -1982,23 +2592,28 @@ function mcfProjectRows(){
   return projects
     .filter(p=>!p.archived&&p.stage!=='14 Archived')
     .flatMap(p=>{
-      const source=`${p.jobNo||''} · ${p.vehicle||''} — ${p.owner||''}`;
+      const projectNo=p.jobNo||'';
+      const source=`${p.vehicle||''} — ${p.owner||''}`;
       const cf=cfData(p);
       const deposits=(cf.deposits||[]).map(entry=>({
         date:entry.date||'',
-        type:'Project deposit',
-        category:'Project deposit',
+        source:source||'Project',
+        projectNo,
+        type:'in',
+        category:entry.category||'Customer Deposit',
         desc:entry.desc||'Deposit collected',
-        source,
+        note:entry.note||'',
         inAmt:parseMoney(entry.amount),
         outAmt:0
       }));
       const vendor=(cf.vendorPayments||[]).map(entry=>({
         date:entry.date||'',
-        type:'Project vendor payment',
-        category:'Vendor / parts',
+        source:source||'Project',
+        projectNo,
+        type:'out',
+        category:entry.category||'Parts / Materials',
         desc:entry.desc||'Vendor payment',
-        source,
+        note:entry.note||'',
         inAmt:0,
         outAmt:parseMoney(entry.amount)
       }));
@@ -2011,10 +2626,12 @@ function mcfCompanyRows(){
     ...entry,
     _index:index,
     date:entry.date||'',
-    type:entry.type==='expense'?'Company expense':'Company income',
-    category:entry.category||'',
+    source:'Company',
+    projectNo:'',
+    type:entry.type==='expense'?'out':'in',
+    category:entry.category||mcfDefaultCategory(entry.type),
     desc:entry.desc||'',
-    source:entry.note||'Company',
+    note:entry.note||'',
     inAmt:entry.type==='income'?parseMoney(entry.amount):0,
     outAmt:entry.type==='expense'?parseMoney(entry.amount):0
   }));
@@ -2034,6 +2651,9 @@ function renderMasterCF(){
   const projectRows=mcfProjectRows().filter(row=>mcfDateFilter(row.date));
   const companyIncome=MCF_ENTRIES.map((entry,index)=>({...entry,_index:index})).filter(e=>e.type==='income'&&mcfDateFilter(e.date));
   const companyExpense=MCF_ENTRIES.map((entry,index)=>({...entry,_index:index})).filter(e=>e.type==='expense'&&mcfDateFilter(e.date));
+  const companyRows=MCF_ENTRIES.map((entry,index)=>({...entry,_index:index}))
+    .filter(e=>mcfDateFilter(e.date))
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || b._index-a._index);
   const projectDepositTotal=projectRows.filter(r=>r.inAmt).reduce((s,r)=>s+r.inAmt,0);
   const projectVendorTotal=projectRows.filter(r=>r.outAmt).reduce((s,r)=>s+r.outAmt,0);
   const companyIncomeTotal=companyIncome.reduce((s,e)=>s+parseMoney(e.amount),0);
@@ -2046,7 +2666,7 @@ function renderMasterCF(){
   const outstanding=Math.max(activeQuoteTotal-activeDepositTotal,0);
   const ifAllPaid=netCash+outstanding;
   const filters=[
-    ['all','All Time'],['month','This Month'],['lastMonth','Last Month'],['year','This Year'],['custom','Custom']
+    ['thismonth','This Month'],['lastMonth','Last Month'],['year','This Year'],['all','All Time'],['custom','Custom']
   ];
   el.innerHTML=`
     <div class="mcf-head">
@@ -2057,9 +2677,11 @@ function renderMasterCF(){
       </div>
     </div>
     <div class="mcf-filters">
-      ${filters.map(([key,label])=>`<button class="mcf-filter ${MCF_PERIOD===key?'on':''}" onclick="setMCFPeriod(this,'${key}')">${label}</button>`).join('')}
-      <input class="mcf-date" type="date" value="${MCF_CUSTOM_FROM}" onchange="MCF_CUSTOM_FROM=this.value;MCF_PERIOD='custom';renderMasterCF()">
-      <input class="mcf-date" type="date" value="${MCF_CUSTOM_TO}" onchange="MCF_CUSTOM_TO=this.value;MCF_PERIOD='custom';renderMasterCF()">
+      ${filters.map(([key,label])=>`<button class="mcf-filter ${MCF_PERIOD===key?'on':''}" data-period="${key}" onclick="setMCFPeriod(this,'${key}')">${label}</button>`).join('')}
+      ${MCF_PERIOD==='custom'?`
+        <label class="mcf-date-field"><span>Start Date</span><input class="mcf-date" type="date" value="${MCF_CUSTOM_FROM}" onchange="MCF_CUSTOM_FROM=this.value;MCF_PERIOD='custom';renderMasterCF()"></label>
+        <label class="mcf-date-field"><span>End Date</span><input class="mcf-date" type="date" value="${MCF_CUSTOM_TO}" onchange="MCF_CUSTOM_TO=this.value;MCF_PERIOD='custom';renderMasterCF()"></label>
+      `:''}
     </div>
     <div class="mcf-kpis">
       <div class="mcf-kpi hi"><div class="mcf-label">Total In</div><div class="mcf-num mcf-in">${fmt(totalIn)}</div></div>
@@ -2069,16 +2691,15 @@ function renderMasterCF(){
     </div>
     <div class="mcf-grid">
       <div class="mcf-section full">
-        <div class="mcf-section-h"><strong>Project Cashflows</strong><span style="font-size:var(--xxs);color:var(--g400)">${commas(projectRows.length)} rows</span></div>
-        <div class="mcf-table-wrap">${projectRows.length?`
-          <table class="mcf-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Source / Note</th><th class="r">In</th><th class="r">Out</th></tr></thead><tbody>
-            ${projectRows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(row.type)}</td><td>${esc(row.desc)}</td><td>${esc(row.source)}</td><td class="r mcf-in">${row.inAmt?fmt(row.inAmt):''}</td><td class="r mcf-out">${row.outAmt?fmt(row.outAmt):''}</td></tr>`).join('')}
-          </tbody></table>`:'<div class="mcf-empty">No project cashflow entries in this period.</div>'}</div>
+        <div class="mcf-section-h"><strong>Cashflow Entries</strong><span style="font-size:var(--xxs);color:var(--g400)">${commas(allRows.length)} rows</span></div>
+        <div class="mcf-table-wrap">${allRows.length?`
+          <table class="mcf-table"><thead><tr><th>Date</th><th>Source</th><th>Project #</th><th>Type</th><th>Category</th><th>Description</th><th class="r">In</th><th class="r">Out</th></tr></thead><tbody>
+            ${allRows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(row.source)}</td><td>${esc(row.projectNo||'')}</td><td>${esc(String(row.type).toUpperCase())}</td><td>${esc(row.category)}</td><td>${esc(row.desc)}${row.note?`<div class="mcf-company-note">${esc(row.note)}</div>`:''}</td><td class="r mcf-in">${row.inAmt?fmt(row.inAmt):''}</td><td class="r mcf-out">${row.outAmt?fmt(row.outAmt):''}</td></tr>`).join('')}
+          </tbody></table>`:'<div class="mcf-empty">No cashflow entries in this period.</div>'}</div>
       </div>
-      ${mcfEditableSection('income',companyIncome)}
-      ${mcfEditableSection('expense',companyExpense)}
+      ${mcfCompanyCashflowsSection(companyRows)}
       <div class="mcf-section full">
-        <div class="mcf-section-h"><strong>Period Summary</strong><span style="font-size:var(--xxs);color:var(--g400)">${MCF_PERIOD==='all'?'All Time':MCF_PERIOD}</span></div>
+        <div class="mcf-section-h"><strong>${mcfPeriodLabel()}</strong></div>
         <div class="mcf-summary">
           <div class="mcf-sum"><span>Project deposits collected</span><strong class="mcf-in">${fmt(projectDepositTotal)}</strong></div>
           <div class="mcf-sum"><span>Company income</span><strong class="mcf-in">${fmt(companyIncomeTotal)}</strong></div>
@@ -2091,55 +2712,173 @@ function renderMasterCF(){
     </div>`;
 }
 
-function mcfEditableSection(type,rows){
+function mcfPeriodLabel(){
+  const now=new Date();
+  const monthString=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+  if(MCF_PERIOD==='all')return 'Period Summary &mdash; All Time';
+  if(MCF_PERIOD==='thismonth'||MCF_PERIOD==='month')return `Period Summary &mdash; ${monthString(now)}`;
+  if(MCF_PERIOD==='lastMonth')return `Period Summary &mdash; ${monthString(new Date(now.getFullYear(),now.getMonth()-1,1))}`;
+  if(MCF_PERIOD==='year')return `Period Summary &mdash; ${now.getFullYear()}`;
+  if(MCF_PERIOD==='custom'){
+    if(MCF_CUSTOM_FROM&&MCF_CUSTOM_TO)return `Period Summary &mdash; ${esc(MCF_CUSTOM_FROM)} to ${esc(MCF_CUSTOM_TO)}`;
+    return 'Period Summary &mdash; Custom Range';
+  }
+  return 'Period Summary';
+}
+
+function mcfCategoryList(type){
+  return cashflowCategories(type);
+}
+
+function mcfDefaultCategory(type){
+  return type==='income'?'Company Income':'Other Expense';
+}
+
+function mcfCategoryOptions(type,current=''){
+  const cats=mcfCategoryList(type);
+  const active=String(current||mcfDefaultCategory(type));
+  const options=active&&!cats.includes(active)?[active,...cats]:cats;
+  return options.map(cat=>`<option value="${esc(cat)}" ${cat===active?'selected':''}>${esc(cat)}</option>`).join('');
+}
+
+function mcfLocalDate(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function mcfDefaultEntryDate(){
+  const now=new Date();
+  if(MCF_PERIOD==='custom'&&MCF_CUSTOM_FROM)return MCF_CUSTOM_FROM;
+  if(MCF_PERIOD==='lastMonth')return mcfLocalDate(new Date(now.getFullYear(),now.getMonth(),0));
+  if(MCF_PERIOD==='year')return `${now.getFullYear()}-01-01`;
+  return mcfLocalDate(now);
+}
+
+function mcfCompanyForm(){
+  if(!MCF_FORM_TYPE)return '';
+  const editing=MCF_EDIT_ID?MCF_ENTRIES.find(entry=>entry.id===MCF_EDIT_ID):null;
+  const type=editing?.type||MCF_FORM_TYPE;
   const isIncome=type==='income';
-  const title=isIncome?'Company Income':'Company Expenses';
-  const cats=isIncome
-    ? ['Other income','Grant / subsidy','Loan received','Equipment sale','Rental income']
-    : ['Rent / studio','Salaries','Equipment','Utilities','Marketing','Insurance','Tax / accounting','Tools & consumables','Other expense'];
-  return `<div class="mcf-section full">
-    <div class="mcf-section-h">
-      <strong>${title}</strong>
-      <div class="mcf-mini-actions">
-        <button class="btn btn-out btn-xs" onclick="addMCFEntry('${type}')">+ Add</button>
-        <button class="btn btn-brand btn-xs" onclick="saveMCFEntries()">Save</button>
+  const dateValue=editing?.date||mcfDefaultEntryDate();
+  const categoryValue=editing?.category||mcfDefaultCategory(type);
+  const descValue=editing?.desc||'';
+  const amountValue=editing?commas(editing.amount||0):'';
+  const noteValue=editing?.note||'';
+  return `<div class="mcf-company-form">
+    <div class="mcf-form-grid">
+      ${editing?`<div class="mcf-field">
+        <label>Type</label>
+        <select class="mcf-select" id="mcf-form-type" onchange="updateMCFFormCategoryChoices(this.value)">
+          <option value="income" ${type==='income'?'selected':''}>Income</option>
+          <option value="expense" ${type==='expense'?'selected':''}>Expense</option>
+        </select>
+      </div>`:''}
+      <div class="mcf-field">
+        <label>Date</label>
+        <input class="mcf-input" id="mcf-form-date" type="date" value="${esc(dateValue)}">
+      </div>
+      <div class="mcf-field">
+        <label>Category</label>
+        <select class="mcf-select" id="mcf-form-category">${mcfCategoryOptions(type,categoryValue)}</select>
+      </div>
+      <div class="mcf-field">
+        <label>Description</label>
+        <input class="mcf-input" id="mcf-form-desc" value="${esc(descValue)}" placeholder="${isIncome?'e.g. Studio income':'e.g. Tool purchase'}">
+      </div>
+      <div class="mcf-field">
+        <label>Amount</label>
+        <input class="mcf-input amt" id="mcf-form-amount" inputmode="numeric" value="${amountValue}" placeholder="0" oninput="formatMoneyInput(this)" onfocus="this.value=parseMoney(this.value)||''">
       </div>
     </div>
-    <div class="mcf-table-wrap">${rows.length?`
-      <table class="mcf-table compact"><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Note</th><th class="r">In</th><th class="r">Out</th><th></th></tr></thead><tbody>
-        ${rows.map(entry=>`<tr>
-          <td><input class="mcf-input" type="date" value="${esc(entry.date||'')}" onchange="MCF_ENTRIES[${entry._index}].date=this.value;renderMasterCF()"></td>
-          <td><span class="mcf-chip ${isIncome?'income':'expense'}">${isIncome?'Income':'Expense'}</span></td>
-          <td><select class="mcf-select" onchange="MCF_ENTRIES[${entry._index}].category=this.value;renderMasterCF()">${cats.map(cat=>`<option ${cat===(entry.category||'')?'selected':''}>${cat}</option>`).join('')}</select></td>
-          <td><input class="mcf-input" value="${esc(entry.desc||'')}" placeholder="Description" oninput="MCF_ENTRIES[${entry._index}].desc=this.value" onchange="MCF_ENTRIES[${entry._index}].desc=this.value"></td>
-          <td><input class="mcf-input" value="${esc(entry.note||'')}" placeholder="Optional note" oninput="MCF_ENTRIES[${entry._index}].note=this.value" onchange="MCF_ENTRIES[${entry._index}].note=this.value"></td>
-          <td>${isIncome?`<input class="mcf-input amt" inputmode="numeric" value="${commas(entry.amount||0)}" oninput="updateMCFAmountLive(${entry._index},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="MCF_ENTRIES[${entry._index}].amount=parseMoney(this.value);renderMasterCF()">`:''}</td>
-          <td>${isIncome?'':`<input class="mcf-input amt" inputmode="numeric" value="${commas(entry.amount||0)}" oninput="updateMCFAmountLive(${entry._index},this)" onfocus="this.value=parseMoney(this.value)||''" onchange="MCF_ENTRIES[${entry._index}].amount=parseMoney(this.value);renderMasterCF()">`}</td>
-          <td><button class="mcf-del" onclick="delMCFEntry('${type}',${entry._index})">×</button></td>
-        </tr>`).join('')}
-      </tbody></table>`:'<div class="mcf-empty">No entries in this period.</div>'}</div>
+    <div class="mcf-field mcf-form-note">
+      <label>Note optional</label>
+      <input class="mcf-input" id="mcf-form-note" value="${esc(noteValue)}" placeholder="Optional note">
+    </div>
+    <div class="mcf-form-actions">
+      <button class="btn btn-brand btn-sm" onclick="saveMCFEntryForm()">${editing?'Save Changes':'Save'}</button>
+      <button class="btn btn-out btn-sm" onclick="cancelMCFEntryForm()">Cancel</button>
+    </div>
   </div>`;
 }
 
-function addMCFEntry(type){
-  const isIncome=type==='income';
-  MCF_ENTRIES.push({
-    id:uid(),
-    date:new Date().toISOString().slice(0,10),
-    type,
-    category:isIncome?'Other income':'Other expense',
-    desc:'',
-    amount:0,
-    note:''
-  });
-  MCF_PERIOD='all';
+function mcfCompanyCashflowsSection(rows){
+  return `<div class="mcf-section full">
+    <div class="mcf-section-h">
+      <strong>Company Cashflows</strong>
+      <div class="mcf-mini-actions">
+        <button class="btn btn-out btn-xs" onclick="startMCFEntryForm('income')">+ Add Income</button>
+        <button class="btn btn-out btn-xs" onclick="startMCFEntryForm('expense')">+ Add Expense</button>
+      </div>
+    </div>
+    ${mcfCompanyForm()}
+    <div class="mcf-company-list">${rows.length?rows.map(entry=>{
+      const isIncome=entry.type==='income';
+      const amount=parseMoney(entry.amount);
+      return `<div class="mcf-company-row">
+        <div class="mcf-company-date">${esc(entry.date||'No date')}</div>
+        <div><span class="mcf-chip ${isIncome?'income':'expense'}">${isIncome?'Income':'Expense'}</span></div>
+        <div class="mcf-company-main">
+          <div class="mcf-company-cat">${esc(entry.category||mcfDefaultCategory(entry.type))}</div>
+          <div class="mcf-company-desc">${esc(entry.desc||'No description')}</div>
+          ${entry.note?`<div class="mcf-company-note">${esc(entry.note)}</div>`:''}
+        </div>
+        <div class="mcf-company-amount ${isIncome?'mcf-in':'mcf-out'}">${isIncome?'IN ':'OUT '}${fmt(amount)}</div>
+        <div class="mcf-row-buttons">
+          <button class="mcf-edit" onclick="editMCFEntry('${entry.id}')">Edit</button>
+          <button class="mcf-del" onclick="delMCFEntry('${entry.type}',${entry._index})">×</button>
+        </div>
+      </div>`;
+    }).join(''):'<div class="mcf-empty">No company cashflow entries in this period.</div>'}</div>
+  </div>`;
+}
+
+function startMCFEntryForm(type){
+  MCF_FORM_TYPE=type==='expense'?'expense':'income';
+  MCF_EDIT_ID='';
   renderMasterCF();
 }
 
-function updateMCFAmountLive(index,el){
-  if(!MCF_ENTRIES[index])return;
-  formatMoneyInput(el);
-  MCF_ENTRIES[index].amount=parseMoney(el.value);
+function editMCFEntry(id){
+  const entry=MCF_ENTRIES.find(row=>row.id===id);
+  if(!entry)return;
+  MCF_EDIT_ID=id;
+  MCF_FORM_TYPE=entry.type==='expense'?'expense':'income';
+  renderMasterCF();
+}
+
+function cancelMCFEntryForm(){
+  MCF_FORM_TYPE='';
+  MCF_EDIT_ID='';
+  renderMasterCF();
+}
+
+function updateMCFFormCategoryChoices(type){
+  MCF_FORM_TYPE=type==='expense'?'expense':'income';
+  const category=document.getElementById('mcf-form-category');
+  if(category)category.innerHTML=mcfCategoryOptions(MCF_FORM_TYPE,mcfDefaultCategory(MCF_FORM_TYPE));
+}
+
+function saveMCFEntryForm(){
+  if(!MCF_FORM_TYPE)return;
+  const type=(document.getElementById('mcf-form-type')?.value||MCF_FORM_TYPE)==='expense'?'expense':'income';
+  const next={
+    id:MCF_EDIT_ID||uid(),
+    date:document.getElementById('mcf-form-date')?.value||mcfDefaultEntryDate(),
+    type,
+    category:document.getElementById('mcf-form-category')?.value||mcfDefaultCategory(type),
+    desc:document.getElementById('mcf-form-desc')?.value||'',
+    amount:parseMoney(document.getElementById('mcf-form-amount')?.value),
+    note:document.getElementById('mcf-form-note')?.value||''
+  };
+  if(MCF_EDIT_ID){
+    const index=MCF_ENTRIES.findIndex(entry=>entry.id===MCF_EDIT_ID);
+    if(index>=0)MCF_ENTRIES[index]={...MCF_ENTRIES[index],...next};
+  }else{
+    MCF_ENTRIES.push(next);
+  }
+  MCF_FORM_TYPE='';
+  MCF_EDIT_ID='';
+  renderMasterCF();
+  saveMCFEntries();
 }
 
 function delMCFEntry(type,visibleIndex){
@@ -2196,33 +2935,60 @@ function userFromApi(row){
   };
 }
 
+function applyPackages(raw){
+  if(!Array.isArray(raw)||!raw.length)return;
+  PACKAGES=raw.map(normalizePackage);
+  renderPackages();
+}
+
+async function loadPackages(){
+  try{
+    const data=await GET('/api/packages');
+    applyPackages(data?.packages||[]);
+  }catch(e){
+    console.warn('Package settings failed to load',e);
+  }
+}
+
 async function loadAdminSettings(opts={}){
   if(currentUser.role!=='admin')return null;
   try{
     const data=await GET('/api/admin/settings');
     if(data?.users)USERS=data.users.map(userFromApi);
     if(data?.consultation){
-  CATALOG = data.consultation.map(cat => ({
-    id: cat.id,
-    cat: cat.name,
-    icon: cat.icon || '📦',
-    items: (cat.items || []).map(item => ({
-      dbId: item.id,
-      id: item.slug || String(item.id),
-      slug: item.slug || String(item.id),
-      name: item.name,
-      desc: item.description || '',
-      price: Number(item.default_customer_price || 0),
-      intCost: Number(item.default_internal_cost || 0),
-      parts: item.subparts || [],
-      options: item.options || []
-    }))
+	  CATALOG = data.consultation.map(cat => ({
+	    id: cat.id,
+	    cat: cat.name,
+	    icon: cat.icon || '📦',
+	    sort_order: cat.sort_order || 0,
+	    active: cat.active,
+	    items: (cat.items || []).map(item => ({
+	      dbId: item.id,
+	      id: item.slug || String(item.id),
+	      slug: item.slug || String(item.id),
+	      name: item.name,
+	      desc: item.description || '',
+	      price: Number(item.default_customer_price || 0),
+	      intCost: Number(item.default_internal_cost || 0),
+	      supplier: item.supplier || '',
+	      need_order: item.need_order,
+	      sort_order: item.sort_order || 0,
+	      active: item.active,
+	      parts: item.subparts || [],
+	      options: item.options || []
+	    }))
   }));
-  renderCatalog();
-  renderPackages();
-    }
+	  renderCatalog();
+	    }
+	    if(data?.packages!==undefined){
+	      try{
+	        const parsed=JSON.parse(data.packages||'[]');
+	        applyPackages(parsed);
+	      }catch(e){}
+	    }
+	    renderPackages();
     const terms=document.getElementById('default-terms');
-    if(terms&&data?.quote_terms)terms.value=data.quote_terms;
+    if(terms&&data?.quote_terms!==undefined)terms.value=data.quote_terms;
     if(data?.master_cashflow_entries!==undefined){
       try{
         const parsed=JSON.parse(data.master_cashflow_entries||'[]');
@@ -2254,32 +3020,78 @@ function renderPackages(){
   // Refresh package dropdown in new project modal
   const sel=document.getElementById('m-pkg');
   if(sel){
-    sel.innerHTML='<option value="">— No package —</option>'+PACKAGES.map(pk=>`<option value="${pk.id}">${pk.name}</option>`).join('');
+    sel.innerHTML='<option value="">— No package —</option>'+activePackages().map(pk=>`<option value="${pk.id}">${pk.name}${pk.retail_price?` — ${fmt(pk.retail_price)}`:''}</option>`).join('');
   }
-  el.innerHTML=PACKAGES.map((pk,pi)=>`
+  const visible=PACKAGES.map((pk,pi)=>({...normalizePackage(pk,pi),_index:pi})).filter(pk=>pk.active!==false);
+  el.innerHTML=visible.map((pk,displayIndex)=>{
+    const cost=(pk.items||[]).reduce((s,id)=>s+spTot(id),0);
+    const retail=Number(pk.retail_price||0);
+    const profit=retail-cost;
+    const marginPct=retail?Math.round((profit/retail)*100):0;
+    return `
     <div class="pkgrow">
       <div style="flex:1">
-        <input class="iedit" value="${pk.name}" onchange="PACKAGES[${pi}].name=this.value;renderPackages()" style="font-size:var(--sm);font-weight:600;width:100%">
-        <div style="font-size:var(--xxs);color:var(--g400);margin-top:3px">${pk.items.length} items pre-selected</div>
+        <input class="iedit" value="${esc(pk.name)}" onchange="updatePackage(${pk._index},{name:this.value})" style="font-size:var(--sm);font-weight:600;width:100%">
+        <div class="pgrid pkg-grid" style="margin-top:8px">
+          <div class="pbox"><div class="plbl">Package Retail Price</div><input class="pinp" type="text" inputmode="numeric" value="${commas(pk.retail_price||0)}" onfocus="this.value=parseMoney(this.value)||''" onchange="updatePackage(${pk._index},{retail_price:parseMoney(this.value)});this.value=commas(parseMoney(this.value))"></div>
+          <div class="pbox"><div class="plbl">Internal Cost</div><div class="cost-display">${fmt(cost)}</div></div>
+          <div class="pbox"><div class="plbl">Estimated Margin</div><div class="cost-display" style="color:${profit>=0?'#15803d':'#dc2626'}">${retail?marginPct+'%':'—'}</div></div>
+          <div class="pbox"><div class="plbl">Actions</div><div class="pkg-actions">
+            <button class="btn btn-out btn-xs" onclick="movePackage(${pk._index},-1)" ${displayIndex===0?'disabled':''}>↑</button>
+            <button class="btn btn-out btn-xs" onclick="movePackage(${pk._index},1)" ${displayIndex===visible.length-1?'disabled':''}>↓</button>
+            <button class="btn btn-danger btn-xs" onclick="delPackage(${pk._index})">Delete</button>
+          </div></div>
+        </div>
+        <div style="font-size:var(--xxs);color:var(--g400);margin-top:7px">${pk.items.length} items included</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">
           ${pk.items.map(id=>{const item=itemById(id);return item?`<span style="font-size:11px;background:var(--brand-l);color:var(--brand-d);padding:1px 7px;border-radius:99px">${item.name}</span>`:''}).join('')}
         </div>
-        <button class="btn btn-out btn-xs" style="margin-top:7px" onclick="editPkgItems(${pi})">✏️ Edit items</button>
+        <button class="btn btn-out btn-xs" style="margin-top:7px" onclick="editPkgItems(${pk._index})">✏️ Edit items</button>
       </div>
-      <button class="btn btn-danger btn-xs" onclick="delPackage(${pi})">Delete</button>
-    </div>`).join('');
+    </div>`}).join('');
 }
-function addPackage(){
-  PACKAGES.push({id:uid(),name:'New Package',items:[]});
+async function savePackages(){
+  PACKAGES=PACKAGES.map(normalizePackage).map((pk,i)=>({...pk,sort_order:i+1}));
+  await PATCH('/api/admin/settings',{packages:JSON.stringify(PACKAGES)});
+}
+async function updatePackage(pi,patch){
+  PACKAGES[pi]={...normalizePackage(PACKAGES[pi],pi),...patch};
+  refreshPackageSurfaces(PACKAGES[pi]);
+  try{
+    await savePackages();
+    await persistActivePackageSetting(PACKAGES[pi]);
+    toast('Package saved ✓',1600);
+  }
+  catch(e){toast(`Package not saved: ${errMsg(e)}`,4500);}
+}
+async function addPackage(){
+  PACKAGES.push({id:uid(),name:'New Package',retail_price:0,active:true,sort_order:PACKAGES.length+1,items:[]});
   renderPackages();
-  toast('Package added — click to rename and edit items');
+  try{await savePackages();toast('Package added — click to rename and edit items');}
+  catch(e){toast(`Package not saved: ${errMsg(e)}`,4500);}
 }
-function delPackage(pi){
+async function delPackage(pi){
   if(!confirm('Delete this package?'))return;
-  PACKAGES.splice(pi,1);renderPackages();toast('Package deleted');
+  PACKAGES[pi]={...normalizePackage(PACKAGES[pi],pi),active:false};
+  renderPackages();
+  try{await savePackages();toast('Package deleted ✓');}
+  catch(e){toast(`Package not deleted: ${errMsg(e)}`,4500);}
+}
+async function movePackage(pi,delta){
+  const active=PACKAGES.map((pk,i)=>({...normalizePackage(pk,i),_index:i})).filter(pk=>pk.active!==false);
+  const pos=active.findIndex(pk=>pk._index===pi);
+  const next=pos+delta;
+  if(pos<0||next<0||next>=active.length)return;
+  const order=active.map(pk=>pk._index);
+  [order[pos],order[next]]=[order[next],order[pos]];
+  const inactive=PACKAGES.map((pk,i)=>({...normalizePackage(pk,i),_index:i})).filter(pk=>pk.active===false).map(pk=>pk._index);
+  PACKAGES=[...order,...inactive].map((idx,i)=>({...PACKAGES[idx],sort_order:i+1}));
+  renderPackages();
+  try{await savePackages();toast('Package order saved ✓');}
+  catch(e){toast(`Package order not saved: ${errMsg(e)}`,4500);}
 }
 function editPkgItems(pi){
-  const pk=PACKAGES[pi];
+  const pk=normalizePackage(PACKAGES[pi],pi);
   const allItems=CATALOG.flatMap(c=>c.items);
   const checked=new Set(pk.items);
   const html=CATALOG.map(cat=>`
@@ -2305,32 +3117,64 @@ function editPkgItems(pi){
   panel.querySelector('[data-pkg-done]').addEventListener('click',()=>{
     panel.remove();
     renderPackages();
+    savePackages().then(()=>toast('Package items saved ✓')).catch(e=>toast(`Package not saved: ${errMsg(e)}`,4500));
   });
   document.body.appendChild(panel);
 }
 function closePkgEditor(){
   document.querySelectorAll('.pkg-editor-modal').forEach(el=>el.remove());
 }
-function togglePkgItem(pi,itemId,checked){
-  const pk=PACKAGES[pi];
+async function togglePkgItem(pi,itemId,checked){
+  const pk=normalizePackage(PACKAGES[pi],pi);
   if(checked&&!pk.items.includes(itemId))pk.items.push(itemId);
   else if(!checked)pk.items=pk.items.filter(id=>id!==itemId);
+  PACKAGES[pi]=pk;
+  refreshPackageSurfaces(pk);
+  try{
+    await savePackages();
+    await persistActivePackageSetting(pk);
+    toast('Package items updated ✓',1200);
+  }
+  catch(e){toast(`Package item not saved: ${errMsg(e)}`,4500);}
 }
 function onPkgChange(pkgId){
   // Called when user selects a package in New Project modal
-  window._selectedPkgItems=pkgId?PACKAGES.find(p=>p.id===pkgId)?.items||[]:[];
+  const pk=packageByIdOrName(pkgId);
+  window._selectedPkg=pk;
+  window._selectedPkgItems=pk?.items||[];
 }
 
 // ── CATALOG ──
+function catalogCatKey(cat,ci){
+  return String(cat?.id||cat?.cat||ci);
+}
+function toggleCatalogCategory(ci){
+  const cat=CATALOG[ci];
+  const key=catalogCatKey(cat,ci);
+  if(CATALOG_COLLAPSED.has(key))CATALOG_COLLAPSED.delete(key);
+  else CATALOG_COLLAPSED.add(key);
+  renderCatalog();
+}
 function renderCatalog(){
   const el=document.getElementById('catalog-settings');if(!el)return;
-  el.innerHTML=CATALOG.map((cat,ci)=>`
-    <div style="margin-bottom:18px">
-      <div class="catrow" style="display:flex;align-items:center;gap:8px;padding:8px 16px;margin:0 -16px;background:var(--g50);border-bottom:1px solid var(--g100)">
-        <input class="iedit" value="${cat.icon}" style="width:30px;font-size:18px;text-align:center" onchange="CATALOG[${ci}].icon=this.value">
-        <input class="iedit" value="${cat.cat}" style="flex:1;font-size:var(--sm);font-weight:700" onchange="CATALOG[${ci}].cat=this.value">
-        <button class="btn btn-danger btn-xs" onclick="delCat(${ci})">Delete Cat</button>
-      </div>
+  el.innerHTML=CATALOG.map((cat,ci)=>{
+    const key=catalogCatKey(cat,ci);
+    if(!CATALOG_COLLAPSE_SEEN.has(key)){
+      CATALOG_COLLAPSE_SEEN.add(key);
+      CATALOG_COLLAPSED.add(key);
+    }
+    const collapsed=CATALOG_COLLAPSED.has(key);
+    return `
+	    <div style="margin-bottom:18px">
+	      <div class="catrow" style="display:flex;align-items:center;gap:8px;padding:8px 16px;margin:0 -16px;background:var(--g50);border-bottom:1px solid var(--g100)">
+	        <button class="cat-toggle" type="button" onclick="toggleCatalogCategory(${ci})" title="${collapsed?'Expand':'Collapse'} category">${collapsed?'▸':'▾'}</button>
+	        <input class="iedit" value="${cat.icon}" style="width:30px;font-size:18px;text-align:center" onchange="CATALOG[${ci}].icon=this.value">
+		<input class="iedit" value="${cat.cat}" style="flex:1;font-size:var(--sm);font-weight:700" onchange="updateCatalogCategory(${ci},{name:this.value})">
+	        <button class="btn btn-out btn-xs" onclick="moveCat(${ci},-1)" ${ci===0?'disabled':''}>↑</button>
+	        <button class="btn btn-out btn-xs" onclick="moveCat(${ci},1)" ${ci===CATALOG.length-1?'disabled':''}>↓</button>
+	        <button class="btn btn-danger btn-xs" onclick="delCat(${ci})">Delete Cat</button>
+	      </div>
+      <div class="cat-body ${collapsed?'collapsed':''}">
       ${cat.items.map((item,ii)=>{
         const spt=partCost(item);
         const retail=item.price||0;
@@ -2340,8 +3184,12 @@ function renderCatalog(){
               <input class="iedit" value="${item.name}" style="width:100%;font-size:var(--sm);font-weight:700" onchange="updateCatalogItem(${ci},${ii},{name:this.value})">
 	      <input class="iedit" value="${item.desc}" style="width:100%;font-size:var(--xxs);color:var(--g500);margin-top:3px" onchange="updateCatalogItem(${ci},${ii},{description:this.value,desc:this.value})">
             </div>
-            <button class="btn btn-danger btn-xs" onclick="delItem(${ci},${ii})">Delete</button>
-          </div>
+	            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
+		      <button class="btn btn-out btn-xs" onclick="moveItem(${ci},${ii},-1)" ${ii===0?'disabled':''}>↑</button>
+		      <button class="btn btn-out btn-xs" onclick="moveItem(${ci},${ii},1)" ${ii===cat.items.length-1?'disabled':''}>↓</button>
+		      <button class="btn btn-out btn-xs" onclick="duplicateCatalogItem(${ci},${ii})">Duplicate</button>
+		      <button class="btn btn-danger btn-xs" onclick="delItem(${ci},${ii})">Delete</button>	            </div>
+	          </div>
           <div class="pgrid">
             <div class="pbox">
               <div class="plbl">Retail Price</div>
@@ -2360,10 +3208,12 @@ function renderCatalog(){
 	  <div class="spwrap" id="spw-${item.id}">
             <div style="font-size:var(--xxs);font-weight:700;text-transform:uppercase;color:var(--g400);margin-bottom:9px">Parts ordered when this item is selected:</div>
             ${(item.parts||[]).map((sp,si)=>`
-              <div class="sprow">
-                <input class="spni" value="${sp.name}" placeholder="Part name" onchange="updateSP(${ci},${ii},${si},{name:this.value})">
-                <input class="spci" type="text" inputmode="numeric" value="${commas(sp.cost)}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" onchange="updateSP(${ci},${ii},${si},{cost:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
-                <button class="spdel" onclick="delSP(${ci},${ii},${si})">×</button>
+	      <div class="sprow">
+  		<button class="btn btn-out btn-xs" onclick="moveSP(${ci},${ii},${si},-1)" ${si===0?'disabled':''}>↑</button>
+  		<button class="btn btn-out btn-xs" onclick="moveSP(${ci},${ii},${si},1)" ${si===(item.parts||[]).length-1?'disabled':''}>↓</button>
+  		<input class="spni" value="${sp.name}" placeholder="Part name" onchange="updateSP(${ci},${ii},${si},{name:this.value})">
+  		<input class="spci" type="text" inputmode="numeric" value="${commas(sp.cost)}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" onchange="updateSP(${ci},${ii},${si},{cost:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
+  		<button class="spdel" onclick="delSP(${ci},${ii},${si})">×</button>
               </div>`).join('')}
             <div style="display:flex;gap:7px;margin-top:9px">
               <input class="spni" id="spn-${item.id}" placeholder="New part name" style="flex:1">
@@ -2372,17 +3222,19 @@ function renderCatalog(){
             </div>
             <div class="sptot"><span class="sptl">Internal cost from sub-parts</span><span class="sptv spt-${item.id}">${fmt(spt)}</span></div>
           </div>
-	  <div class="sptog" onclick="toggleSP('optw-${item.id}')">🧩 Configuration Options (${(item.options||[]).length}) · click to edit</div>
-	<div class="spwrap" id="optw-${item.id}">
-  	  ${(item.options||[]).map((opt,oi)=>`
-    	   <div class="sprow" style="align-items:flex-start">
-      	  <input class="spni" value="${opt.label}" placeholder="Option label" onchange="updateOption(${ci},${ii},${oi},{label:this.value})">
-      <select class="spci" onchange="updateOption(${ci},${ii},${oi},{input_type:this.value})">
-        ${['select','yesno','number','text'].map(t=>`<option value="${t}" ${opt.input_type===t?'selected':''}>${t}</option>`).join('')}
-      </select>
-      <input class="spci" value="${opt.default_value||''}" placeholder="Default" onchange="updateOption(${ci},${ii},${oi},{default_value:this.value})">
-      <button class="spdel" onclick="delOption(${ci},${ii},${oi})">×</button>
-    </div>
+	  <div class="sptog" onclick="toggleSP('optw-${item.id}')">🧩 Configuration (${(item.options||[]).length}) · click to edit</div>
+	  <div class="spwrap" id="optw-${item.id}">
+		  ${(item.options||[]).map((opt,oi)=>`
+    		   <div class="sprow" style="align-items:flex-start">
+  <button class="btn btn-out btn-xs" onclick="moveOption(${ci},${ii},${oi},-1)" ${oi===0?'disabled':''}>↑</button>
+  <button class="btn btn-out btn-xs" onclick="moveOption(${ci},${ii},${oi},1)" ${oi===(item.options||[]).length-1?'disabled':''}>↓</button>
+  <input class="spni" value="${opt.label}" placeholder="Option label" onchange="updateOption(${ci},${ii},${oi},{label:this.value})">
+  <select class="spci" onchange="updateOption(${ci},${ii},${oi},{input_type:this.value})">
+    ${['select','yesno','number','text'].map(t=>`<option value="${t}" ${opt.input_type===t?'selected':''}>${t}</option>`).join('')}
+  </select>
+  <input class="spci" value="${opt.default_value||''}" placeholder="Default" onchange="updateOption(${ci},${ii},${oi},{default_value:this.value})">
+  <button class="spdel" onclick="delOption(${ci},${ii},${oi})">×</button>
+</div>
     ${opt.input_type==='select'?`
       <div style="margin-left:12px;margin-bottom:10px;padding:8px;background:var(--g50);border-radius:8px">
         <div style="font-size:var(--xxs);font-weight:700;color:var(--g400);margin-bottom:6px">Dropdown choices</div>
@@ -2412,27 +3264,167 @@ function renderCatalog(){
         </div>`;
       }).join('')}
       <button class="btn btn-out btn-xs" style="margin-top:8px" onclick="addItem(${ci})">+ Add Item</button>
-    </div>`).join('');
+      </div>
+    </div>`;
+  }).join('');
 }
-function delCat(ci){
-  if(!confirm(`Delete category "${CATALOG[ci].cat}" and all its items?`))return;
-  CATALOG.splice(ci,1);renderCatalog();toast('Category deleted');
+async function delCat(ci){
+  const cat=CATALOG[ci];
+  if(!cat?.id)return toast('Missing category id');
+  if(!confirm(`Delete category "${cat.cat}" and all its items?`))return;
+  try{
+    await PATCH(`/api/admin/consultation/categories/${cat.id}`,{
+      name:cat.cat,
+      sort_order:cat.sort_order||ci+1,
+      active:false
+    });
+    CATALOG.splice(ci,1);
+    renderCatalog();
+    toast('Category deleted ✓');
+  }catch(e){
+    toast(`Category not deleted: ${errMsg(e)}`,4500);
+  }
 }
-function delItem(ci,ii){
-  if(!confirm(`Delete "${CATALOG[ci].items[ii].name}"?`))return;
-  CATALOG[ci].items.splice(ii,1);renderCatalog();toast('Item deleted');
+async function moveCat(ci,delta){
+  const ni=ci+delta;
+  if(ni<0||ni>=CATALOG.length)return;
+  [CATALOG[ci],CATALOG[ni]]=[CATALOG[ni],CATALOG[ci]];
+  renderCatalog();
+  try{
+    await Promise.all(CATALOG.map((cat,i)=>{
+      cat.sort_order=i+1;
+      return PATCH(`/api/admin/consultation/categories/${cat.id}`,{sort_order:i+1});
+    }));
+    toast('Category order saved ✓');
+  }catch(e){
+    toast(`Category order not saved: ${errMsg(e)}`,4500);
+    await loadAdminSettings({silent:true});
+  }
 }
-function addItem(ci){
-  CATALOG[ci].items.push({id:uid(),name:'New Item',desc:'',price:0,intCost:0,parts:[]});
-  renderCatalog();toast('Item added — click name to rename');
+async function moveItem(ci,ii,delta){
+  const items=CATALOG[ci]?.items||[];
+  const ni=ii+delta;
+  if(ni<0||ni>=items.length)return;
+  [items[ii],items[ni]]=[items[ni],items[ii]];
+  renderCatalog();
+  try{
+    await Promise.all(items.map((item,i)=>{
+      item.sort_order=i+1;
+      return PATCH(`/api/admin/consultation/items/${item.dbId}`,{sort_order:i+1});
+    }));
+    toast('Item order saved ✓');
+  }catch(e){
+    toast(`Item order not saved: ${errMsg(e)}`,4500);
+    await loadAdminSettings({silent:true});
+  }
 }
-function addCatalogCategory(){
-  CATALOG.push({id:uid(),cat:'New Category',icon:'📦',items:[]});
-  renderCatalog();toast('Category added — click name to rename');
+async function delItem(ci,ii){
+  const item=CATALOG[ci]?.items?.[ii];
+  if(!item?.dbId)return toast('Missing database item id');
+  if(!confirm(`Delete "${item.name}"?`))return;
+  try{
+    await PATCH(`/api/admin/consultation/items/${item.dbId}`,{active:false});
+    CATALOG[ci].items.splice(ii,1);
+    renderCatalog();
+    toast('Item deleted ✓');
+  }catch(e){
+    toast(`Item not deleted: ${errMsg(e)}`,4500);
+  }
+}
+async function addItem(ci){
+  const cat=CATALOG[ci];
+  if(!cat?.id)return toast('Missing category id');
+  try{
+    const saved=await POST('/api/admin/consultation/items',{
+      category_id:cat.id,
+      name:`New Item ${Date.now()}`,
+      description:'',
+      default_customer_price:0,
+      default_internal_cost:0,
+      supplier:'',
+      need_order:true,
+      sort_order:(cat.items||[]).length+1,
+      active:true
+    });
+    cat.items.push({
+      dbId:saved.id,
+      id:saved.slug||String(saved.id),
+      slug:saved.slug||String(saved.id),
+      name:saved.name||`New Item ${Date.now()}`,
+      desc:saved.description||'',
+      price:Number(saved.default_customer_price||0),
+      intCost:Number(saved.default_internal_cost||0),
+      supplier:saved.supplier||'',
+      need_order:saved.need_order,
+      sort_order:saved.sort_order,
+      active:saved.active,
+      parts:[],
+      options:[]
+    });
+    renderCatalog();
+    toast('Item added ✓');
+  }catch(e){
+    toast(`Item not saved: ${errMsg(e)}`,4500);
+  }
+}
+async function duplicateCatalogItem(ci,ii){
+  const cat=CATALOG[ci];
+  const item=cat?.items?.[ii];
+  if(!item?.dbId)return toast('Missing database item id');
+  try{
+    const saved=await POST(`/api/admin/consultation/items/${item.dbId}/duplicate`,{
+      sort_order:(cat.items||[]).length+1
+    });
+    await loadAdminSettings({silent:true});
+    renderSettings();
+    toast('Item duplicated ✓');
+  }catch(e){
+    toast(`Duplicate failed: ${errMsg(e)}`,4500);
+  }
+}
+async function updateCatalogCategory(ci,patch){
+  const cat=CATALOG[ci];
+  if(!cat?.id)return toast('Missing category id');
+  Object.assign(cat,patch);
+  if(patch.name!==undefined)cat.cat=patch.name;
+  try{
+    const saved=await PATCH(`/api/admin/consultation/categories/${cat.id}`,{
+      name:cat.cat,
+      sort_order:cat.sort_order||ci+1,
+      active:cat.active!==0
+    });
+    CATALOG[ci]={...cat,id:saved.id,cat:saved.name||cat.cat,sort_order:saved.sort_order,active:saved.active};
+    renderCatalog();
+    toast('Category saved ✓');
+  }catch(e){
+    toast(`Category not saved: ${errMsg(e)}`,4500);
+  }
+}
+async function addCatalogCategory(){
+  try{
+    const saved=await POST('/api/admin/consultation/categories',{
+      name:`New Category ${CATALOG.length+1}`,
+      sort_order:CATALOG.length+1,
+      active:true
+    });
+    CATALOG.push({
+      id:saved.id,
+      cat:saved.name||`New Category ${CATALOG.length}`,
+      icon:saved.icon||'📦',
+      sort_order:saved.sort_order,
+      active:saved.active,
+      items:[]
+    });
+    renderCatalog();
+    toast('Category added ✓');
+  }catch(e){
+    toast(`Category not saved: ${errMsg(e)}`,4500);
+  }
 }
 function refreshSPTot(ci,ii){
   const item=CATALOG[ci]?.items[ii];if(!item)return;
   const t=partCost(item);
+  item.intCost=t;
   const retail=item.price||0;
   const margin=retail?Math.round((retail-t)/retail*100)+'%':'—';
   document.querySelectorAll('.spt-'+item.id).forEach(el=>el.textContent=fmt(t));
@@ -2475,7 +3467,8 @@ async function updateCatalogItem(ci,ii,patch){
   options:item.options||[]
 };
 
-renderCatalog();
+    renderCatalog();
+refreshPricingSurfaces();
 toast('Catalog item saved ✓');
   }catch(e){
     toast(`Catalog save failed: ${errMsg(e)}`,4000);
@@ -2606,6 +3599,7 @@ async function updateSP(ci,ii,si,patch){
 
   Object.assign(sp,patch);
   refreshSPTot(ci,ii);
+  refreshPricingSurfaces();
 
   if(!sp.id)return;
 
@@ -2633,9 +3627,11 @@ async function addSP(ci,ii,itemId){
     const saved=await POST(`/api/admin/consultation/items/${dbId}/subparts`,{name,cost});
     if(!item.parts)item.parts=[];
     item.parts.push(saved);
+    refreshSPTot(ci,ii);
     toast('Sub-part added ✓');
     renderCatalog();
     const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';
+    refreshPricingSurfaces();
   }catch(e){
     toast(`Sub-part save failed: ${errMsg(e)}`,4000);
   }
@@ -2650,12 +3646,64 @@ async function delSP(ci,ii,si){
       await DELETE(`/api/admin/consultation/subparts/${sp.id}`);
     }
     item.parts.splice(si,1);
+    refreshSPTot(ci,ii);
     renderCatalog();
     const itemId=item.id;
     if(itemId){const el=document.getElementById('spw-'+itemId);if(el)el.style.display='block';}
+    refreshPricingSurfaces();
     toast('Sub-part deleted');
   }catch(e){
     toast(`Delete failed: ${errMsg(e)}`,4000);
+  }
+}
+async function moveSP(ci,ii,si,delta){
+  const item=CATALOG[ci]?.items[ii];
+  const parts=item?.parts||[];
+  const ni=si+delta;
+  if(!item||ni<0||ni>=parts.length)return;
+  [parts[si],parts[ni]]=[parts[ni],parts[si]];
+  parts.forEach((sp,index)=>sp.sort_order=index+1);
+  refreshSPTot(ci,ii);
+  renderCatalog();
+  const el=document.getElementById('spw-'+item.id);if(el)el.style.display='block';
+  refreshPricingSurfaces();
+  try{
+    for(const sp of parts){
+      if(sp.id)await PATCH(`/api/admin/consultation/subparts/${sp.id}`,{
+        name:sp.name,
+        cost:sp.cost,
+        sort_order:sp.sort_order,
+        active:sp.active!==0
+      });
+    }
+    toast('Sub-parts order saved ✓');
+  }catch(e){
+    toast(`Sub-part order failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function moveOption(ci,ii,oi,delta){
+  const item=CATALOG[ci]?.items[ii];
+  const opts=item?.options||[];
+  const ni=oi+delta;
+  if(!item||ni<0||ni>=opts.length)return;
+  [opts[oi],opts[ni]]=[opts[ni],opts[oi]];
+  opts.forEach((opt,index)=>opt.sort_order=index+1);
+  renderCatalog();
+  const el=document.getElementById('optw-'+item.id);if(el)el.style.display='block';
+  try{
+    for(const opt of opts){
+      if(opt.id)await PATCH(`/api/admin/consultation/options/${opt.id}`,{
+        label:opt.label,
+        input_type:opt.input_type,
+        default_value:opt.default_value||'',
+        sort_order:opt.sort_order,
+        active:opt.active!==0
+      });
+    }
+    toast('Configuration order saved ✓');
+  }catch(e){
+    toast(`Configuration order failed: ${errMsg(e)}`,4000);
   }
 }
 function toggleSP(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
@@ -2733,7 +3781,15 @@ async function addUser(){
 }
 
 // ── TERMS ──
-function saveTerms(){toast('Terms saved ✓');}
+async function saveTerms(){
+  const terms=document.getElementById('default-terms')?.value||'';
+  try{
+    await PATCH('/api/admin/settings',{quote_terms:terms});
+    toast('Terms saved ✓');
+  }catch(e){
+    toast(`Terms not saved: ${errMsg(e)}`,4500);
+  }
+}
 
 // ══════════════════════════════════════
 // GOOGLE SHEETS SYNC
@@ -2794,8 +3850,9 @@ async function syncNow(){
 function openNewModal(){
   // Refresh package dropdown
   const sel=document.getElementById('m-pkg');
-  if(sel)sel.innerHTML='<option value="">— No package —</option>'+PACKAGES.map(pk=>`<option value="${pk.id}">${pk.name}</option>`).join('');
+  if(sel)sel.innerHTML='<option value="">— No package —</option>'+activePackages().map(pk=>`<option value="${pk.id}">${pk.name}${pk.retail_price?` — ${fmt(pk.retail_price)}`:''}</option>`).join('');
   window._selectedPkgItems=[];
+  window._selectedPkg=null;
   document.getElementById('modal-new').classList.add('open');
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
@@ -2808,14 +3865,16 @@ async function createProject(){
   const plate=document.getElementById('m-plate').value;
   const pkgSel=document.getElementById('m-pkg');
   const pkgId=pkgSel?.value||'';
-  const pkg=pkgId?PACKAGES.find(p=>p.id===pkgId)?.name||'':document.getElementById('m-pkg')?.options[document.getElementById('m-pkg').selectedIndex]?.text||'';
+  const selectedPkg=packageByIdOrName(pkgId);
+  const pkg=selectedPkg?.name||'';
   const designer=document.getElementById('m-designer').value;
   const btn=document.querySelector('#modal-new .btn-brand');
   if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
     const res=await POST('/api/projects',{owner,name:vehicle,vehicle,plate,pkg,designer,stage:'02 Consultation',priority:'Normal'});
     const p=projectFromApi(res);
-    const packageItems=(window._selectedPkgItems||[]).map(String);
+    if(selectedPkg)await upsertProjectPackage(p,selectedPkg);
+    const packageItems=(selectedPkg?.items||window._selectedPkgItems||[]).map(String);
     if(packageItems.length){
       await POST(`/api/projects/${p.id}/consultation`,{
         checkedItems:packageItems,
@@ -2842,6 +3901,7 @@ async function createProject(){
 async function initApp(){
   try{
     await loadUser();
+    await loadPackages();
     if(currentUser.role==='admin')await loadAdminSettings({silent:true});
     await refreshDashboard('All');
   }catch(e){

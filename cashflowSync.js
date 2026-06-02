@@ -7,6 +7,31 @@ const CASHFLOW_SPREADSHEET_ID =
   '1kMPlZymdUNhorXmwkMsCSBiuVyj8MTPE3BgDrnThTSc';
 const SYNC_NOTE = 'Auto-synced from CRDN cashflow';
 const MONTH_TAB_RE = /^\d{4}-\d{2}$/;
+const SUMMARY_TAB = 'Cashflow Summary';
+const CURRENCY_FORMAT = { type: 'CURRENCY', pattern: '"$"#,##0' };
+const CASH_IN_CATEGORIES = [
+  'Customer Deposit',
+  'Customer Balance Payment',
+  'Full Payment',
+  'Refund Received',
+  'Company Income',
+  'Loan / Capital Injection',
+  'Equipment Sale',
+  'Other Income'
+];
+const CASH_OUT_CATEGORIES = [
+  'Parts / Materials',
+  'Vendor Payment',
+  'Labour / Contractor',
+  'Rent / Studio',
+  'Tools / Equipment',
+  'Utilities',
+  'Marketing',
+  'Insurance',
+  'Tax / Accounting',
+  'Refund to Customer',
+  'Other Expense'
+];
 
 function syncEnabled() {
   return String(process.env.GOOGLE_SHEETS_SYNC_ENABLED || '').toLowerCase() === 'true';
@@ -89,6 +114,16 @@ function rowHasContent(entry) {
   return Boolean(text(entry.date) || text(entry.desc) || text(entry.note) || money(entry.amount));
 }
 
+function cashflowDefaultCategory(type) {
+  if (['income', 'in', 'deposit', 'deposits'].includes(type)) return 'Customer Deposit';
+  if (type === 'company_income') return 'Company Income';
+  return 'Parts / Materials';
+}
+
+function companyDefaultCategory(type) {
+  return type === 'income' ? 'Company Income' : 'Other Expense';
+}
+
 function cashflowRows(db) {
   const rows = [];
   const projects = db.prepare(`
@@ -108,8 +143,8 @@ function cashflowRows(db) {
         key: `project:${project.id}:deposit:${index}`,
         month: monthTab(entry.date),
         date: text(entry.date),
-        type: 'Project deposit',
-        category: 'Project deposit',
+        type: 'in',
+        category: text(entry.category) || cashflowDefaultCategory('deposits'),
         description: text(entry.desc) || 'Deposit collected',
         source,
         moneyIn: amount,
@@ -124,8 +159,8 @@ function cashflowRows(db) {
         key: `project:${project.id}:vendor:${index}`,
         month: monthTab(entry.date),
         date: text(entry.date),
-        type: 'Project vendor payment',
-        category: 'Vendor / parts',
+        type: 'out',
+        category: text(entry.category) || cashflowDefaultCategory('vendorPayments'),
         description: text(entry.desc) || 'Vendor payment',
         source,
         moneyIn: 0,
@@ -143,8 +178,8 @@ function cashflowRows(db) {
       key: `company:${entry.id || index}`,
       month: monthTab(entry.date),
       date: text(entry.date),
-      type: isIncome ? 'Company income' : 'Company expense',
-      category: text(entry.category) || (isIncome ? 'Other income' : 'Other expense'),
+      type: isIncome ? 'in' : 'out',
+      category: text(entry.category) || companyDefaultCategory(entry.type),
       description: text(entry.desc),
       source: text(entry.note) || 'Company',
       moneyIn: isIncome ? money(entry.amount) : 0,
@@ -175,9 +210,9 @@ async function spreadsheetInfo(sheets, id) {
   };
 }
 
-async function ensureMonthTabs(sheets, id, months) {
+async function ensureTabs(sheets, id, titles) {
   let info = await spreadsheetInfo(sheets, id);
-  const missing = months.filter(month => !info.sheets.has(month));
+  const missing = titles.filter(title => !info.sheets.has(title));
   if (missing.length) {
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: id,
@@ -188,6 +223,10 @@ async function ensureMonthTabs(sheets, id, months) {
     info = await spreadsheetInfo(sheets, id);
   }
   return info;
+}
+
+async function ensureMonthTabs(sheets, id, months) {
+  return ensureTabs(sheets, id, months);
 }
 
 async function readExistingRows(sheets, id, tab) {
@@ -239,6 +278,25 @@ function summaryRows(rows) {
   ];
 }
 
+function cashflowTotals(rows) {
+  const totalIn = rows.reduce((sum, row) => sum + Number(row.moneyIn || 0), 0);
+  const totalOut = rows.reduce((sum, row) => sum + Number(row.moneyOut || 0), 0);
+  return {
+    totalIn,
+    totalOut,
+    net: totalIn - totalOut,
+    outstandingToCollect: 0
+  };
+}
+
+function monthlySummaryValues(rowsByMonth, months) {
+  return months.map(month => {
+    const rows = rowsByMonth.get(month) || [];
+    const totals = cashflowTotals(rows);
+    return [month, totals.totalIn, totals.totalOut, totals.net];
+  });
+}
+
 async function formatMonthSheet(sheets, id, sheet, tab) {
   const sheetId = sheet?.properties?.sheetId;
   if (sheetId === undefined) return;
@@ -251,16 +309,16 @@ async function formatMonthSheet(sheets, id, sheet, tab) {
   const dataProtectedRange = {
     range: { sheetId, startColumnIndex: 0, endColumnIndex: 8 },
     description: dataDescription,
-    warningOnly: false
+    warningOnly: true
   };
   const pnlProtectedRange = {
     range: { sheetId, startColumnIndex: 10, endColumnIndex: 12 },
     description: pnlDescription,
-    warningOnly: false
+    warningOnly: true
   };
   if (email) {
-    dataProtectedRange.editors = { users: [email] };
-    pnlProtectedRange.editors = { users: [email] };
+    //dataProtectedRange.editors = { users: [email] };
+    //pnlProtectedRange.editors = { users: [email] };
   }
 
   await sheets.spreadsheets.batchUpdate({
@@ -344,14 +402,14 @@ async function formatMonthSheet(sheets, id, sheet, tab) {
         {
           repeatCell: {
             range: { sheetId, startRowIndex: 1, startColumnIndex: 6, endColumnIndex: 8 },
-            cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"$"#,##0' } } },
             fields: 'userEnteredFormat.numberFormat'
           }
         },
         {
           repeatCell: {
             range: { sheetId, startRowIndex: 1, startColumnIndex: 11, endColumnIndex: 12 },
-            cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' } } },
+            cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"$"#,##0' } } },
             fields: 'userEnteredFormat.numberFormat'
           }
         },
@@ -377,6 +435,9 @@ async function syncMonth(sheets, id, sheet, tab, rows) {
     'P&L Metric',
     'Amount (NT$)'
   ];
+
+  rows = rows.filter(row => row.date || row.description || row.source || row.moneyIn || row.moneyOut);
+
   await sheets.spreadsheets.values.update({
     spreadsheetId: id,
     range: sheetRange(tab, 'A1:L1'),
@@ -435,6 +496,141 @@ async function syncMonth(sheets, id, sheet, tab, rows) {
   return rows.length;
 }
 
+async function formatCashflowSummarySheet(sheets, id, sheet, dataRowCount) {
+  const sheetId = sheet?.properties?.sheetId;
+  if (sheetId === undefined) return;
+  const kpiDescription = 'CRDN cashflow summary KPI';
+  const monthlyDescription = 'CRDN cashflow monthly summary';
+  const deleteExisting = (sheet.protectedRanges || [])
+    .filter(range => [kpiDescription, monthlyDescription].includes(range.description))
+    .map(range => ({ deleteProtectedRange: { protectedRangeId: range.protectedRangeId } }));
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: id,
+    requestBody: {
+      requests: [
+        ...deleteExisting,
+        {
+          updateSheetProperties: {
+            properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+            fields: 'gridProperties.frozenRowCount'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 2 },
+            cell: {
+              note: SYNC_NOTE,
+              userEnteredFormat: {
+                backgroundColor: { red: 0.82, green: 0.82, blue: 0.82 },
+                textFormat: { bold: true }
+              }
+            },
+            fields: 'note,userEnteredFormat(backgroundColor,textFormat)'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 9, endRowIndex: 10, startColumnIndex: 0, endColumnIndex: 4 },
+            cell: {
+              note: SYNC_NOTE,
+              userEnteredFormat: {
+                backgroundColor: { red: 0.82, green: 0.82, blue: 0.82 },
+                textFormat: { bold: true }
+              }
+            },
+            fields: 'note,userEnteredFormat(backgroundColor,textFormat)'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 1, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 2 },
+            cell: { userEnteredFormat: { backgroundColor: { red: 0.94, green: 0.94, blue: 0.94 } } },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 10, endRowIndex: 10 + Math.max(dataRowCount, 1), startColumnIndex: 0, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { backgroundColor: { red: 0.94, green: 0.94, blue: 0.94 } } },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 1, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+            cell: { userEnteredFormat: { numberFormat: CURRENCY_FORMAT } },
+            fields: 'userEnteredFormat.numberFormat'
+          }
+        },
+        {
+          repeatCell: {
+            range: { sheetId, startRowIndex: 10, startColumnIndex: 1, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { numberFormat: CURRENCY_FORMAT } },
+            fields: 'userEnteredFormat.numberFormat'
+          }
+        },
+        {
+          autoResizeDimensions: {
+            dimensions: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 }
+          }
+        },
+        {
+          addProtectedRange: {
+            protectedRange: {
+              range: { sheetId, startRowIndex: 0, endRowIndex: 6, startColumnIndex: 0, endColumnIndex: 2 },
+              description: kpiDescription,
+              warningOnly: true
+            }
+          }
+        },
+        {
+          addProtectedRange: {
+            protectedRange: {
+              range: { sheetId, startRowIndex: 9, endRowIndex: 10 + Math.max(dataRowCount, 1), startColumnIndex: 0, endColumnIndex: 4 },
+              description: monthlyDescription,
+              warningOnly: true
+            }
+          }
+        }
+      ]
+    }
+  });
+}
+
+async function syncCashflowSummary(sheets, id, sheet, rows, rowsByMonth, months, syncedAt) {
+  const totals = cashflowTotals(rows);
+  const kpiValues = [
+    ['Metric', 'Amount'],
+    ['Total In', totals.totalIn],
+    ['Total Out', totals.totalOut],
+    ['Net Cash Position', totals.net],
+    ['Outstanding To Collect', totals.outstandingToCollect],
+    ['Synced At', syncedAt]
+  ];
+  const monthlyValues = [
+    ['Month', 'Total In', 'Total Out', 'Net'],
+    ...monthlySummaryValues(rowsByMonth, months)
+  ];
+
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: id,
+    range: sheetRange(SUMMARY_TAB, 'A1:D1000')
+  });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: id,
+    requestBody: {
+      valueInputOption: 'RAW',
+      data: [
+        { range: sheetRange(SUMMARY_TAB, 'A1:B6'), values: kpiValues },
+        { range: sheetRange(SUMMARY_TAB, `A10:D${9 + monthlyValues.length}`), values: monthlyValues }
+      ]
+    }
+  });
+
+  await formatCashflowSummarySheet(sheets, id, sheet, monthlyValues.length - 1);
+}
+
 async function syncMasterCashflow(db) {
   const sheets = sheetsClient();
   const id = spreadsheetId();
@@ -448,20 +644,22 @@ async function syncMasterCashflow(db) {
   const requiredMonths = rowsByMonth.size ? [...rowsByMonth.keys()] : [currentMonth];
   let info = await ensureMonthTabs(sheets, id, requiredMonths);
   const existingMonthTabs = [...info.sheets.keys()].filter(title => MONTH_TAB_RE.test(title));
-  const tabs = [...new Set([...requiredMonths, ...existingMonthTabs])].sort();
-  info = await ensureMonthTabs(sheets, id, tabs);
+  const tabs = [...requiredMonths].sort();
+  info = await ensureTabs(sheets, id, [...tabs, SUMMARY_TAB]);
+  const syncedAt = new Date().toISOString();
 
   const counts = {};
   for (const tab of tabs) {
     counts[tab] = await syncMonth(sheets, id, info.sheets.get(tab), tab, rowsByMonth.get(tab) || []);
   }
+  await syncCashflowSummary(sheets, id, info.sheets.get(SUMMARY_TAB), rows, rowsByMonth, tabs, syncedAt);
 
   return {
     ok: true,
     spreadsheet_id: id,
-    tabs,
-    counts,
-    synced_at: new Date().toISOString()
+    tabs: [SUMMARY_TAB, ...tabs],
+    counts: { [SUMMARY_TAB]: tabs.length, ...counts },
+    synced_at: syncedAt
   };
 }
 

@@ -218,15 +218,18 @@ button{cursor:pointer}
 .crow{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--rs);border:1px solid var(--brand);background:var(--brand-f);margin-bottom:7px}
 .custom-row{align-items:flex-start}
 .cust-fields{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cust-fields .crn{min-width:190px}
+.cust-fields .crn{min-width:0px}
 .crcost{white-space:nowrap}
+.cust-note{margin-top:10px;width:100%}.cust-note label{display:block;font-size:11px;font-weight:700;color:var(--g400);margin-bottom:4px}.crnote{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:8px 10px;background:var(--w);font-size:var(--sm)}.crnote:focus{outline:none;border-color:var(--brand)}
+.custom-row .ci{min-width:0}.custom-row .cust-note{display:block;width:100%;margin-top:8px}.custom-row .crnote{display:block;width:100%!important;max-width:100%;box-sizing:border-box}
+#aq-note{width:100%!important;min-width:100%!important;box-sizing:border-box}
 .crn{flex:1;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:var(--sm);background:var(--w);color:var(--black)}
 .crp{width:115px;border:1px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:var(--sm);text-align:right;font-family:'Bebas Neue',sans-serif;letter-spacing:.04em;background:var(--w);color:var(--black)}
 .custom-row{align-items:center}.cust-fields,.custom-row .qtyc{align-items:center}.crn,.crp,.crcost,.custom-row .qtyc,.custom-row .cp{height:42px;display:flex;align-items:center}.crp{width:130px}.crcost{justify-content:center}.custom-row .cp{min-width:130px;justify-content:flex-end}
 .crn:focus,.crp:focus{outline:none;border-color:var(--brand)}
 .crdel{background:none;border:none;color:var(--g300);cursor:pointer;font-size:20px;line-height:1;padding:2px 5px;border-radius:3px;flex-shrink:0}
 .crdel:hover{color:var(--danger)}
-@media(max-width:700px){.custom-row{gap:8px}.custom-row .ci{flex-basis:100%}.cust-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;width:100%}.cust-fields .crn{grid-column:1/-1;min-width:0;width:100%}.cust-fields .crp{width:100%;min-width:0}.crcost{justify-content:center}}
+@media(max-width:700px){.custom-row{display:flex;flex-wrap:wrap;gap:10px}.cust-fields,.cust-note{width:100%}.crcost{width:100%}.qtyc{margin-top:0}.cp{margin-left:auto;font-size:28px}.custom-row .cp,.custom-row .qtyc{display:flex;align-items:center}}
 /* QUOTE PANEL */
 .qpanel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
 .qph{background:var(--black);color:#fff;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
@@ -243,7 +246,7 @@ button{cursor:pointer}
 .qptl{font-size:var(--sm);font-weight:600;color:var(--g500)}
 .qpta{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em;color:var(--brand)}
 .qpact{padding:11px 15px;display:flex;gap:8px;border-top:1px solid var(--g100)}
-.mobbar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--black);padding:11px 18px;z-index:45;align-items:center;justify-content:space-between}
+.mobbar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--black);padding:11px 18px;z-index:9999;align-items:center;justify-content:space-between}
 @media(max-width:700px){.mobbar.show{display:flex}}
 .mba{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.04em;color:var(--brand)}
 .mbl{font-size:11px;color:var(--g400)}
@@ -669,6 +672,10 @@ button{cursor:pointer}
       <div class="mf"><label>Customer name</label><input class="mi" id="m-owner" placeholder="e.g. 陳先生"></div>
       <div class="mf"><label>Vehicle</label><input class="mi" id="m-vehicle" placeholder="e.g. Delica D5"></div>
     </div>
+     <div class="mgrid">
+      <div class="mf"><label>Email</label><input class="mi" id="m-email" type="email" placeholder="customer@email.com"></div>
+      <div class="mf"><label>Phone</label><input class="mi" id="m-phone" type="tel" placeholder="09xx xxx xxx"></div>
+    </div>
     <div class="mgrid">
       <div class="mf"><label>Plate / ID</label><input class="mi" id="m-plate" placeholder="ABC-1234"></div>
       <div class="mf"><label>Package</label>
@@ -698,6 +705,7 @@ button{cursor:pointer}
     <div class="mgrid">
       <div class="mf"><label>Customer price (NT$)</label><input class="mi" id="aq-price" type="number" placeholder="0" min="0"></div>
       <div class="mf"><label>Internal cost (NT$)</label><input class="mi" id="aq-cost" type="number" placeholder="0" min="0"></div>
+      <div class="mf" style="width:100%;grid-column:1/-1"><label>Note</label><textarea class="mi" id="aq-note" rows="3" placeholder="Custom item note / special request" style="width:100%;box-sizing:border-box;resize:vertical"></textarea></div>
     </div>
     <div class="mbtns">
       <button class="btn btn-out" onclick="closeModal('modal-addq')">Cancel</button>
@@ -1112,6 +1120,8 @@ function projectFromApi(row){
     id:p.id,
     jobNo:p.jobNo||p.job_no||`CRDN-${String(p.id||0).padStart(3,'0')}`,
     owner:p.owner||p.customer||'',
+    customer_email:p.customer_email||p.email||'',
+    customer_phone:p.customer_phone||p.phone||'',
     vehicle:p.vehicle||p.name||'',
     plate:p.plate||'',
     pkg:cleanPackageName(p.pkg||p.package||''),
@@ -1369,7 +1379,7 @@ function showView(v){
   }
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('v-'+v).classList.add('active');
-  document.getElementById('mobbar').classList.toggle('show',v==='detail'&&activeTab==='consult');
+  document.getElementById('mobbar').classList.toggle('show',v==='detail'&&document.querySelector('#dtbar .dtab.on')?.textContent.includes('Consultation'));
   closeNavMenu();
   if(v==='settings')renderSettings();
   if(v==='mastercf')renderMasterCF();
@@ -1582,6 +1592,8 @@ function rOverview(body){
     <div class="fc">
       <div class="fct">Project Info</div>
       <div class="fr"><span class="fl">Customer</span><input class="fi" value="${p.owner}" onchange="AP.owner=this.value;savePatch({owner:this.value})"></div>
+      <div class="fr"><span class="fl">Email</span><input class="fi" type="email" value="${p.customer_email||''}" onchange="AP.customer_email=this.value;savePatch({customer_email:this.value})"></div>
+      <div class="fr"><span class="fl">Phone</span><input class="fi" type="tel" value="${p.customer_phone||''}" onchange="AP.customer_phone=this.value;savePatch({customer_phone:this.value})"></div>
       <div class="fr"><span class="fl">Vehicle</span><input class="fi" value="${p.vehicle}" onchange="AP.vehicle=this.value;savePatch({vehicle:this.value})"></div>
       <div class="fr"><span class="fl">Plate</span><input class="fi" value="${p.plate||''}" onchange="AP.plate=this.value;savePatch({plate:this.value})"></div>
       <div class="fr"><span class="fl">Package</span>
@@ -1735,10 +1747,29 @@ function buildChecklist(){
 	            <div class="cbox" onclick="toggleCustomItem(${i})"><span class="ctick">✓</span></div>
 	            <div class="ci" onclick="event.stopPropagation()">
 	              <div class="cust-fields">
-	                <input class="crn" value="${esc(ci.name)}" placeholder="Item description" onchange="updateCustomField(${i},{name:this.value})">
-			<input class="crp" type="text" inputmode="numeric" value="${ci.price?commas(ci.price):''}" placeholder="0" onfocus="this.value=parseMoney(this.value)||''" oninput="formatMoneyInput(this)" onchange="updateCustomField(${i},{price:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
-			<button class="btn btn-out btn-xs crcost" onclick="event.stopPropagation();editCustomCost(${i})">Edit Cost</button>
-	              </div>
+  			<input class="crn" value="${esc(ci.name)}"
+    			  placeholder="Item description"
+    			  onchange="updateCustomField(${i},{name:this.value})">
+
+			<input class="crp" prefix="$ "
+    			  type="text"
+			  inputmode="numeric"
+    			  value="${ci.price?('$ '+commas(ci.price)):''}"
+    		  	  placeholder="0"
+    			  onfocus="this.value=parseMoney(this.value)||''"
+    			  oninput="formatMoneyInput(this)"
+			  onchange="updateCustomField(${i},{price:parseMoney(this.value)});this.value=commas(parseMoney(this.value))">
+
+			<button class="btn btn-out btn-xs crcost"
+    			  onclick="event.stopPropagation();editCustomCost(${i})">
+    			  Edit Cost
+  			</button>
+		      </div>
+
+		      <div class="cust-note">
+  			<label>📝 Note</label>
+  			<textarea class="crnote" rows="3" placeholder="Special request, dimensions, material, customer notes..." onchange="updateCustomField(${i},{internal_notes:this.value})">${esc(ci.internal_notes||'')}</textarea>
+		      </div>
 	            </div>
 	            ${on?`<div class="qtyc" onclick="event.stopPropagation()">
 	              <div class="qb ${q<=1?'qbh':''}" onclick="chgCustomQuoteQty(${i},-1)">−</div>
@@ -2113,18 +2144,19 @@ async function addCustomItem(){
   const name=document.getElementById('aq-name').value.trim();
   const price=parseFloat(document.getElementById('aq-price').value)||0;
   const cost=parseFloat(document.getElementById('aq-cost').value)||0;
+  const note=document.getElementById('aq-note')?.value||'';
   const cat=document.getElementById('aq-cat').value;
   if(!name){toast('Enter an item name');return;}
   pushQuoteUndo();
   if(!p.customItems)p.customItems=[];
-  const draft={name,price,cost,qty:1,cat,active:true,internal_notes:'Custom consultation item'};
+  const draft={name,price,cost,qty:1,cat,active:true,internal_notes:note};
   p.customItems.push(draft);
   const idx=p.customItems.length-1;
   try{
     await saveCustomQuoteItem(idx);
     p.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Custom item added',old:'',nv:name+' — '+fmt(price),type:'quote'});
     closeModal('modal-addq');
-    ['aq-name','aq-price','aq-cost'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['aq-name','aq-price','aq-cost','aq-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     refreshQuoteSurfaces();
     toast('Custom item saved ✓');
   }catch(e){
@@ -3182,7 +3214,7 @@ function renderCatalog(){
           <div class="cphd">
             <div style="flex:1">
               <input class="iedit" value="${item.name}" style="width:100%;font-size:var(--sm);font-weight:700" onchange="updateCatalogItem(${ci},${ii},{name:this.value})">
-	      <input class="iedit" value="${item.desc}" style="width:100%;font-size:var(--xxs);color:var(--g500);margin-top:3px" onchange="updateCatalogItem(${ci},${ii},{description:this.value,desc:this.value})">
+	      <input class="iedit" value="${item.desc}" placeholder="<description>" style="width:100%;font-size:var(--xxs);color:var(--g500);margin-top:3px" onchange="updateCatalogItem(${ci},${ii},{description:this.value,desc:this.value})">
             </div>
 	            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
 		      <button class="btn btn-out btn-xs" onclick="moveItem(${ci},${ii},-1)" ${ii===0?'disabled':''}>↑</button>
@@ -3863,6 +3895,8 @@ async function createProject(){
   const owner=document.getElementById('m-owner').value||'New Customer';
   const vehicle=document.getElementById('m-vehicle').value||'Vehicle';
   const plate=document.getElementById('m-plate').value;
+  const customer_email=document.getElementById('m-email')?.value||'';
+  const customer_phone=document.getElementById('m-phone')?.value||'';
   const pkgSel=document.getElementById('m-pkg');
   const pkgId=pkgSel?.value||'';
   const selectedPkg=packageByIdOrName(pkgId);
@@ -3871,7 +3905,7 @@ async function createProject(){
   const btn=document.querySelector('#modal-new .btn-brand');
   if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
-    const res=await POST('/api/projects',{owner,name:vehicle,vehicle,plate,pkg,designer,stage:'02 Consultation',priority:'Normal'});
+    const res=await POST('/api/projects',{owner,name:vehicle,vehicle,plate,customer_email,customer_phone,pkg,designer,stage:'02 Consultation',priority:'Normal'});
     const p=projectFromApi(res);
     if(selectedPkg)await upsertProjectPackage(p,selectedPkg);
     const packageItems=(selectedPkg?.items||window._selectedPkgItems||[]).map(String);
@@ -3884,7 +3918,7 @@ async function createProject(){
     }
 
     closeModal('modal-new');
-    ['m-owner','m-vehicle','m-plate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['m-owner','m-email','m-phone','m-vehicle','m-plate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     await refreshDashboard('All');
     await openDetail(p);
     toast('Project created ✓');

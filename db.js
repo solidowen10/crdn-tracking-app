@@ -321,6 +321,8 @@ function migrate() {
   addColumn('vehicles', 'customer_update', 'TEXT');
   addColumn('vehicles', 'customer_action', 'TEXT');
   addColumn('vehicles', 'next_action', 'TEXT');
+  addColumn('vehicles', 'customer_email', "TEXT NOT NULL DEFAULT ''");
+  addColumn('vehicles', 'customer_phone', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_items', 'slug', 'TEXT');

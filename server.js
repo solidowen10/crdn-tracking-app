@@ -598,11 +598,13 @@ app.post('/api/projects', requireAuth, (req, res) => {
       job_no, owner, name, plate, pkg, stage, designer, priority, progress,
       start_date, finish_date, customer_update, customer_action, next_action, notes, created_by
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     text(req.body.job_no) || nextJobNo(),
     owner,
     name,
+    text(req.body.customer_email),
+    text(req.body.customer_phone),
     text(req.body.plate),
     text(req.body.pkg),
     stage,
@@ -636,6 +638,8 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
   SET job_no=?,
       owner=?,
       name=?,
+      customer_email=?,
+      customer_phone=?,
       plate=?,
       pkg=?,
       stage=?,
@@ -657,6 +661,8 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
     text(next.job_no),
     text(next.owner),
     text(next.name),
+    text(next.customer_email),
+    text(next.customer_phone),
     text(next.plate),
     text(next.pkg),
     stage,

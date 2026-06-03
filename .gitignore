@@ -9,3 +9,8 @@ data
 
 backups/
 *.before-*
+
+*.failed-mobile-custom-bar-*
+*.broken-package-pricing-*
+*.backup
+*.bak

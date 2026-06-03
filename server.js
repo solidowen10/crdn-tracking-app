@@ -595,7 +595,7 @@ app.post('/api/projects', requireAuth, (req, res) => {
   const stage = normalizeStage(req.body.stage || '01 Intake');
   const result = db.prepare(`
     INSERT INTO vehicles (
-      job_no, owner, name, plate, pkg, stage, designer, priority, progress,
+      job_no, owner, name, customer_email, customer_phone, plate, pkg, stage, designer, priority, progress,
       start_date, finish_date, customer_update, customer_action, next_action, notes, created_by
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

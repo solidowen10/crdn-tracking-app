@@ -328,6 +328,57 @@ button{cursor:pointer}
 .tlold{text-decoration:line-through;color:var(--g300);margin-right:6px}
 .tlnew{color:var(--black);font-weight:600}
 
+/* GARAGE TIMELINE */
+.garage-page{width:min(1180px,100%);max-width:100%;margin:0 auto;padding:18px 18px 110px;overflow-x:hidden}
+.garage-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.garage-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em}
+.garage-sub{font-size:var(--sm);color:var(--g500);margin-top:3px}
+.garage-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.garage-month{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;font-weight:400;color:var(--brand);padding:4px 2px;border:none;border-radius:0;background:transparent;line-height:1;min-width:88px;text-align:center}
+.garage-warning{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:var(--r);padding:12px 14px;margin-bottom:13px;font-size:var(--sm);font-weight:800}
+.garage-board{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;margin-bottom:13px}
+.garage-scale,.garage-usage,.garage-project-row{display:grid;grid-template-columns:210px 1fr}
+.garage-scale{background:var(--g50);border-bottom:1px solid var(--g100)}
+.garage-scale-label,.garage-project-label{padding:12px 14px}
+.garage-scale-label{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400)}
+.garage-track{position:relative;min-height:46px;background:linear-gradient(to right,rgba(226,226,222,.7) 1px,transparent 1px);background-size:calc(100% / var(--garage-days, 31)) 100%}
+.garage-mark{position:absolute;top:10px;transform:translateX(-50%);font-size:11px;color:var(--g400);white-space:nowrap}
+.garage-usage{border-bottom:1px solid var(--g100);background:#fff}
+.garage-usage .garage-track{min-height:54px}
+.garage-use-chip{position:absolute;top:11px;transform:translateX(-50%);border-radius:99px;background:var(--g100);color:var(--g500);padding:5px 9px;font-size:var(--xxxs);font-weight:800;white-space:nowrap}
+.garage-use-chip.hot{background:#fee2e2;color:#b91c1c}
+.garage-project-row{border-bottom:1px solid var(--g100);min-height:64px}
+.garage-project-row:last-child{border-bottom:none}
+.garage-project-label{background:var(--g50);min-width:0}
+.garage-project-label strong{display:block;font-size:var(--sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.garage-project-label span{display:block;font-size:var(--xxs);color:var(--g500);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.garage-bar{position:absolute;top:16px;height:30px;border-radius:99px;background:var(--brand);color:#fff;padding:6px 10px;font-size:var(--xxxs);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh);min-width:58px}
+.garage-bar.conflict{background:#dc2626}
+.garage-waiting{display:grid;gap:8px}
+.garage-wait{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);padding:10px 12px}
+.garage-wait strong{display:block;font-size:var(--sm)}
+.garage-wait span{font-size:var(--xxs);color:var(--g500)}
+.garage-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.garage-milestone-table{width:100%;border-collapse:collapse}
+.garage-milestone-table th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100)}
+.garage-milestone-table td{padding:10px 11px;border-bottom:1px solid var(--g100);vertical-align:middle}
+.garage-milestone-table tr:last-child td{border-bottom:none}
+.garage-small{font-size:var(--xxs);color:var(--g500)}
+@media(max-width:760px){
+  .garage-page{padding:14px 12px 100px}
+  .garage-form-grid{grid-template-columns:1fr}
+  .garage-scale,.garage-usage,.garage-project-row{grid-template-columns:132px 1fr}
+  .garage-scale-label,.garage-project-label{padding:10px 9px}
+  .garage-project-label strong{font-size:var(--xxs)}
+  .garage-mark{font-size:10px}
+  .garage-use-chip{font-size:10px;padding:4px 7px}
+  .garage-bar{font-size:11px;padding:6px 8px}
+  .garage-controls{width:100%}
+  .garage-controls .btn{flex:1;justify-content:center}
+  .garage-month{width:100%;text-align:center}
+  .garage-wait{align-items:flex-start;flex-direction:column}
+}
+
 /* ADMIN PROFIT */
 .psum{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:13px}
 .pslbl{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:4px}
@@ -596,6 +647,7 @@ button{cursor:pointer}
       <div class="nav-menu" id="nav-menu">
         <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
+        <button onclick="openGarageTimeline();closeNavMenu()">Garage Timeline</button>
         <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
         <button onclick="logout()">Logout</button>
@@ -641,6 +693,7 @@ button{cursor:pointer}
       <button class="dtab"     onclick="st('consult',this)">📋 Consultation</button>
       <button class="dtab"     onclick="st('quote',this)">Quote</button>
       <button class="dtab"     onclick="st('parts',this)">Parts</button>
+      <button class="dtab"     onclick="st('garageTimeline',this)">Timeline</button>
       <button class="dtab"     onclick="st('timeline',this)">Activity</button>
       <button class="dtab"     onclick="st('admin',this)">Admin</button>
       <button class="dtab"     onclick="st('cashflow',this)">💰 Cashflow</button>
@@ -677,6 +730,16 @@ button{cursor:pointer}
       <div id="pipeline-settings"></div>
     </div>
 
+    <!-- GARAGE TIMELINE SETTINGS -->
+    <div class="ss">
+      <div class="sst">Garage Timeline Settings</div>
+      <div class="fr"><span class="fl">Capacity</span><input class="fi" id="gt-capacity" type="number" min="1" step="1"></div>
+      <div class="fr"><span class="fl">Build days</span><input class="fi" id="gt-build-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">QC days</span><input class="fi" id="gt-qc-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">Delivery buffer</span><input class="fi" id="gt-delivery-buffer" type="number" min="0" step="1"></div>
+      <button class="btn btn-brand btn-sm" onclick="saveGarageSettings()">Save Garage Settings</button>
+    </div>
+
     <!-- USERS -->
     <div class="ss">
       <div class="sst">Users & LINE IDs</div>
@@ -709,6 +772,11 @@ button{cursor:pointer}
 <!-- ══════ MASTER CASHFLOW ══════ -->
 <div class="view" id="v-mastercf">
   <div id="mastercf-body" class="mcf-page"></div>
+</div>
+
+<!-- ══════ GARAGE TIMELINE ══════ -->
+<div class="view" id="v-garage">
+  <div id="garage-body" class="garage-page"></div>
 </div>
 
 </div><!-- /layout -->
@@ -915,6 +983,35 @@ const CASH_OUT_CATEGORIES=[
   'Refund to Customer',
   'Other Expense'
 ];
+function categoryIcon(name,icon){
+  const saved=String(icon||'').trim();
+  if(saved)return saved;
+  const key=String(name||'').toLowerCase();
+  if(key.includes('bed'))return '🛏';
+  if(key.includes('cabinet')||key.includes('storage'))return '🗄';
+  if(key.includes('battery'))return '🔋';
+  if(key.includes('electrical'))return '⚡';
+  if(key.includes('water'))return '💧';
+  if(key.includes('ceiling')||key.includes('wall')||key.includes('panel'))return '🪵';
+  if(key.includes('fabrication')||key.includes('installation')||key.includes('labor')||key.includes('labour'))return '🔧';
+  if(key.includes('design'))return '✏️';
+  return '📦';
+}
+const GARAGE_MILESTONES=[
+  {key:'parts_arrived',label:'Parts Arrived'},
+  {key:'car_in',label:'Car Intake'},
+  {key:'build',label:'Build'},
+  {key:'qc',label:'QC'},
+  {key:'delivery',label:'Delivery'}
+];
+let GARAGE_SETTINGS={
+  garage_capacity:2,
+  default_build_days:14,
+  default_qc_days:2,
+  default_delivery_buffer_days:1
+};
+let GARAGE_MONTH_CURSOR='';
+let timelineAutosaveTimer=null;
 
 // ══════════════════════════════════════
 // API LAYER
@@ -954,6 +1051,26 @@ async function loadUser(){
     if(mcfBtn)mcfBtn.style.display=canSeeMasterCF()?'':'none';
     const navMcf=document.getElementById('nav-mastercf');
     if(navMcf)navMcf.style.display=canSeeMasterCF()?'':'none';
+  }
+}
+
+function applyGarageSettings(data={}){
+  const source=data.garage_timeline||data;
+  const num=(key,fallback)=>source[key]!==undefined&&source[key]!==''?Number(source[key]):fallback;
+  GARAGE_SETTINGS={
+    garage_capacity:Math.max(1,num('garage_capacity',GARAGE_SETTINGS.garage_capacity||2)),
+    default_build_days:Math.max(0,num('default_build_days',GARAGE_SETTINGS.default_build_days||14)),
+    default_qc_days:Math.max(0,num('default_qc_days',GARAGE_SETTINGS.default_qc_days||2)),
+    default_delivery_buffer_days:Math.max(0,num('default_delivery_buffer_days',GARAGE_SETTINGS.default_delivery_buffer_days||1))
+  };
+}
+
+async function loadGarageMeta(){
+  try{
+    const data=await GET('/api/meta');
+    applyGarageSettings(data);
+  }catch(e){
+    console.warn('Garage timeline settings failed to load',e);
   }
 }
 
@@ -1172,6 +1289,7 @@ function activityFromApi(row){
 
 function projectFromApi(row){
   const p=row||{};
+  const garageTimeline=parseTimelineJson(p.timeline_json||p.garageTimeline);
   return {
     ...p,
     id:p.id,
@@ -1193,6 +1311,7 @@ function projectFromApi(row){
     customItems:Array.isArray(p.customItems)?p.customItems:[],
     partsStatus:p.partsStatus||{},
     stockStatus:parseJsonField(p.stock_status_json)||p.stockStatus||{},
+    garageTimeline,
     timeline:Array.isArray(p.timeline)?p.timeline:[],
     quoteTotal:Number(p.quote_total||p.quoteTotal||0),
     serverTotal:Number(p.quote_total||p.quoteTotal||0),
@@ -1210,6 +1329,83 @@ function parseCashflow(p){
     try{return JSON.parse(p.cashflow_json);}catch(e){}
   }
   return {deposits:[],vendorPayments:[]};
+}
+
+function parseTimelineJson(raw){
+  if(raw&&typeof raw==='object')return normalizeTimeline(raw);
+  if(raw){
+    try{return normalizeTimeline(JSON.parse(raw));}catch(e){}
+  }
+  return normalizeTimeline({});
+}
+
+function normalizeTimeline(tl={}){
+  const oldMilestones=tl.milestones||{};
+  const partsArrived=tl.parts_arrived_date||oldMilestones.parts_arrived?.date||'';
+  const intake=tl.intake_date||oldMilestones.car_in?.date||'';
+  const buildComplete=tl.build_complete_date||oldMilestones.build?.date||'';
+  const qc=tl.qc_date||oldMilestones.qc?.date||'';
+  const delivery=tl.delivery_date||tl.estimated_delivery_date||oldMilestones.delivery?.date||'';
+  const milestones={
+    parts_arrived:{date:partsArrived,status:oldMilestones.parts_arrived?.status||'Pending'},
+    car_in:{date:intake,status:oldMilestones.car_in?.status||'Scheduled'},
+    build:{date:buildComplete,status:oldMilestones.build?.status||'Pending'},
+    qc:{date:qc,status:oldMilestones.qc?.status||'Pending'},
+    delivery:{date:delivery,status:oldMilestones.delivery?.status||'Pending'}
+  };
+  return {
+    parts_arrived_date:partsArrived,
+    intake_date:intake,
+    build_complete_date:buildComplete,
+    qc_date:qc,
+    delivery_date:delivery,
+    milestones
+  };
+}
+
+const DAY_MS=24*60*60*1000;
+function dtPad2(n){return String(n).padStart(2,'0');}
+function parseYmd(dateStr){
+  const m=String(dateStr||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return null;
+  return {y:Number(m[1]),m:Number(m[2]),d:Number(m[3])};
+}
+function ymdMs(dateStr){
+  const p=parseYmd(dateStr);
+  return p?Date.UTC(p.y,p.m-1,p.d):NaN;
+}
+function formatUtcYmd(ms){
+  const d=new Date(ms);
+  return `${d.getUTCFullYear()}-${dtPad2(d.getUTCMonth()+1)}-${dtPad2(d.getUTCDate())}`;
+}
+function todayYmd(){
+  const d=new Date();
+  return `${d.getFullYear()}-${dtPad2(d.getMonth()+1)}-${dtPad2(d.getDate())}`;
+}
+function addDays(dateStr,days){
+  const ms=ymdMs(dateStr);
+  if(!Number.isFinite(ms))return '';
+  return formatUtcYmd(ms+(Number(days||0)*DAY_MS));
+}
+
+function daysBetween(a,b){
+  const ams=ymdMs(a),bms=ymdMs(b);
+  if(!Number.isFinite(ams)||!Number.isFinite(bms))return 0;
+  return Math.round((bms-ams)/DAY_MS);
+}
+
+function timelineDeliveryDate(p){
+  const tl=p?.garageTimeline||parseTimelineJson(p?.timeline_json);
+  return tl.delivery_date||tl.milestones?.delivery?.date||'';
+}
+
+function timelineGapText(fromDate,toDate,fromLabel){
+  if(!toDate)return 'No date set';
+  if(!fromDate)return 'Waiting for previous date';
+  const diff=daysBetween(fromDate,toDate);
+  const unit=Math.abs(diff)===1?'day':'days';
+  if(diff<0)return `${Math.abs(diff)} ${unit} before ${fromLabel}`;
+  return `${diff} ${unit} after ${fromLabel}`;
 }
 
 function customFromQuoteRow(row){
@@ -1465,6 +1661,7 @@ function showView(v){
   closeNavMenu();
   if(v==='settings')renderSettings();
   if(v==='mastercf')renderMasterCF();
+  if(v==='garage')renderGarageTimeline();
   if(v==='dash')refreshDashboard(currentFilter);
 }
 function goHome(){AP=null;showView('dash');}
@@ -1527,6 +1724,7 @@ function renderDash(filter='All'){
   if(!shown.length){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">No projects found</div>';return;}
   shown.forEach(p=>{
     const pct=sPct(p.stage),col=sCol(p.stage),t=projectQuoteTotal(p);
+    const delivery=timelineDeliveryDate(p);
     const d=document.createElement('div');d.className='pcard';
     d.innerHTML=`
       <div class="pc-h">
@@ -1541,7 +1739,7 @@ function renderDash(filter='All'){
       </div>
       <div class="pc-f">
         <span class="qamt">${t?fmt(t):'No quote'}</span>
-        <span>${p.finish?'📅 '+p.finish:'TBD'}</span>
+        <span>${delivery?'Est. Delivery: '+delivery:(p.finish?'📅 '+p.finish:'TBD')}</span>
       </div>`;
     d.onclick=()=>openDetail(p);
     list.appendChild(d);
@@ -1659,6 +1857,7 @@ function renderTab(t){
     consult:rConsult,
     quote:rQuote,
     parts:rParts,
+    garageTimeline:rGarageProjectTimeline,
     timeline:rTimeline,
     admin:rAdmin,
     cashflow:rCashflow
@@ -1782,6 +1981,311 @@ function changeStage(val){
   AP.timeline.unshift({time:nowStr(),user:currentUser.displayName,action:'Stage changed',old,nv:val,type:'stage'});
   savePatch({stage:val});
   rOverview(document.getElementById('tb'));
+}
+
+// ══════════════════════════════════════
+// GARAGE TIMELINE
+// ══════════════════════════════════════
+function ensureGarageTimeline(p=AP){
+  if(!p.garageTimeline)p.garageTimeline=parseTimelineJson(p.timeline_json);
+  p.garageTimeline=normalizeTimeline(p.garageTimeline);
+  return p.garageTimeline;
+}
+
+function timelineStatusOptions(value){
+  return ['Pending','Scheduled','Done','Delayed'].map(s=>`<option value="${s}" ${value===s?'selected':''}>${s}</option>`).join('');
+}
+
+function syncTimelineMilestones(tl){
+  tl.milestones.parts_arrived.date=tl.parts_arrived_date||'';
+  tl.milestones.car_in.date=tl.intake_date||'';
+  tl.milestones.build.date=tl.build_complete_date||'';
+  tl.milestones.qc.date=tl.qc_date||'';
+  tl.milestones.delivery.date=tl.delivery_date||'';
+  return tl;
+}
+
+function setTimelineField(key,value){
+  const tl=ensureGarageTimeline();
+  tl[key]=value;
+  syncTimelineMilestones(tl);
+  scheduleTimelineAutosave();
+}
+
+function setTimelineStatus(key,value){
+  const tl=ensureGarageTimeline();
+  tl.milestones[key]={...(tl.milestones[key]||{date:'',status:'Pending'}),status:value};
+  scheduleTimelineAutosave();
+}
+
+function scheduleTimelineAutosave(){
+  if(!AP?.id)return;
+  clearTimeout(timelineAutosaveTimer);
+  timelineAutosaveTimer=setTimeout(()=>saveProjectTimeline({silent:true}),450);
+}
+
+async function suggestTimelineDates(){
+  if(!AP)return;
+  await loadGarageMeta();
+  const tl=ensureGarageTimeline();
+  if(sIdx(AP.stage)>=sIdx('08 Parts Arrived')&&!tl.parts_arrived_date){
+    tl.parts_arrived_date=todayYmd();
+    tl.milestones.parts_arrived.status='Done';
+  }
+  const baseDate=tl.parts_arrived_date||tl.intake_date;
+  if(!baseDate){toast('Add Parts Arrived Date first');rGarageProjectTimeline(document.getElementById('tb'));return;}
+  if(tl.parts_arrived_date){
+    tl.intake_date=tl.parts_arrived_date;
+    tl.milestones.parts_arrived.status=tl.milestones.parts_arrived.status||'Done';
+  }
+  tl.build_complete_date=addDays(tl.intake_date,GARAGE_SETTINGS.default_build_days);
+  tl.qc_date=addDays(tl.build_complete_date,GARAGE_SETTINGS.default_qc_days);
+  tl.delivery_date=addDays(tl.qc_date,GARAGE_SETTINGS.default_delivery_buffer_days);
+  tl.milestones.car_in.status=tl.milestones.car_in.status||'Scheduled';
+  syncTimelineMilestones(tl);
+  rGarageProjectTimeline(document.getElementById('tb'));
+  await saveProjectTimeline({silent:true});
+  toast('Suggested dates saved ✓');
+}
+
+async function saveProjectTimeline(opts={}){
+  if(!AP)return;
+  clearTimeout(timelineAutosaveTimer);
+  const tl=syncTimelineMilestones(normalizeTimeline(ensureGarageTimeline()));
+  try{
+    const updated=await PATCH(`/api/projects/${AP.id}`,{timeline_json:JSON.stringify(tl)});
+    const next=projectFromApi(updated);
+    AP={
+      ...next,
+      checkedItems:AP.checkedItems||[],
+      itemQtys:AP.itemQtys||{},
+      customItems:AP.customItems||[],
+      packageQuote:AP.packageQuote||null,
+      consultationCategories:AP.consultationCategories||[],
+      partsStatus:AP.partsStatus||{},
+      stockStatus:AP.stockStatus||{},
+      timeline:AP.timeline||[]
+    };
+    projects=projects.map(p=>p.id===AP.id?AP:p);
+    renderDash(currentFilter);
+    if(document.getElementById('v-garage')?.classList.contains('active'))renderGarageTimeline();
+    if(!opts.silent)toast('Timeline saved ✓');
+  }catch(e){
+    toast(`Timeline save failed: ${errMsg(e)}`,4000);
+  }
+}
+
+function rGarageProjectTimeline(body){
+  const p=AP,tl=ensureGarageTimeline(p);
+  const milestoneRows=[
+    {key:'parts_arrived',label:'Parts Arrived',date:tl.parts_arrived_date,gap:tl.parts_arrived_date?'Starting checkpoint':'No date set'},
+    {key:'car_in',label:'Car Intake',date:tl.intake_date,gap:timelineGapText(tl.parts_arrived_date,tl.intake_date,'Parts Arrived')},
+    {key:'build',label:'Build Complete',date:tl.build_complete_date,gap:timelineGapText(tl.intake_date,tl.build_complete_date,'Car Intake')},
+    {key:'qc',label:'QC',date:tl.qc_date,gap:timelineGapText(tl.build_complete_date,tl.qc_date,'Build Complete')},
+    {key:'delivery',label:'Delivery',date:tl.delivery_date,gap:timelineGapText(tl.qc_date,tl.delivery_date,'QC')}
+  ];
+  const statusRows=milestoneRows.map(m=>{
+    const item=tl.milestones[m.key]||{date:m.date||'',status:'Pending'};
+    return `<tr>
+      <td><strong>${m.label}</strong><div class="garage-small">${item.date||'No date'}</div></td>
+      <td><span class="garage-small">${m.gap}</span></td>
+      <td><select class="fsel" onchange="setTimelineStatus('${m.key}',this.value)">${timelineStatusOptions(item.status||'Pending')}</select></td>
+    </tr>`;
+  }).join('');
+  body.innerHTML=`
+    <div class="fc">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="fct">Garage Timeline</div>
+          <div class="garage-small">Capacity is occupied only from Car Intake Date through Delivery Date. Changes auto-save.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-out btn-sm" onclick="suggestTimelineDates()">Suggest Dates</button>
+          <button class="btn btn-brand btn-sm" onclick="saveProjectTimeline()">Save Timeline</button>
+        </div>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="garage-form-grid">
+        <div class="mf"><label>Parts Arrived Date</label><input class="mi" type="date" value="${tl.parts_arrived_date||''}" onchange="setTimelineField('parts_arrived_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
+        <div class="mf"><label>Car Intake Date</label><input class="mi" type="date" value="${tl.intake_date||''}" onchange="setTimelineField('intake_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
+        <div class="mf"><label>Build Complete Date</label><input class="mi" type="date" value="${tl.build_complete_date||''}" onchange="setTimelineField('build_complete_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
+        <div class="mf"><label>QC Date</label><input class="mi" type="date" value="${tl.qc_date||''}" onchange="setTimelineField('qc_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
+        <div class="mf"><label>Delivery Date</label><input class="mi" type="date" value="${tl.delivery_date||''}" onchange="setTimelineField('delivery_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
+      </div>
+    </div>
+    <div class="fc" style="padding:0;overflow:hidden">
+      <table class="garage-milestone-table">
+        <thead><tr><th>Milestone</th><th>Days After</th><th>Status</th></tr></thead>
+        <tbody>${statusRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function activeGarageProjects(){
+  return projects.filter(p=>!p.archived&&!['13 Delivered','14 Archived'].includes(p.stage));
+}
+
+function garageRows(){
+  return activeGarageProjects().map(p=>{
+    const tl=ensureGarageTimeline(p);
+    return {
+      project:p,
+      intake:tl.intake_date||'',
+      delivery:tl.delivery_date||''
+    };
+  });
+}
+
+function garageDateRange(rows){
+  const scheduled=rows.filter(r=>r.intake&&r.delivery);
+  const today=todayYmd();
+  if(!scheduled.length)return {start:today,end:addDays(today,42)};
+  const start=scheduled.reduce((min,r)=>r.intake<min?r.intake:min,scheduled[0].intake);
+  const end=scheduled.reduce((max,r)=>r.delivery>max?r.delivery:max,scheduled[0].delivery);
+  return {start,end:addDays(end,7)};
+}
+
+function monthStart(dateStr=GARAGE_MONTH_CURSOR){
+  const m=String(dateStr||'').match(/^(\d{4})-(\d{2})/);
+  if(m)return `${m[1]}-${m[2]}-01`;
+  return `${todayYmd().slice(0,7)}-01`;
+}
+
+function shiftMonth(dateStr,delta){
+  const m=monthStart(dateStr).match(/^(\d{4})-(\d{2})/);
+  let year=Number(m[1]);
+  let month=Number(m[2])+Number(delta||0);
+  while(month<1){month+=12;year-=1;}
+  while(month>12){month-=12;year+=1;}
+  return `${year}-${dtPad2(month)}-01`;
+}
+
+function monthEnd(dateStr){
+  return addDays(shiftMonth(dateStr,1),-1);
+}
+
+function garageMonthRange(){
+  const start=monthStart(GARAGE_MONTH_CURSOR);
+  return {start,end:monthEnd(start)};
+}
+
+function garageMonthLabel(){
+  return monthStart(GARAGE_MONTH_CURSOR).slice(0,7);
+}
+
+function changeGarageMonth(delta){
+  GARAGE_MONTH_CURSOR=shiftMonth(GARAGE_MONTH_CURSOR,delta);
+  renderGarageTimeline();
+}
+
+function resetGarageMonth(){
+  GARAGE_MONTH_CURSOR=`${todayYmd().slice(0,7)}-01`;
+  renderGarageTimeline();
+}
+
+function garageUsageOn(date,rows){
+  return rows.filter(r=>r.intake&&r.delivery&&r.intake<=date&&r.delivery>=date).length;
+}
+
+function garageConflictDays(rows,range=garageDateRange(rows)){
+  const out=[];
+  const {start,end}=range;
+  for(let d=start,guard=0;d&&d<=end&&guard<500;d=addDays(d,1),guard++){
+    const count=garageUsageOn(d,rows);
+    if(count>GARAGE_SETTINGS.garage_capacity)out.push({date:d,count});
+  }
+  return out;
+}
+
+function rowTouchesConflict(row,conflicts){
+  return conflicts.some(c=>row.intake&&row.delivery&&row.intake<=c.date&&row.delivery>=c.date);
+}
+
+function garageMarks(start,end){
+  const marks=[];
+  for(let d=start,guard=0;d&&d<=end&&guard<32;d=addDays(d,1),guard++)marks.push(d);
+  return marks;
+}
+
+async function openGarageTimeline(){
+  showView('garage');
+  await refreshDashboard('All');
+  renderGarageTimeline();
+}
+
+async function openDetailById(id,tab='overview'){
+  const p=projects.find(x=>String(x.id)===String(id))||{id};
+  await openDetail(p);
+  if(tab!=='overview'){
+    const buttons=[...document.querySelectorAll('#dtbar .dtab')];
+    const btn=buttons.find(b=>b.getAttribute('onclick')?.includes(`'${tab}'`));
+    st(tab,btn);
+  }
+}
+
+function renderGarageTimeline(){
+  const body=document.getElementById('garage-body');if(!body)return;
+  const rows=garageRows();
+  const range=garageMonthRange();
+  const scheduled=rows.filter(r=>r.intake&&r.delivery&&r.delivery>=range.start&&r.intake<=range.end);
+  const waiting=rows.filter(r=>!r.intake||!r.delivery);
+  const capacity=Math.max(1,Number(GARAGE_SETTINGS.garage_capacity||2));
+  const totalDays=Math.max(1,daysBetween(range.start,range.end)+1);
+  const marks=garageMarks(range.start,range.end);
+  const conflicts=garageConflictDays(rows,range);
+  const firstConflict=conflicts[0];
+  const pos=date=>Math.max(0,Math.min(100,daysBetween(range.start,date)/totalDays*100));
+  const markPos=date=>Math.max(0,Math.min(100,(daysBetween(range.start,date)+0.5)/totalDays*100));
+  body.innerHTML=`
+    <div class="garage-head">
+      <div>
+        <div class="garage-title">Garage Timeline</div>
+        <div class="garage-sub">Capacity: ${commas(capacity)} cars · ${commas(activeGarageProjects().length)} active projects · ${garageMonthLabel()}</div>
+      </div>
+      <div class="garage-controls">
+        <button class="btn btn-out btn-sm" onclick="changeGarageMonth(-1)">← Previous</button>
+        <div class="garage-month">${garageMonthLabel()}</div>
+        <button class="btn btn-out btn-sm" onclick="resetGarageMonth()">This Month</button>
+        <button class="btn btn-out btn-sm" onclick="changeGarageMonth(1)">Next →</button>
+        <button class="btn btn-out btn-sm" onclick="goHome()">Projects</button>
+      </div>
+    </div>
+    ${firstConflict?`<div class="garage-warning">Capacity conflict: ${commas(firstConflict.count)} cars booked on ${firstConflict.date}</div>`:''}
+    <div class="garage-board" style="--garage-days:${totalDays}">
+      <div class="garage-scale">
+        <div class="garage-scale-label">Month</div>
+        <div class="garage-track">${marks.map(m=>`<span class="garage-mark" title="${m}" style="left:${markPos(m)}%">${m.slice(5).replace('-','/')}</span>`).join('')}</div>
+      </div>
+      <div class="garage-usage">
+        <div class="garage-scale-label">Capacity Usage</div>
+        <div class="garage-track">${marks.map(m=>{
+          const usage=garageUsageOn(m,rows);
+          return `<span class="garage-use-chip ${usage>capacity?'hot':''}" style="left:${markPos(m)}%">${usage}/${capacity}</span>`;
+        }).join('')}</div>
+      </div>
+      ${scheduled.length?scheduled.map(row=>{
+        const clipStart=row.intake<range.start?range.start:row.intake;
+        const clipEnd=row.delivery>range.end?range.end:row.delivery;
+        const left=pos(clipStart);
+        const width=Math.max(4,(daysBetween(clipStart,clipEnd)+1)/totalDays*100);
+        return `<div class="garage-project-row">
+          <div class="garage-project-label"><strong>${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</strong><span>${esc(row.project.owner)} · ${row.intake} to ${row.delivery}</span></div>
+          <div class="garage-track">
+            <div class="garage-bar ${rowTouchesConflict(row,conflicts)?'conflict':''}" onclick="openDetailById(${row.project.id},'garageTimeline')" title="${esc(row.project.jobNo)} ${esc(row.project.vehicle)}" style="left:${left}%;width:${Math.min(width,100-left)}%">${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</div>
+          </div>
+        </div>`;
+      }).join(''):`<div style="padding:24px;text-align:center;color:var(--g300);font-size:var(--sm)">No scheduled garage projects yet.</div>`}
+    </div>
+    <div class="fc">
+      <div class="fct">Waiting / Not Scheduled</div>
+      <div class="garage-waiting">
+        ${waiting.length?waiting.map(row=>`<div class="garage-wait">
+          <div><strong>${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</strong><span>${esc(row.project.owner)} · ${row.intake||'No intake date'}${row.delivery?' to '+row.delivery:' · No delivery date'}</span></div>
+          <button class="btn btn-out btn-xs" onclick="openDetailById(${row.project.id},'garageTimeline')">Schedule</button>
+        </div>`).join(''):'<div class="garage-small">No waiting projects.</div>'}
+      </div>
+    </div>`;
 }
 
 // ══════════════════════════════════════
@@ -3111,7 +3615,7 @@ async function loadAdminSettings(opts={}){
 	  CATALOG = data.consultation.map(cat => ({
 	    id: cat.id,
 	    cat: cat.name,
-	    icon: cat.icon || '📦',
+	    icon: categoryIcon(cat.name,cat.icon),
 	    sort_order: cat.sort_order || 0,
 	    active: cat.active,
 	    items: (cat.items || []).map(item => ({
@@ -3138,9 +3642,11 @@ async function loadAdminSettings(opts={}){
 	        applyPackages(parsed);
 	      }catch(e){}
 	    }
+    applyGarageSettings(data);
 	    renderPackages();
     const terms=document.getElementById('default-terms');
     if(terms&&data?.quote_terms!==undefined)terms.value=data.quote_terms;
+    renderGarageSettings();
     if(data?.master_cashflow_entries!==undefined){
       try{
         const parsed=JSON.parse(data.master_cashflow_entries||'[]');
@@ -3161,9 +3667,40 @@ function renderSettings(){
   renderPackages();
   renderCatalog();
   renderPipeline();
+  renderGarageSettings();
   renderUsers();
   loadAdminSettings().then(()=>renderUsers());
   loadSheetsStatus();
+}
+
+function renderGarageSettings(){
+  const map={
+    'gt-capacity':'garage_capacity',
+    'gt-build-days':'default_build_days',
+    'gt-qc-days':'default_qc_days',
+    'gt-delivery-buffer':'default_delivery_buffer_days'
+  };
+  Object.entries(map).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el)el.value=GARAGE_SETTINGS[key];
+  });
+}
+
+async function saveGarageSettings(){
+  const payload={
+    garage_capacity:Math.max(1,Number(document.getElementById('gt-capacity')?.value||2)),
+    default_build_days:Math.max(0,Number(document.getElementById('gt-build-days')?.value||14)),
+    default_qc_days:Math.max(0,Number(document.getElementById('gt-qc-days')?.value||2)),
+    default_delivery_buffer_days:Math.max(0,Number(document.getElementById('gt-delivery-buffer')?.value||1))
+  };
+  try{
+    await PATCH('/api/admin/settings',payload);
+    applyGarageSettings(payload);
+    renderGarageSettings();
+    toast('Garage timeline settings saved ✓');
+  }catch(e){
+    toast(`Garage settings failed: ${errMsg(e)}`,4000);
+  }
 }
 
 // ── PACKAGES ──
@@ -3320,7 +3857,7 @@ function renderCatalog(){
 	    <div style="margin-bottom:18px">
 	      <div class="catrow" style="display:flex;align-items:center;gap:8px;padding:8px 16px;margin:0 -16px;background:var(--g50);border-bottom:1px solid var(--g100)">
 	        <button class="cat-toggle" type="button" onclick="toggleCatalogCategory(${ci})" title="${collapsed?'Expand':'Collapse'} category">${collapsed?'▸':'▾'}</button>
-	        <input class="iedit" value="${cat.icon}" style="width:30px;font-size:18px;text-align:center" onchange="CATALOG[${ci}].icon=this.value">
+	        <input class="iedit" value="${cat.icon}" style="width:34px;font-size:18px;text-align:center" onchange="updateCatalogCategory(${ci},{icon:this.value})">
 		<input class="iedit" value="${cat.cat}" style="flex:1;font-size:var(--sm);font-weight:700" onchange="updateCatalogCategory(${ci},{name:this.value})">
 	        <button class="btn btn-out btn-xs" onclick="moveCat(${ci},-1)" ${ci===0?'disabled':''}>↑</button>
 	        <button class="btn btn-out btn-xs" onclick="moveCat(${ci},1)" ${ci===CATALOG.length-1?'disabled':''}>↓</button>
@@ -3542,10 +4079,11 @@ async function updateCatalogCategory(ci,patch){
   try{
     const saved=await PATCH(`/api/admin/consultation/categories/${cat.id}`,{
       name:cat.cat,
+      icon:categoryIcon(cat.cat,cat.icon),
       sort_order:cat.sort_order||ci+1,
       active:cat.active!==0
     });
-    CATALOG[ci]={...cat,id:saved.id,cat:saved.name||cat.cat,sort_order:saved.sort_order,active:saved.active};
+    CATALOG[ci]={...cat,id:saved.id,cat:saved.name||cat.cat,icon:categoryIcon(saved.name||cat.cat,saved.icon||cat.icon),sort_order:saved.sort_order,active:saved.active};
     renderCatalog();
     toast('Category saved ✓');
   }catch(e){
@@ -3556,13 +4094,14 @@ async function addCatalogCategory(){
   try{
     const saved=await POST('/api/admin/consultation/categories',{
       name:`New Category ${CATALOG.length+1}`,
+      icon:'📦',
       sort_order:CATALOG.length+1,
       active:true
     });
     CATALOG.push({
       id:saved.id,
       cat:saved.name||`New Category ${CATALOG.length}`,
-      icon:saved.icon||'📦',
+      icon:categoryIcon(saved.name,saved.icon),
       sort_order:saved.sort_order,
       active:saved.active,
       items:[]
@@ -4055,6 +4594,7 @@ async function createProject(){
 async function initApp(){
   try{
     await loadUser();
+    await loadGarageMeta();
     await loadPackages();
     if(currentUser.role==='admin')await loadAdminSettings({silent:true});
     await refreshDashboard('All');

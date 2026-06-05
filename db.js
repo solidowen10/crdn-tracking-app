@@ -121,6 +121,7 @@ function migrate() {
       customer_action TEXT,
       next_action TEXT,
       notes TEXT,
+      timeline_json TEXT DEFAULT '{}',
       archived INTEGER NOT NULL DEFAULT 0,
       created_by TEXT,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -207,6 +208,7 @@ function migrate() {
     CREATE TABLE IF NOT EXISTS consultation_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
+      icon TEXT NOT NULL DEFAULT '',
       sort_order INTEGER NOT NULL DEFAULT 0,
       active INTEGER NOT NULL DEFAULT 1
     );
@@ -323,9 +325,14 @@ function migrate() {
   addColumn('vehicles', 'next_action', 'TEXT');
   addColumn('vehicles', 'customer_email', "TEXT NOT NULL DEFAULT ''");
   addColumn('vehicles', 'customer_phone', "TEXT NOT NULL DEFAULT ''");
+  addColumn('vehicles', 'timeline_json', "TEXT DEFAULT '{}'");
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
+  addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");
   addColumn('consultation_items', 'slug', 'TEXT');
+
+  const setIcon = db.prepare("UPDATE consultation_categories SET icon=? WHERE name=? AND (icon IS NULL OR icon='')");
+  DEFAULT_CATEGORIES.forEach(name => setIcon.run(categoryIcon(name), name));
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_consultation_items_active_name
@@ -369,10 +376,23 @@ function seedCatalog() {
   tx();
 }
 
+function categoryIcon(name) {
+  const key = String(name || '').toLowerCase();
+  if (key.includes('bed')) return '🛏';
+  if (key.includes('cabinet') || key.includes('storage')) return '🗄';
+  if (key.includes('battery')) return '🔋';
+  if (key.includes('electrical')) return '⚡';
+  if (key.includes('water')) return '💧';
+  if (key.includes('ceiling') || key.includes('wall') || key.includes('panel')) return '🪵';
+  if (key.includes('fabrication') || key.includes('installation') || key.includes('labor') || key.includes('labour')) return '🔧';
+  if (key.includes('design')) return '✏️';
+  return '📦';
+}
+
 function seedConsultationChecklist() {
   const existing = db.prepare('SELECT COUNT(*) AS count FROM consultation_categories').get().count;
   if (existing > 0) return;
-  const insertCat = db.prepare('INSERT INTO consultation_categories (name, sort_order) VALUES (?, ?)');
+  const insertCat = db.prepare('INSERT INTO consultation_categories (name, icon, sort_order) VALUES (?, ?, ?)');
   const insertItem = db.prepare(`
     INSERT INTO consultation_items (
       category_id, name, description, default_customer_price, default_internal_cost,
@@ -383,7 +403,7 @@ function seedConsultationChecklist() {
   const tx = db.transaction(() => {
     const categoryIds = new Map();
     DEFAULT_CATEGORIES.forEach((name, index) => {
-      categoryIds.set(name, insertCat.run(name, index + 1).lastInsertRowid);
+      categoryIds.set(name, insertCat.run(name, categoryIcon(name), index + 1).lastInsertRowid);
     });
     const counters = new Map();
     DEFAULT_CHECKLIST_ITEMS.forEach(([cat, name, description, price, cost, supplier, needOrder]) => {
@@ -414,6 +434,10 @@ function seedSettings() {
   upsert.run('google_sheets_sync', 'Not connected');
   upsert.run('google_sheets_last_synced_at', '');
   upsert.run('google_sheets_last_error', '');
+  upsert.run('garage_capacity', '2');
+  upsert.run('default_build_days', '14');
+  upsert.run('default_qc_days', '2');
+  upsert.run('default_delivery_buffer_days', '1');
 }
 
 function ensureBilingualTerms() {

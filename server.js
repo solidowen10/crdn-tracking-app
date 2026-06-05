@@ -341,6 +341,7 @@ function projectSummary(row) {
     progress: stageProgress(stage),
     quote_total: totals.customer,
     cashflow_json: row.cashflow_json || '',
+    timeline_json: row.timeline_json || '{}',
     quote_cost: totals.cost,
     quote_profit: totals.profit,
     quote_count: totals.count,
@@ -391,7 +392,16 @@ function setSetting(key, value) {
     INSERT INTO app_settings (key, value, updated_at)
     VALUES (?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
-  `).run(key, String(value || ''));
+  `).run(key, String(value ?? ''));
+}
+
+function garageSettings() {
+  return {
+    garage_capacity: setting('garage_capacity', '2'),
+    default_build_days: setting('default_build_days', '14'),
+    default_qc_days: setting('default_qc_days', '2'),
+    default_delivery_buffer_days: setting('default_delivery_buffer_days', '1')
+  };
 }
 
 function syncErrorMessage(err) {
@@ -578,6 +588,7 @@ app.get('/api/meta', requireAuth, (req, res) => {
     part_statuses: PART_STATUSES,
     categories: setting('quote_categories', DEFAULT_CATEGORIES.join('\n')).split('\n').map(text).filter(Boolean),
     terms: setting('quote_terms'),
+    garage_timeline: garageSettings(),
     user: req.session.user
   });
 });
@@ -654,6 +665,7 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
       notes=?,
       cashflow_json=?,
       stock_status_json=?,
+      timeline_json=?,
       archived=?,
       updated_at=CURRENT_TIMESTAMP
   WHERE id=?
@@ -677,6 +689,7 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
     text(next.notes),
     text(next.cashflow_json),
     text(next.stock_status_json),
+    text(next.timeline_json || '{}'),
     archived,
     current.id
   );
@@ -1365,13 +1378,14 @@ optionRows.forEach(option=>{
     parts_categories: setting('parts_categories', DEFAULT_CATEGORIES.join('\n')),
 	    quote_terms: setting('quote_terms'),
 	    packages: setting('packages', '[]'),
+	    ...garageSettings(),
 	    google_sheets_sync: setting('google_sheets_sync', 'Not connected'),
 	    master_cashflow_entries: setting('master_cashflow_entries', '[]')
 	  });
 	});
 	
 	app.patch('/api/admin/settings', requireAdmin, (req, res) => {
-	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries'].forEach(key => {
+	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries', 'garage_capacity', 'default_build_days', 'default_qc_days', 'default_delivery_buffer_days'].forEach(key => {
 	    if (req.body[key] !== undefined) setSetting(key, req.body[key]);
 	  });
   if (req.body.packages !== undefined) {
@@ -1475,16 +1489,17 @@ app.delete('/api/admin/users/:userId', requireAdmin, (req, res) => {
 app.post('/api/admin/consultation/categories', requireAdmin, (req, res) => {
   const name = text(req.body.name);
   if (!name) return res.status(400).json({ error: 'name is required' });
+  const icon = text(req.body.icon);
   const sort = int(req.body.sort_order, db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM consultation_categories').get().next);
-  const result = db.prepare('INSERT INTO consultation_categories (name, sort_order, active) VALUES (?, ?, ?)').run(name, sort, req.body.active === false ? 0 : 1);
+  const result = db.prepare('INSERT INTO consultation_categories (name, icon, sort_order, active) VALUES (?, ?, ?, ?)').run(name, icon, sort, req.body.active === false ? 0 : 1);
   res.status(201).json(db.prepare('SELECT * FROM consultation_categories WHERE id=?').get(result.lastInsertRowid));
 });
 
 app.patch('/api/admin/consultation/categories/:id', requireAdmin, (req, res) => {
   const current = db.prepare('SELECT * FROM consultation_categories WHERE id=?').get(Number(req.params.id));
   if (!current) return res.status(404).json({ error: 'Category not found' });
-  db.prepare('UPDATE consultation_categories SET name=?, sort_order=?, active=? WHERE id=?')
-    .run(text(req.body.name ?? current.name), int(req.body.sort_order, current.sort_order), bool(req.body.active ?? current.active) ? 1 : 0, current.id);
+  db.prepare('UPDATE consultation_categories SET name=?, icon=?, sort_order=?, active=? WHERE id=?')
+    .run(text(req.body.name ?? current.name), text(req.body.icon ?? current.icon), int(req.body.sort_order, current.sort_order), bool(req.body.active ?? current.active) ? 1 : 0, current.id);
   res.json(db.prepare('SELECT * FROM consultation_categories WHERE id=?').get(current.id));
 });
 

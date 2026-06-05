@@ -333,15 +333,16 @@ button{cursor:pointer}
 .garage-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .garage-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.06em}
 .garage-sub{font-size:var(--sm);color:var(--g500);margin-top:3px}
-.garage-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.garage-month{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;font-weight:400;color:var(--brand);padding:4px 2px;border:none;border-radius:0;background:transparent;line-height:1;min-width:88px;text-align:center}
+.garage-controls{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.garage-nav-row{display:flex;align-items:center;gap:8px}
+.garage-month{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;font-weight:400;color:#FFFFFF;padding:7px 14px;border-radius:var(--rs);background:var(--brand);line-height:1;min-width:88px;text-align:center}
 .garage-warning{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:var(--r);padding:12px 14px;margin-bottom:13px;font-size:var(--sm);font-weight:800}
 .garage-board{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;margin-bottom:13px}
-.garage-scale,.garage-usage,.garage-project-row{display:grid;grid-template-columns:210px 1fr}
+.garage-scale,.garage-usage,.garage-project-row{display:grid;grid-template-columns:210px 1fr;min-width:0}
 .garage-scale{background:var(--g50);border-bottom:1px solid var(--g100)}
 .garage-scale-label,.garage-project-label{padding:12px 14px}
 .garage-scale-label{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400)}
-.garage-track{position:relative;min-height:46px;background:linear-gradient(to right,rgba(226,226,222,.7) 1px,transparent 1px);background-size:calc(100% / var(--garage-days, 31)) 100%}
+.garage-track{position:relative;min-width:0!important;min-height:46px;background:linear-gradient(to right,rgba(226,226,222,.7) 1px,transparent 1px);background-size:calc(100% / var(--garage-days, 31)) 100%}
 .garage-mark{position:absolute;top:10px;transform:translateX(-50%);font-size:11px;color:var(--g400);white-space:nowrap}
 .garage-usage{border-bottom:1px solid var(--g100);background:#fff}
 .garage-usage .garage-track{min-height:54px}
@@ -352,8 +353,8 @@ button{cursor:pointer}
 .garage-project-label{background:var(--g50);min-width:0}
 .garage-project-label strong{display:block;font-size:var(--sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .garage-project-label span{display:block;font-size:var(--xxs);color:var(--g500);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.garage-bar{position:absolute;top:16px;height:30px;border-radius:99px;background:var(--brand);color:#fff;padding:6px 10px;font-size:var(--xxxs);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh);min-width:58px}
-.garage-bar.conflict{background:#dc2626}
+.garage-bar{position:absolute;top:16px;height:30px;border-radius:99px;background:var(--brand);color:transparent;font-size:0;padding:0;white-space:nowrap;overflow:hidden;cursor:pointer;box-shadow:var(--sh);min-width:0}
+.garage-bar-hot{position:absolute;top:16px;height:30px;border-radius:99px;background:#dc2626!important;pointer-events:none}
 .garage-waiting{display:grid;gap:8px}
 .garage-wait{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);padding:10px 12px}
 .garage-wait strong{display:block;font-size:var(--sm)}
@@ -365,20 +366,46 @@ button{cursor:pointer}
 .garage-milestone-table tr:last-child td{border-bottom:none}
 .garage-small{font-size:var(--xxs);color:var(--g500)}
 @media(max-width:760px){
-  .garage-page{padding:14px 12px 100px}
-  .garage-form-grid{grid-template-columns:1fr}
-  .garage-scale,.garage-usage,.garage-project-row{grid-template-columns:132px 1fr}
+  .garage-board{overflow-x:auto;overflow-y:hidden}
+  .garage-form-grid{grid-template-columns:1fr;width:100%}
+  .garage-form-grid .mf{width:100%;min-width:0;box-sizing:border-box}
+  #v-detail .garage-form-grid{overflow:hidden}
+  #v-detail .garage-form-grid .mf{overflow:hidden}
+  #v-detail .garage-form-grid input.mi[type="date"]{
+    display:block;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+    -webkit-appearance:none;
+    appearance:none;
+    }
+    .garage-scale-label,
+    .garage-project-label{
+      position:sticky;
+      left:0;
+      z-index:20;
+      background:var(--g50);
+      box-shadow:1px 0 0 var(--g100);
+    }
+
+    .garage-scale-label{
+    z-index:30;
+    }  
+    
+    .desktop-timeline-btn{
+      display:none!important;
+    }
+  .garage-scale,.garage-usage,.garage-project-row{grid-template-columns:132px minmax(760px,1fr);min-width:892px}
   .garage-scale-label,.garage-project-label{padding:10px 9px}
   .garage-project-label strong{font-size:var(--xxs)}
   .garage-mark{font-size:10px}
   .garage-use-chip{font-size:10px;padding:4px 7px}
-  .garage-bar{font-size:11px;padding:6px 8px}
-  .garage-controls{width:100%}
-  .garage-controls .btn{flex:1;justify-content:center}
-  .garage-month{width:100%;text-align:center}
+  .garage-controls{width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .garage-controls .btn{width:100%;justify-content:center}
+  .garage-month{grid-column:1/-1;width:100%;text-align:center}
   .garage-wait{align-items:flex-start;flex-direction:column}
 }
-
 /* ADMIN PROFIT */
 .psum{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:13px}
 .pslbl{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);margin-bottom:4px}
@@ -572,7 +599,7 @@ button{cursor:pointer}
 }
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--g200);border-radius:2px}
-@media(max-width:760px){.cf-table th:nth-child(5),.cf-table td:nth-child(5){width:105px;min-width:105px}.cf-input.amt{font-size:14px!important;padding:7px 4px!important;min-width:0!important;width:100%!important;letter-spacing:.02em!important}.cf-table th,.cf-table td{padding-left:6px!important;padding-right:6px!important}}
+@media(max-width:760px){.cf-table th:nth-child(5),.cf-table td:nth-child(5){width:105px;min-width:105px}.cf-input.amt{font-size:14px!important;padding:7px 4px!important;min-width:0!important;width:100%!important;letter-spacing:.02em!important}.cf-table th,.cf-table td{padding-left:6px!important;padding-right:6px!important}}w
 @media(max-width:700px){#v-settings .tb{width:100%;max-width:100%;margin:0;padding:14px 12px 100px!important;overflow-x:hidden}#v-settings .ss{max-width:100%;overflow-x:hidden}#v-settings input,#v-settings select,#v-settings textarea{max-width:100%;min-width:0}#v-settings .pgrid,#v-settings .pkgrow,#v-settings .catrow,#v-settings .cphd,#v-settings .sprow{max-width:100%}#v-settings .pgrid{grid-template-columns:1fr!important}#v-settings .sprow{flex-wrap:wrap}#v-settings .spci,#v-settings .pinp{width:100%!important}}
 @media(min-width:701px) and (max-width:1024px){html,body,.layout,.view{width:100vw!important;max-width:100vw!important;overflow-x:hidden!important}.tb,.mcf-page,#v-settings .tb{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}.cf-table-wrap,.mcf-table-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important}.cf-table,.mcf-table{max-width:none!important}}
 .consult-sticky-head{background:var(--g50);padding:10px 0;margin-bottom:16px}
@@ -625,6 +652,8 @@ button{cursor:pointer}
   .custom-row .cp{order:6;margin-left:auto;min-width:0;height:42px;font-size:24px;display:flex;align-items:center;justify-content:flex-end}
   .custom-row .delbtn{order:7;margin-left:8px!important;min-width:42px;height:42px;display:flex;align-items:center;justify-content:center}
 }
+@media(max-width:700px){.tl-grid,.timeline-grid,.garage-timeline-grid{grid-template-columns:1fr!important}.tl-field,.timeline-field,.garage-timeline-field{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box}.tl-field input,.timeline-field input,.garage-timeline-field input,input[type="date"]{max-width:100%;box-sizing:border-box}}
+.garage-form-grid .mi{width:100%;max-width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -638,6 +667,7 @@ button{cursor:pointer}
     <span class="tlogo-name">CREATIVE DEN <span>STUDIO</span></span>
   </div>
   <div class="tright">
+    <button class="btn btn-out btn-sm desktop-timeline-btn" onclick="openGarageTimeline()">📅 Timeline</button>
     <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
@@ -647,7 +677,7 @@ button{cursor:pointer}
       <div class="nav-menu" id="nav-menu">
         <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
-        <button onclick="openGarageTimeline();closeNavMenu()">Garage Timeline</button>
+        <button onclick="openGarageTimeline();closeNavMenu()">Timeline</button>
         <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
         <button onclick="logout()">Logout</button>
@@ -693,9 +723,9 @@ button{cursor:pointer}
       <button class="dtab"     onclick="st('consult',this)">📋 Consultation</button>
       <button class="dtab"     onclick="st('quote',this)">Quote</button>
       <button class="dtab"     onclick="st('parts',this)">Parts</button>
-      <button class="dtab"     onclick="st('garageTimeline',this)">Timeline</button>
       <button class="dtab"     onclick="st('timeline',this)">Activity</button>
       <button class="dtab"     onclick="st('admin',this)">Admin</button>
+      <button class="dtab"     onclick="st('garageTimeline',this)">📅 Timeline</button>
       <button class="dtab"     onclick="st('cashflow',this)">💰 Cashflow</button>
     </div>
   </div>
@@ -2052,6 +2082,13 @@ async function saveProjectTimeline(opts={}){
   if(!AP)return;
   clearTimeout(timelineAutosaveTimer);
   const tl=syncTimelineMilestones(normalizeTimeline(ensureGarageTimeline()));
+  
+  if(tl.intake_date && tl.delivery_date && tl.delivery_date < tl.intake_date){
+    toast('Delivery Date cannot be earlier than Intake Date');
+    rGarageProjectTimeline(document.getElementById('tb'));
+    return;
+  }
+  
   try{
     const updated=await PATCH(`/api/projects/${AP.id}`,{timeline_json:JSON.stringify(tl)});
     const next=projectFromApi(updated);
@@ -2174,6 +2211,11 @@ function garageMonthLabel(){
   return monthStart(GARAGE_MONTH_CURSOR).slice(0,7);
 }
 
+function garagePrettyMonth(){
+  const d=new Date(monthStart(GARAGE_MONTH_CURSOR));
+  return d.toLocaleString('en-US',{month:'long'});
+}
+
 function changeGarageMonth(delta){
   GARAGE_MONTH_CURSOR=shiftMonth(GARAGE_MONTH_CURSOR,delta);
   renderGarageTimeline();
@@ -2187,7 +2229,31 @@ function resetGarageMonth(){
 function garageUsageOn(date,rows){
   return rows.filter(r=>r.intake&&r.delivery&&r.intake<=date&&r.delivery>=date).length;
 }
+function isOverCapacityDate(date, rows, capacity){
+  return garageUsageOn(date, rows) > Number(capacity || 2);
+}
 
+function garageBarSegments(row, rows, capacity, range){
+  const segments=[];
+  if(!row.intake||!row.delivery)return segments;
+
+  let d=row.intake<range.start?range.start:row.intake;
+  const end=row.delivery>range.end?range.end:row.delivery;
+  let currentHot=isOverCapacityDate(d,rows,capacity);
+  let segStart=d;
+
+  for(let guard=0;d&&d<=end&&guard<80;d=addDays(d,1),guard++){
+    const hot=isOverCapacityDate(d,rows,capacity);
+    if(hot!==currentHot){
+      segments.push({start:segStart,end:addDays(d,-1),hot:currentHot});
+      segStart=d;
+      currentHot=hot;
+    }
+  }
+
+  segments.push({start:segStart,end,hot:currentHot});
+  return segments;
+}
 function garageConflictDays(rows,range=garageDateRange(rows)){
   const out=[];
   const {start,end}=range;
@@ -2235,8 +2301,10 @@ function renderGarageTimeline(){
   const marks=garageMarks(range.start,range.end);
   const conflicts=garageConflictDays(rows,range);
   const firstConflict=conflicts[0];
-  const pos=date=>Math.max(0,Math.min(100,daysBetween(range.start,date)/totalDays*100));
-  const markPos=date=>Math.max(0,Math.min(100,(daysBetween(range.start,date)+0.5)/totalDays*100));
+  const cellPct=100/totalDays;
+  const pos=date=>Math.max(0,Math.min(100,daysBetween(range.start,date)*cellPct));
+  const spanWidth=(start,end)=>Math.max(2,(daysBetween(start,end)+1)*cellPct);
+  const markPos=date=>Math.max(0,Math.min(100,(daysBetween(range.start,date)+0.5)*cellPct));
   body.innerHTML=`
     <div class="garage-head">
       <div>
@@ -2244,44 +2312,53 @@ function renderGarageTimeline(){
         <div class="garage-sub">Capacity: ${commas(capacity)} cars · ${commas(activeGarageProjects().length)} active projects · ${garageMonthLabel()}</div>
       </div>
       <div class="garage-controls">
-        <button class="btn btn-out btn-sm" onclick="changeGarageMonth(-1)">← Previous</button>
         <div class="garage-month">${garageMonthLabel()}</div>
-        <button class="btn btn-out btn-sm" onclick="resetGarageMonth()">This Month</button>
-        <button class="btn btn-out btn-sm" onclick="changeGarageMonth(1)">Next →</button>
-        <button class="btn btn-out btn-sm" onclick="goHome()">Projects</button>
-      </div>
-    </div>
+	<div class="garage-nav-row">
+	  <button class="btn btn-out btn-sm" onclick="changeGarageMonth(-1)">← Previous</button>
+	  <button class="btn btn-out btn-sm" onclick="resetGarageMonth()">This Month</button>
+	  <button class="btn btn-out btn-sm" onclick="changeGarageMonth(1)">Next →</button>
+        </div>
+       </div> 
+   </div>
     ${firstConflict?`<div class="garage-warning">Capacity conflict: ${commas(firstConflict.count)} cars booked on ${firstConflict.date}</div>`:''}
     <div class="garage-board" style="--garage-days:${totalDays}">
       <div class="garage-scale">
-        <div class="garage-scale-label">Month</div>
-        <div class="garage-track">${marks.map(m=>`<span class="garage-mark" title="${m}" style="left:${markPos(m)}%">${m.slice(5).replace('-','/')}</span>`).join('')}</div>
+        <div class="garage-scale-label">${garagePrettyMonth()}</div>
+        <div class="garage-track">${marks.map(m=>`<span class="garage-mark" title="${m}" style="left:${markPos(m)}%">${Number(m.slice(-2))}</span>`).join('')}</div>
       </div>
       <div class="garage-usage">
-        <div class="garage-scale-label">Capacity Usage</div>
+        <div class="garage-scale-label">Car in garage</div>
         <div class="garage-track">${marks.map(m=>{
           const usage=garageUsageOn(m,rows);
-          return `<span class="garage-use-chip ${usage>capacity?'hot':''}" style="left:${markPos(m)}%">${usage}/${capacity}</span>`;
+          return `<span class="garage-use-chip ${usage>capacity?'hot':''}" style="left:${markPos(m)}%">${usage}</span>`;
         }).join('')}</div>
       </div>
       ${scheduled.length?scheduled.map(row=>{
-        const clipStart=row.intake<range.start?range.start:row.intake;
-        const clipEnd=row.delivery>range.end?range.end:row.delivery;
-        const left=pos(clipStart);
-        const width=Math.max(4,(daysBetween(clipStart,clipEnd)+1)/totalDays*100);
-        return `<div class="garage-project-row">
-          <div class="garage-project-label"><strong>${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</strong><span>${esc(row.project.owner)} · ${row.intake} to ${row.delivery}</span></div>
-          <div class="garage-track">
-            <div class="garage-bar ${rowTouchesConflict(row,conflicts)?'conflict':''}" onclick="openDetailById(${row.project.id},'garageTimeline')" title="${esc(row.project.jobNo)} ${esc(row.project.vehicle)}" style="left:${left}%;width:${Math.min(width,100-left)}%">${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</div>
-          </div>
-        </div>`;
+      const clipStart=row.intake<range.start?range.start:row.intake;
+      const clipEnd=row.delivery>range.end?range.end:row.delivery;
+      const baseLeft=pos(clipStart);
+      const baseWidth=spanWidth(clipStart,clipEnd);
+      const redBars=garageBarSegments(row,rows,capacity,range)
+        .filter(seg=>seg.hot)
+        .map(seg=>{
+          const left=pos(seg.start);
+          const width=spanWidth(seg.start,seg.end);
+          return `<div class="garage-bar-hot" style="left:${left}%;width:${Math.min(width,100-left)}%"></div>`;
+        }).join('');
+
+      const bars=`<div class="garage-bar" onclick="openDetailById(${row.project.id},'garageTimeline')" title="${esc(row.project.jobNo)} ${esc(row.project.vehicle)} · ${clipStart} to ${clipEnd}" style="left:${baseLeft}%;width:${Math.min(baseWidth,100-baseLeft)}%"></div>${redBars}`;
+
+	return `<div class="garage-project-row">
+  	  <div class="garage-project-label"><strong>${esc(row.project.jobNo)}</strong><span>${esc(row.project.vehicle)}</span></div>
+  	  <div class="garage-track">${bars}</div>
+	</div>`;
       }).join(''):`<div style="padding:24px;text-align:center;color:var(--g300);font-size:var(--sm)">No scheduled garage projects yet.</div>`}
     </div>
     <div class="fc">
       <div class="fct">Waiting / Not Scheduled</div>
       <div class="garage-waiting">
         ${waiting.length?waiting.map(row=>`<div class="garage-wait">
-          <div><strong>${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</strong><span>${esc(row.project.owner)} · ${row.intake||'No intake date'}${row.delivery?' to '+row.delivery:' · No delivery date'}</span></div>
+          <div><strong>${esc(row.project.jobNo)} · ${esc(row.project.vehicle)}</strong><span>${esc(row.project.owner)} · ${esc(row.project.stage||'')} · ${row.intake||'No intake date'}${row.delivery?' to '+row.delivery:' · No delivery date'}</span></div>
           <button class="btn btn-out btn-xs" onclick="openDetailById(${row.project.id},'garageTimeline')">Schedule</button>
         </div>`).join(''):'<div class="garage-small">No waiting projects.</div>'}
       </div>

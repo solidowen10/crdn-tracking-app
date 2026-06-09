@@ -2262,6 +2262,44 @@ function setProjectMilestoneField(key,field,value){
   scheduleTimelineAutosave();
 }
 
+async function scheduleProjectTimeline(){
+  if(!AP)return;
+  await loadGarageMeta();
+  const rows=ensureProjectMilestones(AP);
+  const byKey=Object.fromEntries(rows.map(row=>[row.key,row]));
+  const consultationDate=cleanYmd(byKey.consultation?.scheduled_date||byKey.consultation?.actual_date||'');
+  if(!consultationDate){
+    toast('Set Consultation scheduled date first');
+    return;
+  }
+  const buildDays=Math.max(0,Number(GARAGE_SETTINGS.default_build_days||0));
+  const qcDays=Math.max(0,Number(GARAGE_SETTINGS.default_qc_days||0));
+  const deliveryBuffer=Math.max(0,Number(GARAGE_SETTINGS.default_delivery_buffer_days||0));
+  const buildComplete=addDays(consultationDate,buildDays);
+  const qcPass=addDays(buildComplete,qcDays);
+  const delivery=addDays(qcPass,deliveryBuffer);
+  const scheduledDates={
+    consultation:consultationDate,
+    deposit:consultationDate,
+    parts_ordered:consultationDate,
+    parts_arrived:consultationDate,
+    car_in:consultationDate,
+    build_complete:buildComplete,
+    qc_pass:qcPass,
+    delivery
+  };
+  AP.projectMilestones=rows.map(row=>({
+    ...row,
+    scheduled_date:scheduledDates[row.key]||row.scheduled_date
+  }));
+  AP.milestones_json=JSON.stringify(AP.projectMilestones);
+  AP.garageTimeline=projectTimelineToGarageTimeline(AP);
+  AP.timeline_json=JSON.stringify(AP.garageTimeline);
+  rGarageProjectTimeline(document.getElementById('tb'));
+  await saveProjectTimeline({silent:true});
+  toast('Timeline scheduled ✓');
+}
+
 function scheduleTimelineAutosave(){
   if(!AP?.id)return;
   clearTimeout(timelineAutosaveTimer);
@@ -2327,6 +2365,15 @@ function rGarageProjectTimeline(body){
         <div class="pt-label">Est. Finish Date</div>
         <input class="pt-finish-input" type="date" value="${esc(p.finish||'')}" onchange="updateProjectFinish(this.value)">
         <div class="pt-note">Synced with Overview Est. finish</div>
+      </div>
+    </div>
+    <div class="fc">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="fct">Project Schedule</div>
+          <div class="garage-small">Uses Garage Timeline Settings from the Consultation date.</div>
+        </div>
+        <button class="btn btn-brand btn-sm" onclick="scheduleProjectTimeline()">Schedule Timeline</button>
       </div>
     </div>
     ${renderProjectTimelineVisual(p)}

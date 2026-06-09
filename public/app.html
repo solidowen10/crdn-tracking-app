@@ -835,6 +835,42 @@ button{cursor:pointer}
       <button class="btn btn-brand btn-sm" style="margin-top:9px" onclick="saveTerms()">Save Terms</button>
     </div>
 
+    <!-- CONTRACT TERMS -->
+    <div class="ss">
+      <div class="sst">Default Contract Terms</div>
+      <textarea class="fi" id="default-contract-terms" rows="14" style="width:100%;resize:vertical">一、付款條件
+甲方（客戶）於確認報價單所列製作項目後，雙方簽訂本合約。
+甲方應於合約簽訂日起 七日內支付總金額之百分之五十（50%）作為訂金，
+乙方（CRDN）於確認訂金入帳後，始進行設計與製作流程。車輛改裝完成並於交車當日，
+甲方應支付 剩餘百分之五十（50%）之尾款，始完成交付程序。
+＊訂金係作為設計及製作之必要成本，合約成立後，若甲方單方終止合約，訂金不予退還。
+
+二、工作範圍與責任界定
+乙方（CRDN）負責本合約所載之改裝項目，包含但不限於 木作、床椅、床墊及 CRDN 自有配件之安裝。
+本合約 不包含 甲方車輛原有或自行安裝之電力系統、設備及其相關維修或保固責任。
+
+三、車輛原況與修繕處理
+如於安裝或施工過程中發現車輛本體存在瑕疵、故障或需另行修繕之情形，乙方應先行通知甲方說明狀況。
+經甲方同意後，始決定是否由乙方或第三方專業廠商進行維修，相關費用與工期另行協議，
+不包含於本合約原訂價款內。
+
+四、設計與施工變更條款
+甲方於設計確認後，如要求變更設計、材料或施工內容，乙方得依實際情況另行報價並調整工期，
+經甲方同意後始進行。
+
+五、設計著作權與使用限制
+乙方提供之訂製設計，得提供 設計圖檔供甲方確認（不含原始可編輯檔）。
+前述設計之 著作權與製作權均屬乙方（CRDN）所有，未經乙方書面同意，
+甲方不得自行或授權第三人複製、改作、重製或作為其他商業用途。
+
+六、工期說明與不可歸責因素
+工期為預估時程，若因零件供應、車況、不可抗力等非可歸責於乙方之因素，得順延交車時間。
+
+七、交車驗收
+交車當日視為完成驗收，甲方如有疑義應即時提出。</textarea>
+      <button class="btn btn-brand btn-sm" style="margin-top:9px" onclick="saveContractTerms()">Save Contract Terms</button>
+    </div>
+
     <!-- GOOGLE SHEETS -->
     <div class="ss">
       <div class="sst">Google Sheets Sync</div>
@@ -2945,6 +2981,7 @@ function printQuote(){
   const customs=selectedCustomItems(p);
   const total=calcQuoteTotal(p);  
   const terms=document.getElementById('default-terms')?.value||'';
+  const contractTerms=document.getElementById('default-contract-terms')?.value||'';
   const today=new Date();
   const ymd=today.toISOString().slice(0,10).replaceAll('-','');
   const quoteNo=p.jobNo;
@@ -2974,6 +3011,8 @@ function printQuote(){
   td{padding:9px 10px;border-bottom:1px solid #f0f0ec;font-size:11pt;vertical-align:middle}
   .tr td{background:#fff;color:#CA741F;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
   .terms{font-size:8pt;color:#6b6b68;line-height:1.7;padding:13px 15px;background:#f8f8f5;border-radius:8px;margin-top:8px;white-space:pre-wrap}
+  .page-break{page-break-before:always;break-before:page;margin-top:0}
+  .contract{font-size:10pt;line-height:1.8}
   @media print{@page{margin:12mm}body{padding:0}}</style></head><body>
   <div class="hd">
     <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
@@ -2998,6 +3037,19 @@ function printQuote(){
   <tfoot><tr class="tr"><td colspan="4">總計 / Total</td><td style="text-align:right">${fmt(total)}</td></tr></tfoot>
   </table>
   <div class="terms"><strong>付款條件 / Payment Terms:</strong>\n${terms}\n\n<strong>銀行匯款資料 / Bank Info:</strong>\n國泰世華銀行013\n帳號：007-03-500312-1\n戶名：頣（ㄕㄣˇ） 品集成有限公司\n台北市中山區中山北路三段40號</div>
+  <div class="page-break"></div>
+  <div class="hd">
+    <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
+    <div class="hdb"><div class="hdt">CRDN Creative Den Studio</div><div class="hds">creativeden.studio</div></div>
+    <div class="hdr"><div class="hdj">${p.jobNo}</div><div style="font-size:10pt;color:#6b6b68">${new Date().toLocaleDateString('zh-TW')}</div></div>
+  </div>
+  <div class="meta">
+    <div><div class="ml">Customer / 客戶</div><div class="mv">${p.owner}</div></div>
+    <div><div class="ml">Vehicle / 車輛</div><div class="mv">${p.vehicle}</div></div>
+    <div><div class="ml">Plate / 車牌</div><div class="mv">${p.plate||'—'}</div></div>
+    <div><div class="ml">Package / 方案</div><div class="mv">${p.pkg||'—'}</div></div>
+  </div>
+  <div class="terms contract"><strong>合約條款 / Terms & Conditions:</strong>\n${contractTerms}</div>
   </body></html>`);
   win.document.close();setTimeout(()=>{win.focus();win.print();},700);
 }
@@ -4835,6 +4887,17 @@ async function saveTerms(){
     toast('Terms saved ✓');
   }catch(e){
     toast(`Terms not saved: ${errMsg(e)}`,4500);
+  }
+}
+
+//// ── CONTRACT TERMS ──
+async function saveContractTerms(){
+  const terms=document.getElementById('default-contract-terms')?.value||'';
+  try{
+    await PATCH('/api/admin/settings',{contract_terms:terms});
+    toast('Contract terms saved ✓');
+  }catch(e){
+    toast(`Contract terms not saved: ${errMsg(e)}`,4500);
   }
 }
 

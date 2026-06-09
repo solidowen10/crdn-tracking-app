@@ -82,6 +82,23 @@ function dateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
 }
 
+function jsonText(value, fallback = '{}') {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'string') {
+    try {
+      JSON.parse(value);
+      return value;
+    } catch (err) {
+      return fallback;
+    }
+  }
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    return fallback;
+  }
+}
+
 function getUser(lineUserId) {
   return db.prepare('SELECT * FROM users WHERE line_user_id=?').get(lineUserId);
 }
@@ -342,6 +359,7 @@ function projectSummary(row) {
     quote_total: totals.customer,
     cashflow_json: row.cashflow_json || '',
     timeline_json: row.timeline_json || '{}',
+    milestones_json: row.milestones_json || '[]',
     quote_cost: totals.cost,
     quote_profit: totals.profit,
     quote_count: totals.count,
@@ -666,6 +684,7 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
       cashflow_json=?,
       stock_status_json=?,
       timeline_json=?,
+      milestones_json=?,
       archived=?,
       updated_at=CURRENT_TIMESTAMP
   WHERE id=?
@@ -689,7 +708,8 @@ app.patch('/api/projects/:id', requireAuth, (req, res) => {
     text(next.notes),
     text(next.cashflow_json),
     text(next.stock_status_json),
-    text(next.timeline_json || '{}'),
+    jsonText(next.timeline_json, '{}'),
+    jsonText(next.milestones_json, '[]'),
     archived,
     current.id
   );

@@ -365,6 +365,48 @@ button{cursor:pointer}
 .garage-milestone-table td{padding:10px 11px;border-bottom:1px solid var(--g100);vertical-align:middle}
 .garage-milestone-table tr:last-child td{border-bottom:none}
 .garage-small{font-size:var(--xxs);color:var(--g500)}
+.pt-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:13px}
+.pt-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;min-width:0}
+.pt-card.hi{border-left:3px solid var(--brand)}
+.pt-label{font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:6px}
+.pt-delivery{font-family:'Bebas Neue',sans-serif;font-size:34px;line-height:1;letter-spacing:.04em;color:var(--brand);white-space:nowrap}
+.pt-finish-input{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;letter-spacing:.04em;color:var(--brand);border:1px solid var(--g200);border-radius:var(--rs);padding:6px 9px;width:100%;background:var(--w);color-scheme:light}
+.pt-finish-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(202,116,31,.1)}
+.pt-note{font-size:var(--xxs);color:var(--g500);margin-top:6px;line-height:1.45}
+.pt-compare{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 9px;margin-top:9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.pt-compare.early{background:#ecfdf3;color:#15803d}
+.pt-compare.delayed{background:var(--dl);color:var(--danger)}
+.pt-compare.schedule{background:var(--brand-l);color:var(--brand-d)}
+.pt-scroll{overflow-x:auto;overflow-y:hidden;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.pt-steps{position:relative;display:grid;grid-template-columns:repeat(8,minmax(128px,1fr));gap:0;min-width:1024px;padding:20px 0 4px}
+.pt-line{position:absolute;left:64px;right:64px;top:35px;height:3px;background:var(--g200);border-radius:99px}
+.pt-line-fill{position:absolute;left:0;top:0;height:100%;background:var(--brand);border-radius:99px;transition:width .25s}
+.pt-step{position:relative;text-align:center;padding:0 8px;z-index:1}
+.pt-dot{width:32px;height:32px;border-radius:999px;margin:0 auto 9px;background:var(--w);border:3px solid var(--g200);display:grid;place-items:center;font-size:13px;font-weight:900;color:var(--g300)}
+.pt-step.done .pt-dot{background:var(--brand);border-color:var(--brand);color:#fff}
+.pt-step.ongoing .pt-dot{border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 5px rgba(202,116,31,.10)}
+.pt-name{font-size:var(--xxs);font-weight:900;color:var(--black);line-height:1.2;min-height:32px;display:flex;align-items:flex-start;justify-content:center}
+.pt-date{font-size:var(--xxxs);color:var(--g500);margin-top:5px;line-height:1.35;min-height:35px}
+.pt-actual{font-size:var(--xxxs);color:var(--g700);line-height:1.35;margin-top:4px}
+.pt-delta{display:block;font-weight:900;margin-top:2px}
+.pt-delta.early{color:#15803d}
+.pt-delta.delayed{color:var(--danger)}
+.pt-delta.schedule{color:var(--brand-d)}
+.pt-status-pill{display:inline-flex;align-items:center;justify-content:center;min-width:78px;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.pt-status-Pending{background:var(--g100);color:var(--g500)}
+.pt-status-Ongoing{background:#fff7ed;color:#f97316}
+.pt-status-Done{background:#ecfdf3;color:#15803d}
+.pt-table-wrap{overflow-x:auto}
+.pt-table{width:100%;border-collapse:collapse;min-width:920px}
+.pt-table th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100);white-space:nowrap}
+.pt-table th.r,.pt-table td.r{text-align:right}
+.pt-table td{padding:10px 11px;border-bottom:1px solid var(--g100);vertical-align:middle;font-size:var(--sm)}
+.pt-table tr:last-child td{border-bottom:none}
+.pt-table tr:hover td{background:var(--brand-f)}
+.pt-date-input{width:145px;min-width:145px}
+.pt-status-select{width:132px;min-width:132px}
+.pt-timing{font-size:var(--xxs);font-weight:900;white-space:nowrap}
+.pt-empty{color:var(--g300)}
 @media(max-width:760px){
   .garage-board{overflow-x:auto;overflow-y:hidden}
   .garage-form-grid{grid-template-columns:1fr;width:100%}
@@ -405,6 +447,10 @@ button{cursor:pointer}
   .garage-controls .btn{width:100%;justify-content:center}
   .garage-month{grid-column:1/-1;width:100%;text-align:center}
   .garage-wait{align-items:flex-start;flex-direction:column}
+  .pt-card-grid{grid-template-columns:1fr}
+  .pt-delivery{font-size:30px}
+  .pt-finish-input{font-size:28px}
+  .pt-steps{min-width:960px;grid-template-columns:repeat(8,minmax(120px,1fr))}
 }
 /* ADMIN PROFIT */
 .psum{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:13px}
@@ -725,7 +771,7 @@ button{cursor:pointer}
       <button class="dtab"     onclick="st('parts',this)">Parts</button>
       <button class="dtab"     onclick="st('timeline',this)">Activity</button>
       <button class="dtab"     onclick="st('admin',this)">Admin</button>
-      <button class="dtab"     onclick="st('garageTimeline',this)">📅 Timeline</button>
+      <button class="dtab"     onclick="st('garageTimeline',this)">📅 Project Timeline</button>
       <button class="dtab"     onclick="st('cashflow',this)">💰 Cashflow</button>
     </div>
   </div>
@@ -1013,6 +1059,17 @@ const CASH_OUT_CATEGORIES=[
   'Refund to Customer',
   'Other Expense'
 ];
+const PROJECT_MILESTONE_DEFS=[
+  {key:'consultation',label:'Consultation'},
+  {key:'deposit',label:'Deposit Paid'},
+  {key:'parts_ordered',label:'Parts Ordered'},
+  {key:'parts_arrived',label:'Parts Arrived',timelineKey:'parts_arrived_date'},
+  {key:'car_in',label:'Car In Garage',timelineKey:'intake_date'},
+  {key:'build_complete',label:'Build Complete',timelineKey:'build_complete_date'},
+  {key:'qc_pass',label:'QC Pass',timelineKey:'qc_date'},
+  {key:'delivery',label:'Delivery',timelineKey:'delivery_date'}
+];
+const PROJECT_MILESTONE_STATUSES=['Pending','Ongoing','Done'];
 function categoryIcon(name,icon){
   const saved=String(icon||'').trim();
   if(saved)return saved;
@@ -1042,6 +1099,7 @@ let GARAGE_SETTINGS={
 };
 let GARAGE_MONTH_CURSOR='';
 let timelineAutosaveTimer=null;
+let projectTimelineAutoScrollKey='';
 
 // ══════════════════════════════════════
 // API LAYER
@@ -1320,6 +1378,7 @@ function activityFromApi(row){
 function projectFromApi(row){
   const p=row||{};
   const garageTimeline=parseTimelineJson(p.timeline_json||p.garageTimeline);
+  const projectMilestones=parseProjectMilestones(p.milestones_json||p.projectMilestones,garageTimeline);
   return {
     ...p,
     id:p.id,
@@ -1342,6 +1401,7 @@ function projectFromApi(row){
     partsStatus:p.partsStatus||{},
     stockStatus:parseJsonField(p.stock_status_json)||p.stockStatus||{},
     garageTimeline,
+    projectMilestones,
     timeline:Array.isArray(p.timeline)?p.timeline:[],
     quoteTotal:Number(p.quote_total||p.quoteTotal||0),
     serverTotal:Number(p.quote_total||p.quoteTotal||0),
@@ -1352,6 +1412,15 @@ function projectFromApi(row){
 function parseJsonField(v){
   if(!v)return null;
   try{return JSON.parse(v);}catch(e){return null;}
+}
+
+function parseJsonArray(v){
+  if(Array.isArray(v))return v;
+  if(!v)return [];
+  try{
+    const parsed=JSON.parse(v);
+    return Array.isArray(parsed)?parsed:[];
+  }catch(e){return [];}
 }
 
 function parseCashflow(p){
@@ -1378,7 +1447,7 @@ function normalizeTimeline(tl={}){
   const delivery=tl.delivery_date||tl.estimated_delivery_date||oldMilestones.delivery?.date||'';
   const milestones={
     parts_arrived:{date:partsArrived,status:oldMilestones.parts_arrived?.status||'Pending'},
-    car_in:{date:intake,status:oldMilestones.car_in?.status||'Scheduled'},
+    car_in:{date:intake,status:oldMilestones.car_in?.status||'Pending'},
     build:{date:buildComplete,status:oldMilestones.build?.status||'Pending'},
     qc:{date:qc,status:oldMilestones.qc?.status||'Pending'},
     delivery:{date:delivery,status:oldMilestones.delivery?.status||'Pending'}
@@ -1394,39 +1463,45 @@ function normalizeTimeline(tl={}){
 }
 
 const DAY_MS=24*60*60*1000;
+const TAIPEI_TZ='Asia/Taipei';
 function dtPad2(n){return String(n).padStart(2,'0');}
 function parseYmd(dateStr){
   const m=String(dateStr||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(!m)return null;
+  const normalized=`${m[1]}-${m[2]}-${m[3]}`;
+  const test=new Date(`${normalized}T00:00:00+08:00`);
+  if(!Number.isFinite(test.getTime()))return null;
+  if(formatTaipeiYmd(test)!==normalized)return null;
   return {y:Number(m[1]),m:Number(m[2]),d:Number(m[3])};
 }
-function ymdMs(dateStr){
+function taipeiMs(dateStr){
   const p=parseYmd(dateStr);
-  return p?Date.UTC(p.y,p.m-1,p.d):NaN;
+  if(!p)return NaN;
+  return new Date(`${String(p.y).padStart(4,'0')}-${dtPad2(p.m)}-${dtPad2(p.d)}T00:00:00+08:00`).getTime();
 }
-function formatUtcYmd(ms){
-  const d=new Date(ms);
-  return `${d.getUTCFullYear()}-${dtPad2(d.getUTCMonth()+1)}-${dtPad2(d.getUTCDate())}`;
+function formatTaipeiYmd(date){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:TAIPEI_TZ,year:'numeric',month:'2-digit',day:'2-digit'})
+    .formatToParts(date)
+    .reduce((acc,part)=>{if(part.type!=='literal')acc[part.type]=part.value;return acc;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 function todayYmd(){
-  const d=new Date();
-  return `${d.getFullYear()}-${dtPad2(d.getMonth()+1)}-${dtPad2(d.getDate())}`;
+  return formatTaipeiYmd(new Date());
 }
 function addDays(dateStr,days){
-  const ms=ymdMs(dateStr);
+  const ms=taipeiMs(dateStr);
   if(!Number.isFinite(ms))return '';
-  return formatUtcYmd(ms+(Number(days||0)*DAY_MS));
+  return formatTaipeiYmd(new Date(ms+(Number(days||0)*DAY_MS)));
 }
 
 function daysBetween(a,b){
-  const ams=ymdMs(a),bms=ymdMs(b);
+  const ams=taipeiMs(a),bms=taipeiMs(b);
   if(!Number.isFinite(ams)||!Number.isFinite(bms))return 0;
   return Math.round((bms-ams)/DAY_MS);
 }
 
 function timelineDeliveryDate(p){
-  const tl=p?.garageTimeline||parseTimelineJson(p?.timeline_json);
-  return tl.delivery_date||tl.milestones?.delivery?.date||'';
+  return projectEstimatedDelivery(p)||p?.finish||'';
 }
 
 function timelineGapText(fromDate,toDate,fromLabel){
@@ -1436,6 +1511,142 @@ function timelineGapText(fromDate,toDate,fromLabel){
   const unit=Math.abs(diff)===1?'day':'days';
   if(diff<0)return `${Math.abs(diff)} ${unit} before ${fromLabel}`;
   return `${diff} ${unit} after ${fromLabel}`;
+}
+
+function cleanYmd(value){
+  const raw=String(value||'').trim();
+  return parseYmd(raw)?raw:'';
+}
+
+function normalizeMilestoneStatus(value){
+  return PROJECT_MILESTONE_STATUSES.includes(value)?value:(String(value||'').toLowerCase()==='done'?'Done':String(value||'').toLowerCase()==='ongoing'?'Ongoing':'Pending');
+}
+
+function oldTimelineMilestone(tl,def){
+  const legacyKey={build_complete:'build',qc_pass:'qc'}[def.key]||def.key;
+  return tl?.milestones?.[legacyKey]||{};
+}
+
+function parseProjectMilestones(raw,garageTimeline={}){
+  const rows=parseJsonArray(raw);
+  const byKey=new Map(rows.map(row=>[String(row.key||''),row]));
+  return PROJECT_MILESTONE_DEFS.map(def=>{
+    const saved=byKey.get(def.key)||{};
+    const legacy=oldTimelineMilestone(garageTimeline,def);
+    const scheduled=cleanYmd(saved.scheduled_date||saved.schedule||saved.date||saved.scheduledDate||legacy.date||garageTimeline?.[def.timelineKey]||'');
+    const actual=cleanYmd(saved.actual_date||saved.actual||saved.actualDate||'');
+    return {
+      key:def.key,
+      label:def.label,
+      scheduled_date:scheduled,
+      actual_date:actual,
+      status:normalizeMilestoneStatus(saved.status||legacy.status)
+    };
+  });
+}
+
+function ensureProjectMilestones(project=AP){
+  if(!project.projectMilestones)project.projectMilestones=parseProjectMilestones(project.milestones_json,project.garageTimeline||parseTimelineJson(project.timeline_json));
+  project.projectMilestones=parseProjectMilestones(project.projectMilestones,project.garageTimeline||parseTimelineJson(project.timeline_json));
+  return project.projectMilestones;
+}
+
+function projectMilestoneDone(milestone){
+  return milestone.status==='Done';
+}
+
+function projectTimelineToGarageTimeline(project){
+  const rows=ensureProjectMilestones(project);
+  const byKey=Object.fromEntries(rows.map(row=>[row.key,row]));
+  const tl=normalizeTimeline(project.garageTimeline||parseTimelineJson(project.timeline_json));
+  tl.parts_arrived_date=byKey.parts_arrived?.scheduled_date||'';
+  tl.intake_date=byKey.car_in?.scheduled_date||'';
+  tl.build_complete_date=byKey.build_complete?.scheduled_date||'';
+  tl.qc_date=byKey.qc_pass?.scheduled_date||'';
+  tl.delivery_date=byKey.delivery?.scheduled_date||'';
+  tl.milestones.parts_arrived={date:tl.parts_arrived_date,status:byKey.parts_arrived?.status||'Pending'};
+  tl.milestones.car_in={date:tl.intake_date,status:byKey.car_in?.status||'Pending'};
+  tl.milestones.build={date:tl.build_complete_date,status:byKey.build_complete?.status||'Pending'};
+  tl.milestones.qc={date:tl.qc_date,status:byKey.qc_pass?.status||'Pending'};
+  tl.milestones.delivery={date:tl.delivery_date,status:byKey.delivery?.status||'Pending'};
+  return tl;
+}
+
+function projectEstimatedDelivery(project){
+  const delivery=ensureProjectMilestones(project).find(m=>m.key==='delivery');
+  if(!delivery)return '';
+  return projectMilestoneDone(delivery)&&delivery.actual_date?delivery.actual_date:delivery.scheduled_date;
+}
+
+function timingAgainstScheduled(milestone){
+  if(!milestone.scheduled_date||!milestone.actual_date)return {text:'',kind:''};
+  const diff=daysBetween(milestone.scheduled_date,milestone.actual_date);
+  const unit=Math.abs(diff)===1?'day':'days';
+  if(diff<0)return {text:`${Math.abs(diff)} ${unit} early`,kind:'early'};
+  if(diff>0)return {text:`${diff} ${unit} delayed`,kind:'delayed'};
+  return {text:'On schedule',kind:'schedule'};
+}
+
+function deliveryCompare(project){
+  const delivery=projectEstimatedDelivery(project);
+  const finish=cleanYmd(project.finish||project.finish_date);
+  if(!delivery||!finish)return {text:'Set both dates',kind:'schedule'};
+  const diff=daysBetween(delivery,finish);
+  const unit=Math.abs(diff)===1?'day':'days';
+  if(diff>0)return {text:`${diff} ${unit} early`,kind:'early'};
+  if(diff<0)return {text:`${Math.abs(diff)} ${unit} delayed`,kind:'delayed'};
+  return {text:'On schedule',kind:'schedule'};
+}
+
+function projectTimelineGapText(rows,index){
+  const current=rows[index];
+  if(!current?.scheduled_date)return 'No date set';
+  if(index===0)return 'Starting checkpoint';
+  const prev=rows[index-1];
+  if(!prev?.scheduled_date)return `Waiting for ${prev?.label||'previous milestone'}`;
+  const diff=daysBetween(prev.scheduled_date,current.scheduled_date);
+  const unit=Math.abs(diff)===1?'day':'days';
+  if(diff<0)return `${Math.abs(diff)} ${unit} before ${prev.label}`;
+  return `${diff} ${unit} after ${prev.label}`;
+}
+
+function renderProjectTimelineVisual(project){
+  const milestones=ensureProjectMilestones(project);
+  const doneCount=milestones.filter(projectMilestoneDone).length;
+  const fill=milestones.length?Math.round((doneCount/milestones.length)*100):0;
+  return `
+    <div class="fc">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="fct" style="margin-bottom:5px">Milestone Progress</div>
+          <div class="garage-small">${commas(doneCount)} of ${commas(milestones.length)} milestones Done</div>
+        </div>
+        <span class="pt-status-pill pt-status-${projectTimelineCurrentStatus(project)}">${projectTimelineCurrentStatus(project)}</span>
+      </div>
+      <div class="pt-scroll" id="project-timeline-scroll">
+        <div class="pt-steps">
+          <div class="pt-line"><div class="pt-line-fill" style="width:${fill}%"></div></div>
+          ${milestones.map((m,i)=>{
+            const done=projectMilestoneDone(m);
+            const ongoing=m.status==='Ongoing';
+            const timing=done&&m.actual_date?timingAgainstScheduled(m):{text:'',kind:''};
+            return `<div class="pt-step ${done?'done':''} ${ongoing?'ongoing':''}" data-project-milestone="${esc(m.key)}">
+              <div class="pt-dot">${done?'✓':i+1}</div>
+              <div class="pt-name">${esc(m.label)}</div>
+              <div class="pt-date">Scheduled<br>${esc(m.scheduled_date||'No date')}</div>
+              ${done&&m.actual_date?`<div class="pt-actual">Actual ${esc(m.actual_date)}<span class="pt-delta ${timing.kind}">${esc(timing.text)}</span></div>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function projectTimelineCurrentStatus(project){
+  const milestones=ensureProjectMilestones(project);
+  if(milestones.some(m=>m.status==='Ongoing'))return 'Ongoing';
+  if(milestones.length&&milestones.every(projectMilestoneDone))return 'Done';
+  return 'Pending';
 }
 
 function customFromQuoteRow(row){
@@ -1876,6 +2087,7 @@ async function openDetail(p){
     AP=p;
     toast(`Could not refresh project: ${errMsg(e)}`,3500);
   }
+  projectTimelineAutoScrollKey='';
   document.getElementById('d-crumb').textContent=AP.jobNo;
   document.getElementById('d-title').textContent=`${AP.vehicle} — ${AP.owner}`;
   document.getElementById('d-sub').textContent=`${AP.jobNo}  ·  ${AP.plate||'—'}  ·  ${AP.pkg||'—'}`;
@@ -1937,7 +2149,7 @@ function rOverview(body){
     </div>
     <div class="fc">
       <div class="fct">Dates & Notes</div>
-      <div class="fr"><span class="fl">Est. finish</span><input class="fi" type="date" value="${p.finish||''}" onchange="AP.finish=this.value;savePatch({finish_date:this.value})"></div>
+      <div class="fr"><span class="fl">Est. finish</span><input class="fi" type="date" value="${p.finish||''}" onchange="updateProjectFinish(this.value)"></div>
       <div class="fr"><span class="fl">Notes</span><textarea class="fi" rows="3" style="resize:vertical" onchange="AP.notes=this.value;savePatch({notes:this.value})">${p.notes||''}</textarea></div>
     </div>`;
 }
@@ -1967,6 +2179,14 @@ async function savePatch(data){
     toast(`Save failed: ${errMsg(e)}`,4000);
   }
 }
+
+async function updateProjectFinish(value){
+  if(!AP)return;
+  AP.finish=cleanYmd(value);
+  await savePatch({finish_date:AP.finish});
+  if(activeTab==='garageTimeline')rGarageProjectTimeline(document.getElementById('tb'));
+}
+
 async function changeProjectPackage(pkgName){
   if(!AP)return;
 
@@ -2023,28 +2243,22 @@ function ensureGarageTimeline(p=AP){
 }
 
 function timelineStatusOptions(value){
-  return ['Pending','Scheduled','Done','Delayed'].map(s=>`<option value="${s}" ${value===s?'selected':''}>${s}</option>`).join('');
+  const current=normalizeMilestoneStatus(value);
+  return PROJECT_MILESTONE_STATUSES.map(s=>`<option value="${s}" ${current===s?'selected':''}>${s}</option>`).join('');
 }
 
-function syncTimelineMilestones(tl){
-  tl.milestones.parts_arrived.date=tl.parts_arrived_date||'';
-  tl.milestones.car_in.date=tl.intake_date||'';
-  tl.milestones.build.date=tl.build_complete_date||'';
-  tl.milestones.qc.date=tl.qc_date||'';
-  tl.milestones.delivery.date=tl.delivery_date||'';
-  return tl;
-}
-
-function setTimelineField(key,value){
-  const tl=ensureGarageTimeline();
-  tl[key]=value;
-  syncTimelineMilestones(tl);
-  scheduleTimelineAutosave();
-}
-
-function setTimelineStatus(key,value){
-  const tl=ensureGarageTimeline();
-  tl.milestones[key]={...(tl.milestones[key]||{date:'',status:'Pending'}),status:value};
+function setProjectMilestoneField(key,field,value){
+  if(!AP)return;
+  const rows=ensureProjectMilestones(AP);
+  const milestone=rows.find(row=>row.key===key);
+  if(!milestone)return;
+  if(field==='status')milestone.status=normalizeMilestoneStatus(value);
+  else if(field==='scheduled_date'||field==='actual_date')milestone[field]=cleanYmd(value);
+  AP.projectMilestones=rows;
+  AP.milestones_json=JSON.stringify(rows);
+  AP.garageTimeline=projectTimelineToGarageTimeline(AP);
+  AP.timeline_json=JSON.stringify(AP.garageTimeline);
+  rGarageProjectTimeline(document.getElementById('tb'));
   scheduleTimelineAutosave();
 }
 
@@ -2054,43 +2268,17 @@ function scheduleTimelineAutosave(){
   timelineAutosaveTimer=setTimeout(()=>saveProjectTimeline({silent:true}),450);
 }
 
-async function suggestTimelineDates(){
-  if(!AP)return;
-  await loadGarageMeta();
-  const tl=ensureGarageTimeline();
-  if(sIdx(AP.stage)>=sIdx('08 Parts Arrived')&&!tl.parts_arrived_date){
-    tl.parts_arrived_date=todayYmd();
-    tl.milestones.parts_arrived.status='Done';
-  }
-  const baseDate=tl.parts_arrived_date||tl.intake_date;
-  if(!baseDate){toast('Add Parts Arrived Date first');rGarageProjectTimeline(document.getElementById('tb'));return;}
-  if(tl.parts_arrived_date){
-    tl.intake_date=tl.parts_arrived_date;
-    tl.milestones.parts_arrived.status=tl.milestones.parts_arrived.status||'Done';
-  }
-  tl.build_complete_date=addDays(tl.intake_date,GARAGE_SETTINGS.default_build_days);
-  tl.qc_date=addDays(tl.build_complete_date,GARAGE_SETTINGS.default_qc_days);
-  tl.delivery_date=addDays(tl.qc_date,GARAGE_SETTINGS.default_delivery_buffer_days);
-  tl.milestones.car_in.status=tl.milestones.car_in.status||'Scheduled';
-  syncTimelineMilestones(tl);
-  rGarageProjectTimeline(document.getElementById('tb'));
-  await saveProjectTimeline({silent:true});
-  toast('Suggested dates saved ✓');
-}
-
 async function saveProjectTimeline(opts={}){
   if(!AP)return;
   clearTimeout(timelineAutosaveTimer);
-  const tl=syncTimelineMilestones(normalizeTimeline(ensureGarageTimeline()));
-  
-  if(tl.intake_date && tl.delivery_date && tl.delivery_date < tl.intake_date){
-    toast('Delivery Date cannot be earlier than Intake Date');
-    rGarageProjectTimeline(document.getElementById('tb'));
-    return;
-  }
+  const milestones=ensureProjectMilestones(AP);
+  const tl=projectTimelineToGarageTimeline(AP);
   
   try{
-    const updated=await PATCH(`/api/projects/${AP.id}`,{timeline_json:JSON.stringify(tl)});
+    const updated=await PATCH(`/api/projects/${AP.id}`,{
+      milestones_json:JSON.stringify(milestones),
+      timeline_json:JSON.stringify(tl)
+    });
     const next=projectFromApi(updated);
     AP={
       ...next,
@@ -2113,50 +2301,63 @@ async function saveProjectTimeline(opts={}){
 }
 
 function rGarageProjectTimeline(body){
-  const p=AP,tl=ensureGarageTimeline(p);
-  const milestoneRows=[
-    {key:'parts_arrived',label:'Parts Arrived',date:tl.parts_arrived_date,gap:tl.parts_arrived_date?'Starting checkpoint':'No date set'},
-    {key:'car_in',label:'Car Intake',date:tl.intake_date,gap:timelineGapText(tl.parts_arrived_date,tl.intake_date,'Parts Arrived')},
-    {key:'build',label:'Build Complete',date:tl.build_complete_date,gap:timelineGapText(tl.intake_date,tl.build_complete_date,'Car Intake')},
-    {key:'qc',label:'QC',date:tl.qc_date,gap:timelineGapText(tl.build_complete_date,tl.qc_date,'Build Complete')},
-    {key:'delivery',label:'Delivery',date:tl.delivery_date,gap:timelineGapText(tl.qc_date,tl.delivery_date,'QC')}
-  ];
-  const statusRows=milestoneRows.map(m=>{
-    const item=tl.milestones[m.key]||{date:m.date||'',status:'Pending'};
+  const p=AP,rows=ensureProjectMilestones(AP);
+  const delivery=projectEstimatedDelivery(p)||'Not scheduled';
+  const compare=deliveryCompare(p);
+  const statusRows=rows.map((m,index)=>{
+    const timing=m.actual_date?timingAgainstScheduled(m):{text:'',kind:''};
     return `<tr>
-      <td><strong>${m.label}</strong><div class="garage-small">${item.date||'No date'}</div></td>
-      <td><span class="garage-small">${m.gap}</span></td>
-      <td><select class="fsel" onchange="setTimelineStatus('${m.key}',this.value)">${timelineStatusOptions(item.status||'Pending')}</select></td>
+      <td><strong>${esc(m.label)}</strong><div style="margin-top:5px"><span class="pt-status-pill pt-status-${m.status}">${esc(m.status)}</span></div></td>
+      <td><span class="garage-small">${esc(projectTimelineGapText(rows,index))}</span></td>
+      <td><input class="fi pt-date-input" type="date" value="${esc(m.scheduled_date||'')}" onchange="setProjectMilestoneField('${m.key}','scheduled_date',this.value)"></td>
+      <td><input class="fi pt-date-input" type="date" value="${esc(m.actual_date||'')}" onchange="setProjectMilestoneField('${m.key}','actual_date',this.value)"></td>
+      <td><select class="fsel pt-status-select" onchange="setProjectMilestoneField('${m.key}','status',this.value)">${timelineStatusOptions(m.status)}</select></td>
+      <td class="r pt-timing">${timing.text?`<span class="pt-delta ${timing.kind}">${esc(timing.text)}</span>`:'<span class="pt-empty">—</span>'}</td>
     </tr>`;
   }).join('');
   body.innerHTML=`
-    <div class="fc">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>
-          <div class="fct">Garage Timeline</div>
-          <div class="garage-small">Capacity is occupied only from Car Intake Date through Delivery Date. Changes auto-save.</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-out btn-sm" onclick="suggestTimelineDates()">Suggest Dates</button>
-          <button class="btn btn-brand btn-sm" onclick="saveProjectTimeline()">Save Timeline</button>
-        </div>
+    <div class="pt-card-grid">
+      <div class="pt-card hi">
+        <div class="pt-label">Estimated Delivery</div>
+        <div class="pt-delivery">${esc(delivery)}</div>
+        <div class="pt-compare ${compare.kind}">${esc(compare.text)}</div>
+        <div class="pt-note">Calculated from milestone scheduled/actual data</div>
+      </div>
+      <div class="pt-card">
+        <div class="pt-label">Est. Finish Date</div>
+        <input class="pt-finish-input" type="date" value="${esc(p.finish||'')}" onchange="updateProjectFinish(this.value)">
+        <div class="pt-note">Synced with Overview Est. finish</div>
       </div>
     </div>
-    <div class="fc">
-      <div class="garage-form-grid">
-        <div class="mf"><label>Parts Arrived Date</label><input class="mi" type="date" value="${tl.parts_arrived_date||''}" onchange="setTimelineField('parts_arrived_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
-        <div class="mf"><label>Car Intake Date</label><input class="mi" type="date" value="${tl.intake_date||''}" onchange="setTimelineField('intake_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
-        <div class="mf"><label>Build Complete Date</label><input class="mi" type="date" value="${tl.build_complete_date||''}" onchange="setTimelineField('build_complete_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
-        <div class="mf"><label>QC Date</label><input class="mi" type="date" value="${tl.qc_date||''}" onchange="setTimelineField('qc_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
-        <div class="mf"><label>Delivery Date</label><input class="mi" type="date" value="${tl.delivery_date||''}" onchange="setTimelineField('delivery_date',this.value);rGarageProjectTimeline(document.getElementById('tb'))"></div>
-      </div>
-    </div>
+    ${renderProjectTimelineVisual(p)}
     <div class="fc" style="padding:0;overflow:hidden">
-      <table class="garage-milestone-table">
-        <thead><tr><th>Milestone</th><th>Days After</th><th>Status</th></tr></thead>
-        <tbody>${statusRows}</tbody>
-      </table>
+      <div class="pt-table-wrap">
+        <table class="pt-table">
+          <thead><tr><th>Milestone</th><th>Days After</th><th>Scheduled Date</th><th>Actual Date</th><th>Status</th><th class="r">Timing</th></tr></thead>
+          <tbody>${statusRows}</tbody>
+        </table>
+      </div>
     </div>`;
+  requestAnimationFrame(autoScrollProjectTimeline);
+}
+
+function projectTimelineScrollTarget(project=AP){
+  const rows=ensureProjectMilestones(project);
+  return rows.find(m=>m.status==='Ongoing')||rows.find(m=>m.status==='Pending')||rows.find(m=>m.key==='delivery')||rows[rows.length-1];
+}
+
+function autoScrollProjectTimeline(){
+  if(activeTab!=='garageTimeline'||!AP?.id)return;
+  if(!window.matchMedia('(max-width:760px)').matches)return;
+  if(projectTimelineAutoScrollKey===String(AP.id))return;
+  const target=projectTimelineScrollTarget(AP);
+  const scroller=document.getElementById('project-timeline-scroll');
+  const step=target?document.querySelector(`[data-project-milestone="${target.key}"]`):null;
+  if(scroller&&step){
+    const left=step.offsetLeft-(scroller.clientWidth/2)+(step.clientWidth/2);
+    scroller.scrollTo({left:Math.max(0,left),behavior:'smooth'});
+  }
+  projectTimelineAutoScrollKey=String(AP.id);
 }
 
 function activeGarageProjects(){

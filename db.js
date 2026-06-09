@@ -122,6 +122,9 @@ function migrate() {
       next_action TEXT,
       notes TEXT,
       timeline_json TEXT DEFAULT '{}',
+      milestones_json TEXT DEFAULT '[]',
+      cashflow_json TEXT DEFAULT '',
+      stock_status_json TEXT DEFAULT '{}',
       archived INTEGER NOT NULL DEFAULT 0,
       created_by TEXT,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -326,6 +329,9 @@ function migrate() {
   addColumn('vehicles', 'customer_email', "TEXT NOT NULL DEFAULT ''");
   addColumn('vehicles', 'customer_phone', "TEXT NOT NULL DEFAULT ''");
   addColumn('vehicles', 'timeline_json', "TEXT DEFAULT '{}'");
+  addColumn('vehicles', 'milestones_json', "TEXT DEFAULT '[]'");
+  addColumn('vehicles', 'cashflow_json', "TEXT DEFAULT ''");
+  addColumn('vehicles', 'stock_status_json', "TEXT DEFAULT '{}'");
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");

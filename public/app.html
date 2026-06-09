@@ -700,7 +700,7 @@ button{cursor:pointer}
 }
 @media(max-width:700px){.tl-grid,.timeline-grid,.garage-timeline-grid{grid-template-columns:1fr!important}.tl-field,.timeline-field,.garage-timeline-field{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box}.tl-field input,.timeline-field input,.garage-timeline-field input,input[type="date"]{max-width:100%;box-sizing:border-box}}
 .garage-form-grid .mi{width:100%;max-width:100%;box-sizing:border-box}
-</style>
+@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}</style>
 </head>
 <body>
 
@@ -2388,7 +2388,7 @@ function rGarageProjectTimeline(body){
       </div>
       <div class="pt-card">
         <div class="pt-label">Est. Finish Date</div>
-        <input class="pt-finish-input" type="date" value="${esc(p.finish||'')}" onchange="updateProjectFinish(this.value)">
+        <input class="pt-finish-input" type="text" inputmode="numeric" placeholder="YYYY/MM/DD" value="${esc((p.finish||'').replace(/-/g,'/'))}" onchange="updateProjectFinish(this.value.replace(/\\//g,'-'))">
         <div class="pt-note">Synced with Overview Est. finish</div>
       </div>
     </div>

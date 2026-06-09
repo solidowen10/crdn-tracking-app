@@ -416,6 +416,9 @@ function setSetting(key, value) {
 function garageSettings() {
   return {
     garage_capacity: setting('garage_capacity', '2'),
+    default_deposit_to_parts_ordered_days: setting('default_deposit_to_parts_ordered_days', '0'),
+    default_parts_ordered_to_arrived_days: setting('default_parts_ordered_to_arrived_days', '7'),
+    default_parts_arrived_to_garage_days: setting('default_parts_arrived_to_garage_days', '0'),
     default_build_days: setting('default_build_days', '14'),
     default_qc_days: setting('default_qc_days', '2'),
     default_delivery_buffer_days: setting('default_delivery_buffer_days', '1')
@@ -1405,7 +1408,7 @@ optionRows.forEach(option=>{
 	});
 	
 	app.patch('/api/admin/settings', requireAdmin, (req, res) => {
-	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries', 'garage_capacity', 'default_build_days', 'default_qc_days', 'default_delivery_buffer_days'].forEach(key => {
+	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries', 'garage_capacity', 'default_deposit_to_parts_ordered_days', 'default_parts_ordered_to_arrived_days', 'default_parts_arrived_to_garage_days', 'default_build_days', 'default_qc_days', 'default_delivery_buffer_days'].forEach(key => {
 	    if (req.body[key] !== undefined) setSetting(key, req.body[key]);
 	  });
   if (req.body.packages !== undefined) {

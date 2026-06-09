@@ -441,6 +441,9 @@ function seedSettings() {
   upsert.run('google_sheets_last_synced_at', '');
   upsert.run('google_sheets_last_error', '');
   upsert.run('garage_capacity', '2');
+  upsert.run('default_deposit_to_parts_ordered_days', '0');
+  upsert.run('default_parts_ordered_to_arrived_days', '7');
+  upsert.run('default_parts_arrived_to_garage_days', '0');
   upsert.run('default_build_days', '14');
   upsert.run('default_qc_days', '2');
   upsert.run('default_delivery_buffer_days', '1');

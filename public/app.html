@@ -700,7 +700,7 @@ button{cursor:pointer}
 }
 @media(max-width:700px){.tl-grid,.timeline-grid,.garage-timeline-grid{grid-template-columns:1fr!important}.tl-field,.timeline-field,.garage-timeline-field{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box}.tl-field input,.timeline-field input,.garage-timeline-field input,input[type="date"]{max-width:100%;box-sizing:border-box}}
 .garage-form-grid .mi{width:100%;max-width:100%;box-sizing:border-box}
-@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}@media(max-width:760px){.pt-schedule-row{justify-content:center!important;text-align:center}.pt-schedule-row>div{width:100%}.pt-schedule-row .btn{margin:0 auto}}.mcf-project-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:700;cursor:pointer}</style>
+@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}@media(max-width:760px){.pt-schedule-row{justify-content:center!important;text-align:center}.pt-schedule-row>div{width:100%}.pt-schedule-row .btn{margin:0 auto}}.mcf-project-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:700;cursor:pointer}@media(max-width:760px){.parts-list .pcard,.part-card{overflow:hidden}.parts-list .pill,.parts-list .badge,.pst,.parts-status,.parts-status-pill{white-space:nowrap;flex-shrink:0;min-width:max-content}.parts-list .pcard>div:first-child,.part-card>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.parts-list .pcard strong,.part-card strong{min-width:0;overflow-wrap:anywhere}}.garage-today-line{position:absolute;top:0;bottom:0;width:1px;background:transparent;opacity:0;z-index:0;pointer-events:none}@media(max-width:760px){.pst{white-space:nowrap!important;flex-shrink:0!important}.parts-card strong,.part-card strong,.parts-list strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:72%}.parts-card,.part-card,.parts-list .fc{overflow:hidden}}@media(max-width:760px){.pst{white-space:nowrap!important;min-width:142px!important;max-width:none!important;text-align:center!important;display:inline-flex!important;justify-content:center!important;flex-shrink:0!important}.parts-list strong,.part-card strong,.parts-card strong{max-width:52%!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;word-break:break-word!important}.parts-list .pcard>div:first-child,.part-card>div:first-child,.parts-card>div:first-child{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:10px!important}}@media(min-width:761px){.pc-b{display:grid!important;grid-template-columns:minmax(260px,32%) minmax(220px,1fr) minmax(90px,12%)!important;align-items:center!important;gap:18px!important}.pc-b .spill{justify-self:stretch!important;white-space:nowrap!important;min-width:0!important}.pc-b .prog{width:100%!important;max-width:none!important;min-width:0!important}.pc-b .designer-pill{justify-self:end!important;text-align:right!important;white-space:nowrap!important;margin-left:0!important;margin-right:18px!important}}</style>
 </head>
 <body>
 
@@ -751,9 +751,9 @@ button{cursor:pointer}
   </div>
   <div class="sgrid">
     <div class="sc hi"><div class="sl">Active</div><div class="sn" id="s-active">—</div><div class="ss-sub">In progress</div></div>
-    <div class="sc" onclick="renderWaitingPartsOverview()" style="cursor:pointer"><div class="sl">Waiting Parts</div><div class="sn" id="s-parts">—</div><div class="ss-sub">Click to view parts</div></div>
+    <div class="sc" onclick="renderWaitingPartsOverview()" style="cursor:pointer"><div class="sl">Waiting Parts</div><div class="sn" id="s-parts">—</div><div class="ss-sub" style="color:#CA741F;text-decoration:underline;text-underline-offset:3px;font-weight:700">Click to view parts</div></div>
     <div class="sc"><div class="sl">Due This Week</div><div class="sn" id="s-due" style="color:#ef4444">—</div><div class="ss-sub">Nearing deadline</div></div>
-    <div class="sc"><div class="sl">Total Quoted</div><div class="sn" id="s-total" style="font-size:20px">—</div><div class="ss-sub">Active jobs</div></div>
+    <div class="sc"><div class="sl">Total Quoted</div><div class="sn" id="s-total">—</div><div class="ss-sub">Active jobs</div></div>
   </div>
   <div class="plist" id="plist"><div style="padding:40px;text-align:center;color:var(--g300)">Loading…</div></div>
 </div>
@@ -1943,6 +1943,13 @@ function toggleMobileQuoteDrawer(){
 // NAVIGATION
 // ══════════════════════════════════════
 function canSeeSettings(){return currentUser&&currentUser.role==='admin';}
+function scrollPageTop(){
+  window.scrollTo({top:0,left:0,behavior:'auto'});
+  document.documentElement.scrollTop=0;
+  document.body.scrollTop=0;
+  document.querySelectorAll('.view.active,.tb,#tb,#v-cashflow,#v-mastercf,.cf-page,.mcf-page').forEach(el=>{if(el)el.scrollTop=0;});
+}
+
 function showView(v,skipHistory=false){
   if(v==='settings'&&!canSeeSettings()){
     toast('Settings is admin-only');
@@ -1963,7 +1970,8 @@ function showView(v,skipHistory=false){
   if(v==='mastercf')renderMasterCF();
   if(v==='garage')renderGarageTimeline();
   if(v==='dash')refreshDashboard(currentFilter);
-  requestAnimationFrame(scrollActivePanelTop);
+  requestAnimationFrame(scrollPageTop);
+  requestAnimationFrame(scrollPageTop);
 }
 function goHome(){AP=null;showView('dash');}
 function toggleNavMenu(event){
@@ -2008,7 +2016,7 @@ function st(tab,btn,skipHistory=false){
   }
   updateMobileQuoteBar();
   renderTab(tab);
-  requestAnimationFrame(scrollActivePanelTop);
+  requestAnimationFrame(scrollPageTop);
 }
 
 window.addEventListener('popstate',(event)=>{
@@ -2028,7 +2036,7 @@ window.addEventListener('popstate',(event)=>{
     AP=null;
     showView('dash',true);
   }
-  requestAnimationFrame(scrollActivePanelTop);
+  requestAnimationFrame(scrollPageTop);
 });
 
 // ══════════════════════════════════════
@@ -2154,11 +2162,11 @@ async function renderWaitingPartsOverview(){
         ${items.map(row=>`
           <div style="border:1px solid var(--g100);border-radius:var(--rs);padding:10px;background:var(--g50)">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-              <div>
-                <div style="font-weight:800;font-size:var(--sm)">${esc(row.item.name||'Part item')}</div>
+              <div style="min-width:0;max-width:58%;overflow:hidden">
+                <div style="font-weight:800;font-size:var(--sm);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word">${esc(row.item.name||'Part item')}</div>
                 <div style="font-size:var(--xxs);color:var(--g500);margin-top:2px">${esc(row.cat.name||row.cat.cat||row.item.category||'Other')}</div>
               </div>
-              <span class="stchip">${esc(row.status)}</span>
+              <span class="stchip" style="white-space:nowrap;flex-shrink:0;min-width:max-content">${esc(row.status)}</span>
             </div>
             ${row.subparts.length?`<div style="font-size:var(--xxs);color:var(--g500);margin-top:8px;line-height:1.6">${row.subparts.map(sp=>`• ${esc(sp.name||'Sub-part')} ${sp.cost?`— ${fmt(sp.cost)}`:''}`).join('<br>')}</div>`:'<div style="font-size:var(--xxs);color:var(--g300);margin-top:8px">No sub-parts listed</div>'}
             <div style="font-size:var(--xxs);color:var(--brand);font-weight:800;margin-top:7px">Sub-part cost: ${fmt(row.cost)}</div>
@@ -2653,6 +2661,7 @@ function renderGarageTimeline(){
   const pos=date=>Math.max(0,Math.min(100,daysBetween(range.start,date)*cellPct));
   const spanWidth=(start,end)=>Math.max(2,(daysBetween(start,end)+1)*cellPct);
   const markPos=date=>Math.max(0,Math.min(100,(daysBetween(range.start,date)+0.5)*cellPct));
+  const todayMarker=`<div class="garage-today-line" style="left:${markPos(todayYmd())}%"></div>`;
   body.innerHTML=`
     <div class="garage-head">
       <div>
@@ -2669,7 +2678,7 @@ function renderGarageTimeline(){
        </div> 
    </div>
     ${firstConflict?`<div class="garage-warning">Capacity conflict: ${commas(firstConflict.count)} cars booked on ${firstConflict.date}</div>`:''}
-    <div class="garage-board" style="--garage-days:${totalDays}">
+    <div class="garage-board" id="garage-board" style="--garage-days:${totalDays}">\n      ${todayMarker}
       <div class="garage-scale">
         <div class="garage-scale-label">${garagePrettyMonth()}</div>
         <div class="garage-track">${marks.map(m=>`<span class="garage-mark" title="${m}" style="left:${markPos(m)}%">${Number(m.slice(-2))}</span>`).join('')}</div>
@@ -2711,6 +2720,13 @@ function renderGarageTimeline(){
         </div>`).join(''):'<div class="garage-small">No waiting projects.</div>'}
       </div>
     </div>`;
+  requestAnimationFrame(()=>{
+    const b=document.getElementById('garage-board');
+    if(b){
+      const target=(markPos(todayYmd())/100)*b.scrollWidth;
+      b.scrollLeft=Math.max(0,target-(b.clientWidth/2));
+    }
+  });
 }
 
 // ══════════════════════════════════════

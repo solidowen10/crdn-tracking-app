@@ -700,7 +700,7 @@ button{cursor:pointer}
 }
 @media(max-width:700px){.tl-grid,.timeline-grid,.garage-timeline-grid{grid-template-columns:1fr!important}.tl-field,.timeline-field,.garage-timeline-field{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box}.tl-field input,.timeline-field input,.garage-timeline-field input,input[type="date"]{max-width:100%;box-sizing:border-box}}
 .garage-form-grid .mi{width:100%;max-width:100%;box-sizing:border-box}
-@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}</style>
+@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}@media(max-width:760px){.pt-schedule-row{justify-content:center!important;text-align:center}.pt-schedule-row>div{width:100%}.pt-schedule-row .btn{margin:0 auto}}.mcf-project-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:700;cursor:pointer}</style>
 </head>
 <body>
 
@@ -1943,7 +1943,7 @@ function toggleMobileQuoteDrawer(){
 // NAVIGATION
 // ══════════════════════════════════════
 function canSeeSettings(){return currentUser&&currentUser.role==='admin';}
-function showView(v){
+function showView(v,skipHistory=false){
   if(v==='settings'&&!canSeeSettings()){
     toast('Settings is admin-only');
     v='dash';
@@ -1954,12 +1954,16 @@ function showView(v){
   }
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('v-'+v).classList.add('active');
+  if(!skipHistory){
+    history.pushState({view:v},'',`#${v}`);
+  }
   updateMobileQuoteBar();
   closeNavMenu();
   if(v==='settings')renderSettings();
   if(v==='mastercf')renderMasterCF();
   if(v==='garage')renderGarageTimeline();
   if(v==='dash')refreshDashboard(currentFilter);
+  requestAnimationFrame(scrollActivePanelTop);
 }
 function goHome(){AP=null;showView('dash');}
 function toggleNavMenu(event){
@@ -1986,13 +1990,46 @@ function setFilter(el,f){
   el.classList.add('on');
   refreshDashboard(f);
 }
-function st(tab,btn){
+function scrollActivePanelTop(){
+  window.scrollTo({top:0,left:0,behavior:'auto'});
+  document.querySelectorAll('.tb,.view.active').forEach(el=>{
+    if(el)el.scrollTop=0;
+  });
+  const tb=document.getElementById('tb');
+  if(tb)tb.scrollTop=0;
+}
+
+function st(tab,btn,skipHistory=false){
   activeTab=tab;
   document.querySelectorAll('#dtbar .dtab').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');
+  if(!skipHistory&&AP?.id){
+    history.pushState({view:'detail',id:AP.id,tab},'',`#project-${AP.id}-${tab}`);
+  }
   updateMobileQuoteBar();
   renderTab(tab);
+  requestAnimationFrame(scrollActivePanelTop);
 }
+
+window.addEventListener('popstate',(event)=>{
+  const state=event.state||{};
+  if(state.view==='detail'&&state.id){
+    const tab=state.tab||'overview';
+    const btn=[...document.querySelectorAll('#dtbar .dtab')].find(b=>b.getAttribute('onclick')?.includes(`'${tab}'`));
+    st(tab,btn,true);
+    return;
+  }
+  if(state.view){
+    if(state.view!=='detail')AP=null;
+    showView(state.view,true);
+    return;
+  }
+  if(document.getElementById('v-detail')?.classList.contains('active')){
+    AP=null;
+    showView('dash',true);
+  }
+  requestAnimationFrame(scrollActivePanelTop);
+});
 
 // ══════════════════════════════════════
 // DASHBOARD
@@ -2148,7 +2185,8 @@ async function openDetail(p){
   document.getElementById('d-title').textContent=`${AP.vehicle} — ${AP.owner}`;
   document.getElementById('d-sub').textContent=`${AP.jobNo}  ·  ${AP.plate||'—'}  ·  ${AP.pkg||'—'}`;
   showView('detail');
-  st('overview',document.querySelector('#dtbar .dtab'));
+  if(!history.state||history.state.view!=='detail'||String(history.state.id)!==String(AP?.id)) history.pushState({view:'detail',id:AP?.id},'',`#project-${AP?.id}`);
+  st('overview',document.querySelector('#dtbar .dtab'),true);
 }
 function renderTab(t){
   ({overview:rOverview,
@@ -2428,8 +2466,9 @@ function rGarageProjectTimeline(body){
         <div class="pt-note">Synced with Overview Est. finish</div>
       </div>
     </div>
+    ${renderProjectTimelineVisual(p)}
     <div class="fc">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div class="pt-schedule-row" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
         <div>
           <div class="fct">Project Schedule</div>
           <div class="garage-small">${canSchedule?'Uses Garage Timeline Settings from the Deposit Paid date.':'Available after Deposit Paid is Done.'}</div>
@@ -2437,7 +2476,7 @@ function rGarageProjectTimeline(body){
         ${canSchedule?'<button class="btn btn-brand btn-sm" onclick="scheduleProjectTimeline()">Schedule Timeline</button>':''}
       </div>
     </div>
-    ${renderProjectTimelineVisual(p)}
+
     <div class="fc" style="padding:0;overflow:hidden">
       <div class="pt-table-wrap">
         <table class="pt-table">
@@ -2996,7 +3035,7 @@ function printQuote(){
   const win=window.open('','_blank','width=840,height=1020');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote ${p.jobNo}</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Noto Sans TC',sans-serif;font-size:12pt;color:#111;padding:16mm;max-width:210mm;margin:0 auto}
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Bebas Neue','Noto Sans TC',sans-serif;font-size:12pt;color:#111;padding:16mm;width:210mm;max-width:210mm;margin:0 auto;background:#fff}
   .hd{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:14px;border-bottom:3px solid #CA741F}
   .hd img{width:52px;height:52px;border-radius:8px;object-fit:cover}
   .hdb{flex:1}.hdt{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;color:#CA741F}
@@ -3010,10 +3049,11 @@ function printQuote(){
   th small{display:block;font-size:7pt;color:#8c8c89;margin-top:2px;letter-spacing:0;text-transform:none}th:nth-child(1){width:14%}th:nth-child(2){width:43%}th:nth-child(3){width:8%}th:nth-child(4),th:nth-child(5){width:17.5%}
   td{padding:9px 10px;border-bottom:1px solid #f0f0ec;font-size:11pt;vertical-align:middle}
   .tr td{background:#fff;color:#CA741F;font-family:'Bebas Neue',sans-serif;font-size:18pt;letter-spacing:.04em;padding:11px 10px;border:none;font-weight:normal}
-  .terms{font-size:8pt;color:#6b6b68;line-height:1.7;padding:13px 15px;background:#f8f8f5;border-radius:8px;margin-top:8px;white-space:pre-wrap}
+  .terms{font-family:'Bebas Neue','Noto Sans TC',sans-serif;font-size:8pt;color:#6b6b68;line-height:1.7;padding:13px 15px;background:#f8f8f5;border-radius:8px;margin-top:8px;white-space:pre-wrap}
   .page-break{page-break-before:always;break-before:page;margin-top:0}
-  .contract{font-size:10pt;line-height:1.8}
-  @media print{@page{margin:12mm}body{padding:0}}</style></head><body>
+  .contract{font-family:'Bebas Neue','Noto Sans TC',sans-serif;font-size:10pt;line-height:1.8}
+  @page{size:A4;margin:12mm}
+  @media print{html,body{width:210mm;min-height:297mm;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
   <div class="hd">
     <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
     <div class="hdb"><div class="hdt">CREATIVE DEN STUDIO</div><div class="hds">creativeden.studio</div></div>
@@ -3040,8 +3080,8 @@ function printQuote(){
   <div class="page-break"></div>
   <div class="hd">
     <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
-    <div class="hdb"><div class="hdt">CRDN Creative Den Studio</div><div class="hds">creativeden.studio</div></div>
-    <div class="hdr"><div class="hdj">${p.jobNo}</div><div style="font-size:10pt;color:#6b6b68">${new Date().toLocaleDateString('zh-TW')}</div></div>
+    <div class="hdb"><div class="hdt">CREATIVE DEN STUDIO</div><div class="hds">creativeden.studio</div></div>
+    <div class="hdr"><div class="hdj">${quoteNo}</div><div style="font-size:10pt;color:#6b6b68">${invoiceNo}</div><div style="font-size:10pt;color:#6b6b68">${new Date().toLocaleDateString('zh-TW')}</div></div>
   </div>
   <div class="meta">
     <div><div class="ml">Customer / 客戶</div><div class="mv">${p.owner}</div></div>
@@ -3701,6 +3741,21 @@ function mcfAllRows(){
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
 }
 
+function openProjectFromCashflow(projectRef){
+  const project=(projects||[]).find(p=>
+    String(p.id)===String(projectRef) ||
+    String(p.jobNo||'')===String(projectRef) ||
+    String(p.projectNo||'')===String(projectRef)
+  );
+  if(!project){
+    toast('Project not found');
+    return;
+  }
+  openDetail(project);
+}
+
+
+
 function renderMasterCF(){
   const el=document.getElementById('mastercf-body');if(!el)return;
   if(!canSeeMasterCF()){el.innerHTML='<div class="mcf-empty">Admin access required.</div>';return;}
@@ -3752,7 +3807,7 @@ function renderMasterCF(){
         <div class="mcf-section-h"><strong>Cashflow Entries</strong><span style="font-size:var(--xxs);color:var(--g400)">${commas(allRows.length)} rows</span></div>
         <div class="mcf-table-wrap">${allRows.length?`
           <table class="mcf-table"><thead><tr><th>Date</th><th>Source</th><th>Project #</th><th>Type</th><th>Category</th><th>Description</th><th class="r">In</th><th class="r">Out</th></tr></thead><tbody>
-            ${allRows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(row.source)}</td><td>${esc(row.projectNo||'')}</td><td>${esc(String(row.type).toUpperCase())}</td><td>${esc(row.category)}</td><td>${esc(row.desc)}${row.note?`<div class="mcf-company-note">${esc(row.note)}</div>`:''}</td><td class="r mcf-in">${row.inAmt?fmt(row.inAmt):''}</td><td class="r mcf-out">${row.outAmt?fmt(row.outAmt):''}</td></tr>`).join('')}
+            ${allRows.map(row=>`<tr><td>${esc(row.date)}</td><td>${esc(row.source)}</td><td>${row.projectNo?`<a href="#" class="mcf-project-link" onclick="openProjectFromCashflow('${esc(row.projectNo)}');return false;">${esc(row.projectNo)}</a>`:''}</td><td>${esc(String(row.type).toUpperCase())}</td><td>${esc(row.category)}</td><td>${esc(row.desc)}${row.note?`<div class="mcf-company-note">${esc(row.note)}</div>`:''}</td><td class="r mcf-in">${row.inAmt?fmt(row.inAmt):''}</td><td class="r mcf-out">${row.outAmt?fmt(row.outAmt):''}</td></tr>`).join('')}
           </tbody></table>`:'<div class="mcf-empty">No cashflow entries in this period.</div>'}</div>
       </div>
       ${mcfCompanyCashflowsSection(companyRows)}
@@ -4048,6 +4103,8 @@ async function loadAdminSettings(opts={}){
 	    renderPackages();
     const terms=document.getElementById('default-terms');
     if(terms&&data?.quote_terms!==undefined)terms.value=data.quote_terms;
+    const contractTerms=document.getElementById('default-contract-terms');
+    if(contractTerms&&data?.contract_terms!==undefined)contractTerms.value=data.contract_terms;
     renderGarageSettings();
     if(data?.master_cashflow_entries!==undefined){
       try{

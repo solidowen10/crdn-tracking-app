@@ -1400,6 +1400,7 @@ optionRows.forEach(option=>{
     quote_categories: setting('quote_categories', DEFAULT_CATEGORIES.join('\n')),
     parts_categories: setting('parts_categories', DEFAULT_CATEGORIES.join('\n')),
 	    quote_terms: setting('quote_terms'),
+    contract_terms: setting('contract_terms'),
 	    packages: setting('packages', '[]'),
 	    ...garageSettings(),
 	    google_sheets_sync: setting('google_sheets_sync', 'Not connected'),
@@ -1408,7 +1409,7 @@ optionRows.forEach(option=>{
 	});
 	
 	app.patch('/api/admin/settings', requireAdmin, (req, res) => {
-	  ['quote_categories', 'parts_categories', 'quote_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries', 'garage_capacity', 'default_deposit_to_parts_ordered_days', 'default_parts_ordered_to_arrived_days', 'default_parts_arrived_to_garage_days', 'default_build_days', 'default_qc_days', 'default_delivery_buffer_days'].forEach(key => {
+	  ['quote_categories', 'parts_categories', 'quote_terms', 'contract_terms', 'packages', 'google_sheets_sync', 'master_cashflow_entries', 'garage_capacity', 'default_deposit_to_parts_ordered_days', 'default_parts_ordered_to_arrived_days', 'default_parts_arrived_to_garage_days', 'default_build_days', 'default_qc_days', 'default_delivery_buffer_days'].forEach(key => {
 	    if (req.body[key] !== undefined) setSetting(key, req.body[key]);
 	  });
   if (req.body.packages !== undefined) {

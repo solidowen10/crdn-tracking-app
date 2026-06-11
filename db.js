@@ -241,6 +241,31 @@ function migrate() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS consultation_item_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      consultation_item_id INTEGER NOT NULL REFERENCES consultation_items(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL,
+      label TEXT NOT NULL,
+      input_type TEXT NOT NULL DEFAULT 'select',
+      default_value TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(consultation_item_id, slug)
+    );
+
+    CREATE TABLE IF NOT EXISTS consultation_item_option_choices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      option_id INTEGER NOT NULL REFERENCES consultation_item_options(id) ON DELETE CASCADE,
+      value TEXT NOT NULL,
+      label TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS quote_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,

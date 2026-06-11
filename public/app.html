@@ -1550,15 +1550,6 @@ function timelineDeliveryDate(p){
   return projectEstimatedDelivery(p)||p?.finish||'';
 }
 
-function timelineGapText(fromDate,toDate,fromLabel){
-  if(!toDate)return 'No date set';
-  if(!fromDate)return 'Waiting for previous date';
-  const diff=daysBetween(fromDate,toDate);
-  const unit=Math.abs(diff)===1?'day':'days';
-  if(diff<0)return `${Math.abs(diff)} ${unit} before ${fromLabel}`;
-  return `${diff} ${unit} after ${fromLabel}`;
-}
-
 function cleanYmd(value){
   const raw=String(value||'').trim();
   return parseYmd(raw)?raw:'';

@@ -257,7 +257,7 @@ button{cursor:pointer}
 
 /* QUOTE TAB */
 .qtwrap{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;margin-bottom:13px}
-.quote-actions{margin-left:auto;display:flex;flex-direction:column;gap:7px;align-items:flex-end}.quote-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.quote-terms-toggle{display:flex;align-items:center;gap:7px;font-size:var(--xxs);font-weight:600;color:var(--g500);cursor:pointer;line-height:1.2}.quote-terms-toggle input{appearance:auto;-webkit-appearance:checkbox;width:16px;height:16px;min-width:16px;margin:0;accent-color:var(--brand)}.invoice-suffix-input{height:32px;max-width:180px;width:180px;font-size:var(--xs);padding:6px 9px}@media(max-width:700px){.quote-actions{width:100%;margin-left:0;align-items:stretch}.quote-btns{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}.quote-btns .btn{width:100%}.quote-terms-toggle{align-self:flex-start;font-size:var(--xs);padding:2px 0}.invoice-suffix-input{width:100%;max-width:none;height:36px}}
+.quote-actions{margin-left:auto;display:flex;flex-direction:column;gap:7px;align-items:flex-end}.quote-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.invoice-suffix-input{height:32px;max-width:180px;width:180px;font-size:var(--xs);padding:6px 9px}@media(max-width:700px){.quote-actions{width:100%;margin-left:0;align-items:stretch}.quote-btns{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}.quote-btns .btn{width:100%}.invoice-suffix-input{width:100%;max-width:none;height:36px}}
 .qt{width:100%;border-collapse:collapse}
 .qt th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100);white-space:nowrap}
 .qt th.c,.qt td.c{text-align:center}
@@ -3030,7 +3030,6 @@ function printQuote(){
   const total=calcQuoteTotal(p);  
   const terms=document.getElementById('default-terms')?.value||'';
   const contractTerms=document.getElementById('default-contract-terms')?.value||'';
-  const includeTermsPage=document.getElementById('include-terms-page')?.checked!==false;
   const today=new Date();
   const ymd=today.toISOString().slice(0,10).replaceAll('-','');
   const quoteNo=p.jobNo;
@@ -3042,20 +3041,6 @@ function printQuote(){
     ...checked.map(x=>`<tr><td>${catOf(x.item.id)}</td><td>${x.item.name}</td><td style="text-align:center">${commas(x.q)}</td><td style="text-align:right;font-family:monospace">${fmt(x.price)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt(x.price*x.q)}</td></tr>`),
     ...customs.map(c=>`<tr><td>Custom</td><td>${c.name||'Custom item'}${c.internal_notes?`<div style="margin-top:5px;color:#6b6b68;font-size:10pt;line-height:1.5;white-space:pre-wrap">${esc(c.internal_notes)}</div>`:''}</td><td style="text-align:center">${commas(c.qty||1)}</td><td style="text-align:right;font-family:monospace">${fmt(c.price||0)}</td><td style="text-align:right;font-family:monospace;font-weight:700">${fmt((c.price||0)*(c.qty||1))}</td></tr>`)
   ].join('');
-  const termsPage=includeTermsPage?`
-  <div class="page-break"></div>
-  <div class="hd">
-    <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
-    <div class="hdb"><div class="hdt">CREATIVE DEN STUDIO</div><div class="hds">creativeden.studio</div></div>
-    <div class="hdr"><div class="hdj">${quoteNo}</div><div style="font-size:10pt;color:#6b6b68">${invoiceNo}</div><div style="font-size:10pt;color:#6b6b68">${new Date().toLocaleDateString('zh-TW')}</div></div>
-  </div>
-  <div class="meta">
-    <div><div class="ml">Customer / 客戶</div><div class="mv">${p.owner}</div></div>
-    <div><div class="ml">Vehicle / 車輛</div><div class="mv">${p.vehicle}</div></div>
-    <div><div class="ml">Plate / 車牌</div><div class="mv">${p.plate||'—'}</div></div>
-    <div><div class="ml">Package / 方案</div><div class="mv">${p.pkg||'—'}</div></div>
-  </div>
-  <div class="terms contract"><strong>合約條款 / Terms & Conditions:</strong>\n${contractTerms}</div>`:'';
   const win=window.open('','_blank','width=840,height=1020');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Quote ${p.jobNo}</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -3101,7 +3086,19 @@ function printQuote(){
   <tfoot><tr class="tr"><td colspan="4">總計 / Total</td><td style="text-align:right">${fmt(total)}</td></tr></tfoot>
   </table>
   <div class="terms"><strong>付款條件 / Payment Terms:</strong>\n${terms}\n\n<strong>銀行匯款資料 / Bank Info:</strong>\n國泰世華銀行013\n帳號：007-03-500312-1\n戶名：頣（ㄕㄣˇ） 品集成有限公司\n台北市中山區中山北路三段40號</div>
-  ${termsPage}
+  <div class="page-break"></div>
+  <div class="hd">
+    <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
+    <div class="hdb"><div class="hdt">CREATIVE DEN STUDIO</div><div class="hds">creativeden.studio</div></div>
+    <div class="hdr"><div class="hdj">${quoteNo}</div><div style="font-size:10pt;color:#6b6b68">${invoiceNo}</div><div style="font-size:10pt;color:#6b6b68">${new Date().toLocaleDateString('zh-TW')}</div></div>
+  </div>
+  <div class="meta">
+    <div><div class="ml">Customer / 客戶</div><div class="mv">${p.owner}</div></div>
+    <div><div class="ml">Vehicle / 車輛</div><div class="mv">${p.vehicle}</div></div>
+    <div><div class="ml">Plate / 車牌</div><div class="mv">${p.plate||'—'}</div></div>
+    <div><div class="ml">Package / 方案</div><div class="mv">${p.pkg||'—'}</div></div>
+  </div>
+  <div class="terms contract"><strong>合約條款 / Terms & Conditions:</strong>\n${contractTerms}</div>
   </body></html>`);
   win.document.close();setTimeout(()=>{win.focus();win.print();},700);
 }
@@ -3170,7 +3167,6 @@ function rQuote(body){
     	  <button class="btn btn-out btn-sm" onclick="copyQuoteText()">📋 Copy as Text</button>
     	  <button class="btn btn-brand btn-sm" onclick="printQuote()">🖨 Print / PDF</button>
         </div>
-        <label class="quote-terms-toggle"><input type="checkbox" id="include-terms-page" checked>Include Terms & Conditions Page</label>
         <input class="fi invoice-suffix-input" id="invoice-suffix" placeholder="Invoice suffix e.g. A, rev2">
       </div>
     </div>

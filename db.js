@@ -341,6 +341,51 @@ function migrate() {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS design_ai_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_library_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      drive_file_id TEXT UNIQUE,
+      folder_type TEXT,
+      name TEXT,
+      mime_type TEXT,
+      web_view_link TEXT,
+      modified_time TEXT,
+      size TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_design_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      requested_by_line_user_id TEXT,
+      vehicle_id TEXT,
+      customer_lifestyle TEXT,
+      people_count INTEGER,
+      budget REAL,
+      must_include_json TEXT,
+      style_id TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'draft',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_design_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id INTEGER REFERENCES ai_design_requests(id) ON DELETE CASCADE,
+      ai_summary TEXT,
+      layout_json TEXT,
+      customer_proposal TEXT,
+      lifestyle_prompt TEXT,
+      raw_response_json TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   addColumn('vehicles', 'job_no', 'TEXT');
@@ -378,6 +423,9 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_parts_vehicle ON parts(vehicle_id);
     CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_consultation_subparts_item ON consultation_subparts(consultation_item_id);
+    CREATE INDEX IF NOT EXISTS idx_design_library_files_folder ON design_library_files(folder_type, modified_time);
+    CREATE INDEX IF NOT EXISTS idx_ai_design_requests_created ON ai_design_requests(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ai_design_responses_request ON ai_design_responses(request_id, created_at DESC);
   `);
 }
 

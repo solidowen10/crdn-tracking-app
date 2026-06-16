@@ -67,3 +67,24 @@ CRDN app -> Google Sheets
 The app remains the source of truth. Configure the server env vars in `.env`, share the Sheet with the service account email as Editor, then use `Settings -> Google Sheets` as an admin.
 
 Details are in `docs/GOOGLE_SHEETS_SYNC.md`.
+
+## Design AI MVP
+
+The protected internal AI Design Library lives at:
+
+```text
+https://tool.creativeden.studio/design-ai
+```
+
+All backend endpoints are namespaced under `/api/design-ai/...` and require the existing LINE-authenticated session. Google Drive sync stores file metadata only; 3D files are treated as asset references in this MVP.
+
+Required server environment values:
+
+```env
+GOOGLE_DRIVE_CLIENT_EMAIL=
+GOOGLE_DRIVE_PRIVATE_KEY=
+GOOGLE_DRIVE_PROJECT_ID=
+OPENAI_API_KEY=
+```
+
+Share the configured Drive folders with the Google service account email before running Design AI sync. `GOOGLE_APPLICATION_CREDENTIALS` can still be used for the existing Google Sheets export.

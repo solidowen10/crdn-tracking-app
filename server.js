@@ -23,6 +23,12 @@ const {
   syncGoogleSheets
 } = require('./sheetsSync');
 const { syncMasterCashflow } = require('./cashflowSync');
+const {
+  driveStatus,
+  syncDriveFolders,
+  generateDesignResponse,
+  REQUIRED_MISSING_DATA
+} = require('./designAiServices');
 
 init();
 
@@ -413,6 +419,181 @@ function setSetting(key, value) {
   `).run(key, String(value ?? ''));
 }
 
+const DESIGN_AI_SETTING_KEYS = [
+  'google_drive_root_folder_id',
+  'vehicles_folder_id',
+  'products_folder_id',
+  'styles_folder_id',
+  'templates_folder_id',
+  'last_sync_at',
+  'last_sync_error'
+];
+
+function designSetting(key, fallback = '') {
+  return db.prepare('SELECT value FROM design_ai_settings WHERE key=?').get(key)?.value || fallback;
+}
+
+function setDesignSetting(key, value) {
+  db.prepare(`
+    INSERT INTO design_ai_settings (key, value, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+  `).run(key, String(value ?? ''));
+}
+
+function designAiSettings() {
+  return DESIGN_AI_SETTING_KEYS.reduce((acc, key) => {
+    acc[key] = designSetting(key);
+    return acc;
+  }, {});
+}
+
+function designLibraryStatus() {
+  const byFolder = db.prepare(`
+    SELECT folder_type, COUNT(*) AS count, MAX(updated_at) AS updated_at
+    FROM design_library_files
+    GROUP BY folder_type
+  `).all();
+  const folders = { root: 0, vehicles: 0, products: 0, styles: 0, templates: 0 };
+  byFolder.forEach(row => { folders[row.folder_type] = row.count; });
+  const total = db.prepare('SELECT COUNT(*) AS count FROM design_library_files').get().count;
+  return {
+    total_indexed_files: total,
+    folders,
+    last_sync_at: designSetting('last_sync_at'),
+    last_sync_error: designSetting('last_sync_error'),
+    drive: driveStatus()
+  };
+}
+
+function designLibraryFiles(folderType = 'all') {
+  if (['root', 'vehicles', 'products', 'styles', 'templates'].includes(folderType)) {
+    return db.prepare(`
+      SELECT *
+      FROM design_library_files
+      WHERE folder_type=?
+      ORDER BY modified_time DESC, name COLLATE NOCASE
+    `).all(folderType);
+  }
+  return db.prepare(`
+    SELECT *
+    FROM design_library_files
+    ORDER BY folder_type, modified_time DESC, name COLLATE NOCASE
+  `).all();
+}
+
+function parseJson(raw, fallback) {
+  if (raw === undefined || raw === null || raw === '') return fallback;
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return fallback;
+  }
+}
+
+function parseMustInclude(value) {
+  if (Array.isArray(value)) return value.map(text).filter(Boolean);
+  return text(value).split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function designRequestFromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    must_include: parseJson(row.must_include_json, []),
+    requested_by: row.requested_by || row.display_name || row.requested_by_line_user_id || ''
+  };
+}
+
+function designResponseFromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    layout: parseJson(row.layout_json, {}),
+    raw_response: parseJson(row.raw_response_json, {})
+  };
+}
+
+function latestDesignResponse(requestId) {
+  return designResponseFromRow(db.prepare(`
+    SELECT *
+    FROM ai_design_responses
+    WHERE request_id=?
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+  `).get(requestId));
+}
+
+function designRequestDetail(id) {
+  const row = db.prepare(`
+    SELECT r.*, u.display_name AS requested_by
+    FROM ai_design_requests r
+    LEFT JOIN users u ON u.line_user_id=r.requested_by_line_user_id
+    WHERE r.id=?
+  `).get(Number(id));
+  if (!row) return null;
+  return {
+    request: designRequestFromRow(row),
+    response: latestDesignResponse(row.id)
+  };
+}
+
+function saveDesignResponse(requestId, generated) {
+  const raw = {
+    ...generated,
+    missing_data_warning: REQUIRED_MISSING_DATA,
+    generated_at: new Date().toISOString()
+  };
+  db.prepare(`
+    INSERT INTO ai_design_responses (
+      request_id, ai_summary, layout_json, customer_proposal, lifestyle_prompt, raw_response_json
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    requestId,
+    text(generated.ai_summary),
+    JSON.stringify(generated.layout || {}),
+    text(generated.customer_proposal),
+    text(generated.lifestyle_prompt),
+    JSON.stringify(raw)
+  );
+  db.prepare('UPDATE ai_design_requests SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('completed', requestId);
+  return latestDesignResponse(requestId);
+}
+
+async function notifyDesignResultReady(request) {
+  const token = text(process.env.LINE_CHANNEL_ACCESS_TOKEN);
+  if (!token) {
+    console.warn('LINE design notification skipped: LINE_CHANNEL_ACCESS_TOKEN missing.');
+    return;
+  }
+  const configuredRecipients = text(process.env.LINE_DESIGN_NOTIFY_USER_IDS)
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+  const recipients = configuredRecipients.length ? configuredRecipients : [request.requested_by_line_user_id].filter(Boolean);
+  if (!recipients.length) {
+    console.warn('LINE design notification skipped: no recipient LINE user ID.');
+    return;
+  }
+  const body = [
+    'CRDN AI Design Result Ready',
+    `Vehicle: ${request.vehicle_id || '—'}`,
+    `Lifestyle: ${request.customer_lifestyle || '—'}`,
+    `Open: ${BASE_URL}/design-ai/requests/${request.id}`
+  ].join('\n');
+  await Promise.all(recipients.map(to => axios.post('https://api.line.me/v2/bot/message/push', {
+    to,
+    messages: [{ type: 'text', text: body }]
+  }, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })));
+}
+
 function garageSettings() {
   return {
     garage_capacity: setting('garage_capacity', '2'),
@@ -600,6 +781,14 @@ app.get('/auth/me', requireAuth, (req, res) => res.json(req.session.user));
 app.post('/auth/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
 
 app.get('/', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+app.get([
+  '/design-ai',
+  '/design-ai/settings',
+  '/design-ai/library',
+  '/design-ai/new',
+  '/design-ai/requests',
+  '/design-ai/requests/:id'
+], requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
 app.use('/assets', express.static(path.join(__dirname, 'public')));
 
 app.get('/api/meta', requireAuth, (req, res) => {
@@ -618,6 +807,150 @@ app.get('/api/dashboard', requireAuth, (req, res) => {
   const rows = dashboardRows(text(req.query.filter) || 'All');
   const allRows = dashboardRows('All');
   res.json({ summary: dashboardSummary(allRows), projects: rows });
+});
+
+app.get('/api/design-ai/settings', requireAuth, (req, res) => {
+  res.json({
+    settings: designAiSettings(),
+    status: designLibraryStatus()
+  });
+});
+
+app.post('/api/design-ai/settings', requireAuth, (req, res) => {
+  [
+    'google_drive_root_folder_id',
+    'vehicles_folder_id',
+    'products_folder_id',
+    'styles_folder_id',
+    'templates_folder_id'
+  ].forEach(key => {
+    if (req.body[key] !== undefined) setDesignSetting(key, text(req.body[key]));
+  });
+  res.json({
+    ok: true,
+    settings: designAiSettings(),
+    status: designLibraryStatus()
+  });
+});
+
+app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
+  try {
+    const result = await syncDriveFolders(designAiSettings());
+    const upsert = db.prepare(`
+      INSERT INTO design_library_files (
+        drive_file_id, folder_type, name, mime_type, web_view_link, modified_time, size, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(drive_file_id) DO UPDATE SET
+        folder_type=excluded.folder_type,
+        name=excluded.name,
+        mime_type=excluded.mime_type,
+        web_view_link=excluded.web_view_link,
+        modified_time=excluded.modified_time,
+        size=excluded.size,
+        updated_at=CURRENT_TIMESTAMP
+    `);
+    const tx = db.transaction(files => {
+      files.forEach(file => upsert.run(
+        text(file.drive_file_id),
+        text(file.folder_type),
+        text(file.name),
+        text(file.mime_type),
+        text(file.web_view_link),
+        text(file.modified_time),
+        text(file.size)
+      ));
+    });
+    tx(result.files);
+    setDesignSetting('last_sync_at', result.synced_at);
+    setDesignSetting('last_sync_error', '');
+    res.json({
+      ok: true,
+      synced_at: result.synced_at,
+      indexed_count: result.files.length,
+      folders: result.folders,
+      status: designLibraryStatus()
+    });
+  } catch (err) {
+    const message = err.message || 'Google Drive library sync failed.';
+    setDesignSetting('last_sync_error', message);
+    res.status(err.status || 502).json({
+      error: message,
+      status: designLibraryStatus()
+    });
+  }
+});
+
+app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
+  const folderType = text(req.query.folder_type || req.query.folder || 'all').toLowerCase();
+  res.json({
+    files: designLibraryFiles(folderType),
+    status: designLibraryStatus(),
+    required_checklist: {
+      vehicle: ['vehicle.json', 'dimensions.csv', 'mounting_points.csv', 'restricted_zones.csv', 'floorplan.svg', 'scan.glb', 'photos/'],
+      product: ['product.json', 'dimensions.csv', 'footprint.svg', 'model.glb', 'installation_rules.json', 'photos/']
+    }
+  });
+});
+
+app.post('/api/design-ai/requests', requireAuth, (req, res) => {
+  const vehicleId = text(req.body.vehicle_id || req.body.vehicle_name || req.body.vehicle);
+  if (!vehicleId) return res.status(400).json({ error: 'Vehicle ID or vehicle name is required.' });
+  const result = db.prepare(`
+    INSERT INTO ai_design_requests (
+      requested_by_line_user_id, vehicle_id, customer_lifestyle, people_count,
+      budget, must_include_json, style_id, notes, status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')
+  `).run(
+    actor(req).userId || '',
+    vehicleId,
+    text(req.body.customer_lifestyle),
+    int(req.body.people_count),
+    number(req.body.budget),
+    JSON.stringify(parseMustInclude(req.body.must_include ?? req.body.must_include_products)),
+    text(req.body.style_id || req.body.style_name),
+    text(req.body.notes)
+  );
+  res.status(201).json(designRequestDetail(result.lastInsertRowid));
+});
+
+app.get('/api/design-ai/requests', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT r.*, u.display_name AS requested_by,
+      (SELECT created_at FROM ai_design_responses ar WHERE ar.request_id=r.id ORDER BY ar.created_at DESC, ar.id DESC LIMIT 1) AS response_created_at
+    FROM ai_design_requests r
+    LEFT JOIN users u ON u.line_user_id=r.requested_by_line_user_id
+    ORDER BY r.created_at DESC, r.id DESC
+  `).all().map(designRequestFromRow);
+  res.json({ requests: rows });
+});
+
+app.get('/api/design-ai/requests/:id', requireAuth, (req, res) => {
+  const detail = designRequestDetail(req.params.id);
+  if (!detail) return res.status(404).json({ error: 'Design request not found.' });
+  res.json(detail);
+});
+
+app.post('/api/design-ai/requests/:id/generate', requireAuth, async (req, res) => {
+  const detail = designRequestDetail(req.params.id);
+  if (!detail) return res.status(404).json({ error: 'Design request not found.' });
+  try {
+    db.prepare('UPDATE ai_design_requests SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('generating', detail.request.id);
+    const request = db.prepare('SELECT * FROM ai_design_requests WHERE id=?').get(detail.request.id);
+    const files = designLibraryFiles('all');
+    const generated = await generateDesignResponse(request, files);
+    const response = saveDesignResponse(request.id, generated);
+    const updated = designRequestDetail(request.id);
+    notifyDesignResultReady(updated.request).catch(err => {
+      console.warn('LINE design notification failed:', err.response?.data || err.message || err);
+    });
+    res.json({ request: updated.request, response });
+  } catch (err) {
+    const message = err.message || 'AI design generation failed.';
+    db.prepare('UPDATE ai_design_requests SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('error', detail.request.id);
+    res.status(err.status || 502).json({ error: message, request: designRequestDetail(detail.request.id)?.request || detail.request });
+  }
 });
 
 app.post('/api/projects', requireAuth, (req, res) => {

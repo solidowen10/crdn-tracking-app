@@ -80,6 +80,8 @@ button{cursor:pointer}
 .sn{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.04em;line-height:1}
 .ss-sub{font-size:var(--xxxs);color:var(--g400);margin-top:3px}
 .plist{padding:0 18px 100px}
+.dash-ai-entry{padding:0 18px 12px;display:flex;justify-content:flex-start}
+.dash-ai-entry .btn{box-shadow:var(--sh)}
 .pcard{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:10px;cursor:pointer;transition:.15s;overflow:hidden}
 .pcard:hover{border-color:var(--g300);box-shadow:var(--sh)}
 .pc-h{padding:13px 15px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
@@ -125,6 +127,48 @@ button{cursor:pointer}
   color:var(--g500);
   white-space:nowrap;
 }
+
+/* DESIGN AI */
+.dai-page{width:min(1060px,100%);margin:0 auto;padding:18px 18px 96px}
+.dai-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}
+.dai-kicker{font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin-bottom:3px}
+.dai-title{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.06em;line-height:1}
+.dai-sub{font-size:var(--sm);color:var(--g500);line-height:1.55;margin-top:5px}
+.dai-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.dai-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.dai-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:15px;box-shadow:var(--sh);cursor:pointer;transition:.15s;min-height:120px;display:flex;flex-direction:column;justify-content:space-between}
+.dai-card:hover{border-color:var(--brand);background:var(--brand-f)}
+.dai-card strong{font-size:var(--sm);line-height:1.25}
+.dai-card span{font-size:var(--xxs);color:var(--g500);line-height:1.45;margin-top:8px;display:block}
+.dai-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.dai-kpi{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px}.dai-kpi.hi{border-left:3px solid var(--brand)}
+.dai-num{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.04em;line-height:1}
+.dai-panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.dai-panel-title{font-size:var(--xxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:12px}
+.dai-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.dai-field label{display:block;font-size:var(--xxs);font-weight:800;color:var(--g500);margin-bottom:5px}
+.dai-field input,.dai-field textarea,.dai-field select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:9px 10px;background:var(--w);font-size:var(--sm)}
+.dai-field textarea{resize:vertical;min-height:92px}.dai-field.wide{grid-column:1/-1}
+.dai-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;scrollbar-width:none}.dai-tabs::-webkit-scrollbar{display:none}
+.dai-tab{border:1px solid var(--g200);background:var(--w);color:var(--g500);border-radius:99px;padding:6px 12px;font-size:var(--xxs);font-weight:800;white-space:nowrap}
+.dai-tab.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.dai-table-wrap{overflow-x:auto;border:1px solid var(--g200);border-radius:var(--r);background:var(--w)}
+.dai-table{width:100%;border-collapse:collapse;min-width:760px}
+.dai-table th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100)}
+.dai-table td{padding:10px 11px;border-bottom:1px solid var(--g100);font-size:var(--sm);vertical-align:top}
+.dai-table tr:last-child td{border-bottom:none}.dai-table a{color:var(--brand);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.dai-empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:22px;text-align:center;color:var(--g500);line-height:1.65}
+.dai-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.dai-checklist ul{margin:8px 0 0;padding-left:18px;color:var(--g500);font-size:var(--sm);line-height:1.7}
+.dai-list{display:flex;flex-direction:column;gap:10px}
+.dai-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) 130px 130px;gap:12px;align-items:center}
+.dai-row:hover{border-color:var(--brand);background:var(--brand-f)}
+.dai-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em;background:var(--g100);color:var(--g500)}
+.dai-pill.done{background:#f0fdf4;color:#15803d}.dai-pill.error{background:#fef2f2;color:#dc2626}.dai-pill.work{background:#eff6ff;color:#2563eb}
+.dai-result-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:14px}
+.dai-pre{background:#111110;color:#f8f8f5;border-radius:var(--r);padding:13px;overflow:auto;font-size:12px;line-height:1.5;max-height:420px}
+.dai-warning{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:var(--r);padding:12px 14px;font-size:var(--sm);line-height:1.55;margin-bottom:13px}
+@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid{grid-template-columns:1fr}.dai-row{grid-template-columns:1fr}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
 .job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:left}
 .pc-status{font-size:var(--xxxs);padding:2px 8px;border-radius:99px;width:max-content}
 .pc-status.unsaved{background:#fff7ed;color:#f97316}
@@ -755,6 +799,9 @@ button{cursor:pointer}
     <div class="sc"><div class="sl">Due This Week</div><div class="sn" id="s-due" style="color:#ef4444">—</div><div class="ss-sub">Nearing deadline</div></div>
     <div class="sc"><div class="sl">Total Quoted</div><div class="sn" id="s-total">—</div><div class="ss-sub">Active jobs</div></div>
   </div>
+  <div class="dash-ai-entry">
+    <button class="btn btn-brand btn-sm" onclick="openDesignAI()">AI Design Library</button>
+  </div>
   <div class="plist" id="plist"><div style="padding:40px;text-align:center;color:var(--g300)">Loading…</div></div>
 </div>
 
@@ -892,6 +939,11 @@ button{cursor:pointer}
 <!-- ══════ GARAGE TIMELINE ══════ -->
 <div class="view" id="v-garage">
   <div id="garage-body" class="garage-page"></div>
+</div>
+
+<!-- ══════ DESIGN AI ══════ -->
+<div class="view" id="v-designai">
+  <div id="design-ai-body" class="dai-page"></div>
 </div>
 
 </div><!-- /layout -->
@@ -1143,6 +1195,16 @@ let GARAGE_MONTH_CURSOR='';
 let timelineAutosaveTimer=null;
 let projectTimelineAutoScrollKey='';
 let SETTINGS_PACKAGE_OPEN={};
+let DESIGN_AI={
+  settings:null,
+  status:null,
+  files:[],
+  requests:[],
+  folder:'all',
+  requestDetail:null,
+  rawOpen:false,
+  loading:false
+};
 
 // ══════════════════════════════════════
 // API LAYER
@@ -1953,7 +2015,7 @@ function showView(v,skipHistory=false){
     v='dash';
   }
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
-  document.getElementById('v-'+v).classList.add('active');
+  document.getElementById('v-'+v)?.classList.add('active');
   if(!skipHistory){
     history.pushState({view:v},'',`#${v}`);
   }
@@ -1962,11 +2024,20 @@ function showView(v,skipHistory=false){
   if(v==='settings')renderSettings();
   if(v==='mastercf')renderMasterCF();
   if(v==='garage')renderGarageTimeline();
+  if(v==='designai')renderDesignAI();
   if(v==='dash')refreshDashboard(currentFilter);
   requestAnimationFrame(scrollPageTop);
   requestAnimationFrame(scrollPageTop);
 }
-function goHome(){AP=null;showView('dash');}
+function goHome(){
+  AP=null;
+  if(location.pathname.startsWith('/design-ai')){
+    history.pushState({view:'dash'},'','/');
+    showView('dash',true);
+    return;
+  }
+  showView('dash');
+}
 function toggleNavMenu(event){
   event?.stopPropagation();
   const menu=document.getElementById('nav-menu');
@@ -2014,6 +2085,11 @@ function st(tab,btn,skipHistory=false){
 
 window.addEventListener('popstate',(event)=>{
   const state=event.state||{};
+  if(state.view==='designai'||location.pathname.startsWith('/design-ai')){
+    AP=null;
+    showView('designai',true);
+    return;
+  }
   if(state.view==='detail'&&state.id){
     const tab=state.tab||'overview';
     const btn=[...document.querySelectorAll('#dtbar .dtab')].find(b=>b.getAttribute('onclick')?.includes(`'${tab}'`));
@@ -2170,6 +2246,321 @@ async function renderWaitingPartsOverview(){
     card.querySelector('.parts-open').onclick=()=>openProjectParts(id);
     list.appendChild(card);
   });
+}
+
+// ══════════════════════════════════════
+// DESIGN AI
+// ══════════════════════════════════════
+const DESIGN_AI_FOLDERS=[
+  {key:'all',label:'All'},
+  {key:'vehicles',label:'Vehicles'},
+  {key:'products',label:'Products'},
+  {key:'styles',label:'Styles'},
+  {key:'templates',label:'Templates'}
+];
+const DESIGN_AI_SETTING_FIELDS=[
+  ['google_drive_root_folder_id','Google Drive Root Folder ID'],
+  ['vehicles_folder_id','Vehicles Folder ID'],
+  ['products_folder_id','Products Folder ID'],
+  ['styles_folder_id','Styles Folder ID'],
+  ['templates_folder_id','Templates Folder ID']
+];
+function designAiBody(){return document.getElementById('design-ai-body');}
+function designAiRoute(){
+  const parts=location.pathname.split('/').filter(Boolean);
+  if(parts[0]!=='design-ai')return {page:'dashboard'};
+  if(!parts[1])return {page:'dashboard'};
+  if(parts[1]==='settings')return {page:'settings'};
+  if(parts[1]==='library')return {page:'library'};
+  if(parts[1]==='new')return {page:'new'};
+  if(parts[1]==='requests'&&parts[2])return {page:'detail',id:parts[2]};
+  if(parts[1]==='requests')return {page:'requests'};
+  return {page:'dashboard'};
+}
+function designAiUrl(page='dashboard',opts={}){
+  if(page==='settings')return '/design-ai/settings';
+  if(page==='library')return '/design-ai/library';
+  if(page==='new')return '/design-ai/new';
+  if(page==='requests')return '/design-ai/requests';
+  if(page==='detail')return `/design-ai/requests/${opts.id}`;
+  return '/design-ai';
+}
+function openDesignAI(page='dashboard',opts={},skipHistory=false){
+  AP=null;
+  const url=designAiUrl(page,opts);
+  if(!skipHistory)history.pushState({view:'designai',page,id:opts.id||null},'',url);
+  showView('designai',true);
+}
+function designAiHeader(title,sub='',actions=''){
+  return `<div class="dai-head">
+    <div><div class="dai-kicker">Internal AI Design</div><div class="dai-title">${esc(title)}</div>${sub?`<div class="dai-sub">${sub}</div>`:''}</div>
+    <div class="dai-actions">${actions}</div>
+  </div>`;
+}
+function designAiLoading(title='AI Design Library'){
+  const el=designAiBody();if(!el)return;
+  el.innerHTML=designAiHeader(title,'Loading library data…','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+    '<div class="dai-empty">Loading…</div>';
+}
+function designAiStatusHtml(status={}){
+  const drive=status.drive||{};
+  const last=status.last_sync_at?new Date(status.last_sync_at).toLocaleString('zh-TW'):'Never';
+  const err=status.last_sync_error||'';
+  return `<div class="dai-kpis">
+    <div class="dai-kpi hi"><div class="sl">Indexed Files</div><div class="dai-num">${commas(status.total_indexed_files||0)}</div><div class="ss-sub">Drive metadata saved</div></div>
+    <div class="dai-kpi"><div class="sl">Drive Credentials</div><div class="dai-num" style="font-size:24px;color:${drive.credentials_configured?'#15803d':'#dc2626'}">${drive.credentials_configured?'Ready':'Missing'}</div><div class="ss-sub">${drive.service_account_email?esc(drive.service_account_email):'Service account not configured'}</div></div>
+    <div class="dai-kpi"><div class="sl">Last Sync</div><div class="dai-num" style="font-size:24px">${esc(last)}</div><div class="ss-sub">${err?`Last error: ${esc(err)}`:'No sync error stored'}</div></div>
+  </div>`;
+}
+async function loadDesignAiStatus(){
+  const data=await GET('/api/design-ai/settings');
+  DESIGN_AI.settings=data.settings||{};
+  DESIGN_AI.status=data.status||{};
+  return data;
+}
+async function renderDesignAI(){
+  const route=designAiRoute();
+  if(route.page==='settings')return renderDesignAiSettings();
+  if(route.page==='library')return renderDesignAiLibrary(DESIGN_AI.folder||'all');
+  if(route.page==='new')return renderDesignAiNew();
+  if(route.page==='requests')return renderDesignAiRequests();
+  if(route.page==='detail')return renderDesignAiDetail(route.id);
+  return renderDesignAiDashboard();
+}
+async function renderDesignAiDashboard(){
+  designAiLoading();
+  try{
+    const [settings,requests]=await Promise.all([loadDesignAiStatus(),GET('/api/design-ai/requests')]);
+    DESIGN_AI.requests=requests.requests||[];
+    const el=designAiBody();
+    el.innerHTML=designAiHeader('AI Design Library','Create design directions from indexed CRDN vehicle, product, style, and template assets.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+      designAiStatusHtml(settings.status)+
+      `<div class="dai-grid">
+        <div class="dai-card" onclick="openDesignAI('new')"><strong>New AI Design Request</strong><span>Capture lifestyle, budget, vehicle, product, and style notes.</span></div>
+        <div class="dai-card" onclick="DESIGN_AI.folder='vehicles';openDesignAI('library')"><strong>Vehicle Library</strong><span>Review indexed vehicle folders and required files.</span></div>
+        <div class="dai-card" onclick="DESIGN_AI.folder='products';openDesignAI('library')"><strong>Product Library</strong><span>Review product folders, models, dimensions, and rules.</span></div>
+        <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
+        <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Paste Drive folder IDs and run metadata sync.</span></div>
+      </div>
+      ${Number(settings.status?.total_indexed_files||0)?'':
+        '<div class="dai-empty"><strong>No library files indexed yet.</strong><br>Paste the Google Drive folder IDs in Settings, share folders with the service account, then run Sync Google Drive Library. Empty folders are fine for Phase 1.</div>'}`;
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('AI Design Library','Could not load the Design AI dashboard.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function renderDesignAiSettings(){
+  designAiLoading('AI Design Settings');
+  try{
+    const data=await loadDesignAiStatus();
+    const s=data.settings||{};
+    const el=designAiBody();
+    el.innerHTML=designAiHeader('AI Design Settings','Paste folder IDs from Google Drive URLs. Credentials stay server-side only.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      designAiStatusHtml(data.status)+
+      `<div class="dai-panel">
+        <div class="dai-panel-title">Google Drive Folders</div>
+        <div class="dai-form-grid">
+          ${DESIGN_AI_SETTING_FIELDS.map(([key,label])=>`<div class="dai-field ${key==='google_drive_root_folder_id'?'wide':''}"><label>${esc(label)}</label><input id="dai-${key}" value="${esc(s[key]||'')}" placeholder="Paste folder ID"></div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn btn-brand btn-sm" onclick="saveDesignAiSettings()">Save Settings</button>
+          <button class="btn btn-out btn-sm" onclick="syncDesignAiDrive()">Sync Google Drive Library</button>
+        </div>
+      </div>
+      <div class="dai-empty">Share each Google Drive folder with the service account email shown above. This MVP stores metadata only and does not parse GLB, OBJ, FBX, STEP, PLY, LAS, or E57 files.</div>`;
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('AI Design Settings','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function saveDesignAiSettings(){
+  const payload={};
+  DESIGN_AI_SETTING_FIELDS.forEach(([key])=>payload[key]=document.getElementById('dai-'+key)?.value||'');
+  try{
+    await POST('/api/design-ai/settings',payload);
+    toast('Design AI settings saved ✓');
+    renderDesignAiSettings();
+  }catch(e){
+    toast(`Settings save failed: ${errMsg(e)}`,4500);
+  }
+}
+async function syncDesignAiDrive(){
+  try{
+    toast('Syncing Drive library…');
+    const res=await POST('/api/design-ai/sync-drive',{});
+    DESIGN_AI.status=res.status||DESIGN_AI.status;
+    toast(`Drive sync complete: ${commas(res.indexed_count||0)} file${res.indexed_count===1?'':'s'} indexed`);
+    renderDesignAiSettings();
+  }catch(e){
+    toast(`Drive sync failed: ${errMsg(e)}`,6500);
+    renderDesignAiSettings();
+  }
+}
+function designAiFolderTabs(active='all'){
+  return `<div class="dai-tabs">${DESIGN_AI_FOLDERS.map(f=>`<button class="dai-tab ${f.key===active?'on':''}" onclick="setDesignAiFolder('${f.key}')">${esc(f.label)}</button>`).join('')}</div>`;
+}
+async function setDesignAiFolder(folder){
+  DESIGN_AI.folder=folder;
+  await renderDesignAiLibrary(folder);
+}
+function designAiChecklistHtml(){
+  const vehicle=['vehicle.json','dimensions.csv','mounting_points.csv','restricted_zones.csv','floorplan.svg','scan.glb','photos/'];
+  const product=['product.json','dimensions.csv','footprint.svg','model.glb','installation_rules.json','photos/'];
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">Required Library Checklist</div>
+    <div class="dai-checklist">
+      <div><strong>Vehicle folders</strong><ul>${vehicle.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div><strong>Product folders</strong><ul>${product.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+    </div>
+  </div>`;
+}
+async function renderDesignAiLibrary(folder='all'){
+  designAiLoading('Design Library');
+  try{
+    const data=await GET(`/api/design-ai/library-files?folder_type=${encodeURIComponent(folder)}`);
+    DESIGN_AI.files=data.files||[];
+    DESIGN_AI.status=data.status||{};
+    const rows=DESIGN_AI.files.map(file=>`
+      <tr>
+        <td><strong>${esc(file.name||'Untitled')}</strong></td>
+        <td>${esc(file.folder_type||'')}</td>
+        <td>${esc(file.mime_type||'')}</td>
+        <td>${file.modified_time?esc(new Date(file.modified_time).toLocaleString('zh-TW')):'—'}</td>
+        <td>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</td>
+      </tr>`).join('');
+    designAiBody().innerHTML=designAiHeader('Design Library','Indexed Google Drive metadata for vehicles, products, styles, and templates.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="openDesignAI(\'settings\')">Settings</button>')+
+      designAiStatusHtml(data.status)+designAiFolderTabs(folder)+
+      (rows?`<div class="dai-table-wrap"><table class="dai-table"><thead><tr><th>Name</th><th>Folder Type</th><th>MIME Type</th><th>Modified</th><th>Drive Link</th></tr></thead><tbody>${rows}</tbody></table></div>`:
+        '<div class="dai-empty"><strong>No files indexed for this filter yet.</strong><br>Folders can be empty in Phase 1. Add files to Drive, share the folders with the service account, then sync from Settings.</div>')+
+      designAiChecklistHtml();
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Design Library','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+function renderDesignAiNew(){
+  const el=designAiBody();if(!el)return;
+  el.innerHTML=designAiHeader('New AI Design Request','Generate an internal design direction from lifestyle, budget, vehicle, product, and style inputs.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    `<div class="dai-panel">
+      <div class="dai-form-grid">
+        <div class="dai-field"><label>Vehicle ID or Vehicle Name</label><input id="dai-vehicle" placeholder="e.g. VW T6 / customer van"></div>
+        <div class="dai-field"><label>Style ID or Style Name</label><input id="dai-style" placeholder="e.g. warm wood utility"></div>
+        <div class="dai-field"><label>Customer Lifestyle</label><input id="dai-lifestyle" placeholder="weekend surf trips, family camping, work travel"></div>
+        <div class="dai-field"><label>People Count</label><input id="dai-people" type="number" min="1" step="1" placeholder="2"></div>
+        <div class="dai-field"><label>Budget</label><input id="dai-budget" type="number" min="0" step="1000" placeholder="300000"></div>
+        <div class="dai-field"><label>Must Include Products</label><input id="dai-must" placeholder="bed platform, cabinet, battery system"></div>
+        <div class="dai-field wide"><label>Notes</label><textarea id="dai-notes" placeholder="Customer priorities, constraints, measurements, or design taste"></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-brand btn-sm" id="dai-submit" onclick="submitDesignAiRequest()">Generate AI Design Direction</button>
+      </div>
+    </div>
+    <div class="dai-warning">If the library is empty, the result will include a missing-data warning. Accurate floor plans require vehicle.json, dimensions.csv, mounting_points.csv, restricted_zones.csv, product.json, product dimensions, and floorplan.svg.</div>`;
+}
+async function submitDesignAiRequest(){
+  const btn=document.getElementById('dai-submit');
+  const payload={
+    vehicle_id:document.getElementById('dai-vehicle')?.value||'',
+    style_id:document.getElementById('dai-style')?.value||'',
+    customer_lifestyle:document.getElementById('dai-lifestyle')?.value||'',
+    people_count:document.getElementById('dai-people')?.value||'',
+    budget:document.getElementById('dai-budget')?.value||'',
+    must_include:document.getElementById('dai-must')?.value||'',
+    notes:document.getElementById('dai-notes')?.value||''
+  };
+  if(!payload.vehicle_id.trim()){toast('Vehicle name is required');return;}
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Generating…';}
+    const created=await POST('/api/design-ai/requests',payload);
+    const id=created.request?.id;
+    try{await POST(`/api/design-ai/requests/${id}/generate`,{});}
+    catch(e){toast(`Generated request saved, but AI response failed: ${errMsg(e)}`,6500);}
+    openDesignAI('detail',{id});
+  }catch(e){
+    toast(`Design request failed: ${errMsg(e)}`,6500);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Generate AI Design Direction';}
+  }
+}
+function designAiStatusPill(status='draft'){
+  const cls=status==='completed'?'done':status==='error'?'error':status==='generating'?'work':'';
+  return `<span class="dai-pill ${cls}">${esc(status||'draft')}</span>`;
+}
+async function renderDesignAiRequests(){
+  designAiLoading('Request History');
+  try{
+    const data=await GET('/api/design-ai/requests');
+    DESIGN_AI.requests=data.requests||[];
+    const rows=DESIGN_AI.requests.map(req=>`
+      <div class="dai-row" onclick="openDesignAI('detail',{id:${req.id}})">
+        <div><strong>${esc(req.vehicle_id||'Untitled vehicle')}</strong><div class="pc-s">${esc(req.customer_lifestyle||'No lifestyle')} · ${esc(req.requested_by||'Unknown')}</div></div>
+        <div>${designAiStatusPill(req.status)}</div>
+        <div style="font-size:var(--xxs);color:var(--g500)">${req.created_at?esc(new Date(req.created_at).toLocaleString('zh-TW')):'—'}</div>
+      </div>`).join('');
+    designAiBody().innerHTML=designAiHeader('Request History','Saved AI Design requests and generated directions.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="openDesignAI(\'new\')">New Request</button>')+
+      (rows?`<div class="dai-list">${rows}</div>`:'<div class="dai-empty">No design requests yet. Create the first AI Design Request to start the library workflow.</div>');
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Request History','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function renderDesignAiDetail(id){
+  designAiLoading('Design Result');
+  try{
+    const detail=await GET(`/api/design-ai/requests/${id}`);
+    DESIGN_AI.requestDetail=detail;
+    const req=detail.request||{};
+    const res=detail.response||null;
+    const layout=res?.layout||{};
+    const missing=layout.missing_data||res?.raw_response?.missing_data_warning||[];
+    const products=layout.recommended_products||req.must_include||[];
+    designAiBody().innerHTML=designAiHeader('AI Design Result',`Request #${req.id||id} · ${esc(req.vehicle_id||'Untitled vehicle')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'requests\')">← History</button><button class="btn btn-brand btn-sm" onclick="generateDesignAiRequest()">Generate Again</button>')+
+      `${missing.length?`<div class="dai-warning"><strong>Missing data warning:</strong> Accurate floor plan requires ${missing.map(esc).join(', ')}.</div>`:''}
+      <div class="dai-result-grid">
+        <div>
+          <div class="dai-panel"><div class="dai-panel-title">Request Details</div>
+            <div style="display:grid;gap:8px;font-size:var(--sm);color:var(--g500)">
+              <div><strong style="color:var(--black)">Status:</strong> ${designAiStatusPill(req.status)}</div>
+              <div><strong style="color:var(--black)">Lifestyle:</strong> ${esc(req.customer_lifestyle||'—')}</div>
+              <div><strong style="color:var(--black)">People:</strong> ${esc(req.people_count||'—')} · <strong style="color:var(--black)">Budget:</strong> ${req.budget?fmt(req.budget):'—'}</div>
+              <div><strong style="color:var(--black)">Must include:</strong> ${(req.must_include||[]).map(esc).join(', ')||'—'}</div>
+              <div><strong style="color:var(--black)">Notes:</strong> ${esc(req.notes||'—')}</div>
+            </div>
+          </div>
+          <div class="dai-panel"><div class="dai-panel-title">AI Summary</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(res?.ai_summary||'No AI response saved yet.')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Recommended Layout</div><div class="dai-sub" style="margin:0;color:var(--black)">${(layout.zones||[]).map(z=>`<div style="margin-bottom:8px"><strong>${esc(z.name||'Zone')}</strong><br>${esc(z.intent||z.description||'')}</div>`).join('')||'No layout zones saved yet.'}</div></div>
+        </div>
+        <div>
+          <div class="dai-panel"><div class="dai-panel-title">Products Used</div><div class="dai-sub" style="margin:0;color:var(--black)">${products.length?products.map(esc).join(', '):'No products listed yet.'}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Lifestyle Image Prompt</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(res?.lifestyle_prompt||'—')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Customer Proposal Text</div><div class="dai-sub" style="margin:0;color:var(--black);white-space:pre-wrap">${esc(res?.customer_proposal||'—')}</div></div>
+          <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
+        </div>
+      </div>
+      <div id="dai-raw" style="display:${DESIGN_AI.rawOpen?'block':'none'};margin-top:14px"><pre class="dai-pre">${esc(JSON.stringify(detail,null,2))}</pre></div>`;
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Design Result','','<button class="btn btn-out btn-sm" onclick="openDesignAI(\'requests\')">← History</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+function toggleDesignAiRaw(){
+  DESIGN_AI.rawOpen=!DESIGN_AI.rawOpen;
+  const el=document.getElementById('dai-raw');
+  if(el)el.style.display=DESIGN_AI.rawOpen?'block':'none';
+}
+async function generateDesignAiRequest(){
+  const id=DESIGN_AI.requestDetail?.request?.id||designAiRoute().id;
+  if(!id)return;
+  try{
+    toast('Generating AI design direction…');
+    await POST(`/api/design-ai/requests/${id}/generate`,{});
+    DESIGN_AI.rawOpen=false;
+    await renderDesignAiDetail(id);
+    toast('AI design result saved ✓');
+  }catch(e){
+    toast(`AI generation failed: ${errMsg(e)}`,6500);
+    await renderDesignAiDetail(id);
+  }
 }
 // ══════════════════════════════════════
 // DETAIL
@@ -5096,6 +5487,11 @@ async function initApp(){
     await loadPackages();
     if(currentUser.role==='admin')await loadAdminSettings({silent:true});
     await refreshDashboard('All');
+    if(location.pathname.startsWith('/design-ai')){
+      const route=designAiRoute();
+      history.replaceState({view:'designai',page:route.page,id:route.id||null},'',location.pathname);
+      showView('designai',true);
+    }
   }catch(e){
     toast(`App failed to load: ${errMsg(e)}`,4500);
   }

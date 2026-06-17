@@ -2403,15 +2403,37 @@ async function setDesignAiFolder(folder){
   await renderDesignAiLibrary(folder);
 }
 function designAiChecklistHtml(){
-  const vehicle=['vehicle.json','dimensions.csv','mounting_points.csv','restricted_zones.csv','floorplan.svg','scan.glb','photos/'];
-  const product=['product.json','dimensions.csv','footprint.svg','model.glb','installation_rules.json','photos/'];
+  const vehicleRequired=['vehicle.json','dimensions.csv','floorplan.svg'];
+  const vehicleOptional=['mounting_points.csv','restricted_zones.csv','scan.glb','photos/'];
+  const productRequired=['product.json','dimensions.csv','footprint.svg','installation_rules.json'];
   return `<div class="dai-panel">
     <div class="dai-panel-title">Required Library Checklist</div>
     <div class="dai-checklist">
-      <div><strong>Vehicle folders</strong><ul>${vehicle.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
-      <div><strong>Product folders</strong><ul>${product.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div><strong>Vehicle required</strong><ul>${vehicleRequired.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><strong>Vehicle optional</strong><ul>${vehicleOptional.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div><strong>Product required</strong><ul>${productRequired.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
     </div>
   </div>`;
+}
+function designAiReadinessPill(status='Reference only'){
+  const cls=status==='Ready'?'done':status==='Missing required files'?'error':'work';
+  return `<span class="dai-pill ${cls}">${esc(status)}</span>`;
+}
+function designAiReadinessHtml(readiness){
+  const groups=readiness?.groups||[];
+  if(!groups.length){
+    return '<div class="dai-empty"><strong>No library readiness data yet.</strong><br>Sync Google Drive Library after adding vehicle or product folders. Empty folders can still be used while the AI falls back to missing-data warnings.</div>';
+  }
+  const rows=groups.map(group=>{
+    const missing=(group.required_missing||[]).join(', ');
+    const optional=(group.optional_present||[]).join(', ');
+    const details=missing?`Missing: ${missing}`:(optional?`Optional found: ${optional}`:'Required files present');
+    return `<div class="dai-row">
+      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.files_count||0)} item${group.files_count===1?'':'s'} · ${commas(group.readable_files_count||0)} readable</div></div>
+      <div>${designAiReadinessPill(group.status)}</div>
+      <div style="font-size:var(--xxs);color:var(--g500)">${esc(details)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="dai-panel"><div class="dai-panel-title">Library Readiness</div><div class="dai-list">${rows}</div></div>`;
 }
 async function renderDesignAiLibrary(folder='all'){
   designAiLoading('Design Library');
@@ -2421,7 +2443,7 @@ async function renderDesignAiLibrary(folder='all'){
     DESIGN_AI.status=data.status||{};
     const rows=DESIGN_AI.files.map(file=>`
       <tr>
-        <td><strong>${esc(file.name||'Untitled')}</strong></td>
+        <td><strong>${esc(file.name||'Untitled')}</strong><div class="pc-s">${esc(file.path||file.name||'')}</div></td>
         <td>${esc(file.folder_type||'')}</td>
         <td>${esc(file.mime_type||'')}</td>
         <td>${file.modified_time?esc(new Date(file.modified_time).toLocaleString('zh-TW')):'—'}</td>
@@ -2429,6 +2451,7 @@ async function renderDesignAiLibrary(folder='all'){
       </tr>`).join('');
     designAiBody().innerHTML=designAiHeader('Design Library','Indexed Google Drive metadata for vehicles, products, styles, and templates.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="openDesignAI(\'settings\')">Settings</button>')+
       designAiStatusHtml(data.status)+designAiFolderTabs(folder)+
+      designAiReadinessHtml(data.readiness||data.status?.readiness)+
       (rows?`<div class="dai-table-wrap"><table class="dai-table"><thead><tr><th>Name</th><th>Folder Type</th><th>MIME Type</th><th>Modified</th><th>Drive Link</th></tr></thead><tbody>${rows}</tbody></table></div>`:
         '<div class="dai-empty"><strong>No files indexed for this filter yet.</strong><br>Folders can be empty in Phase 1. Add files to Drive, share the folders with the service account, then sync from Settings.</div>')+
       designAiChecklistHtml();
@@ -2543,6 +2566,51 @@ function designAiLayoutHtml(layout={}){
   }
   return 'No layout zones saved yet.';
 }
+function designAiLayoutPlacements(layout={}){
+  return Array.isArray(layout.placements)?layout.placements.map((p,index)=>({
+    id:p?.id||`placement-${index+1}`,
+    label:p?.label||p?.name||p?.id||`Placement ${index+1}`,
+    type:p?.type||'zone',
+    x:Number(p?.x)||0,
+    y:Number(p?.y)||0,
+    width:Math.max(0,Number(p?.width)||0),
+    depth:Math.max(0,Number(p?.depth||p?.height)||0),
+    notes:p?.notes||''
+  })).filter(p=>p.width>0&&p.depth>0):[];
+}
+function designAiDimensionValue(layout={},keys=[]){
+  for(const key of keys){
+    const value=Number(layout?.[key]||layout?.vehicle_dimensions?.[key]||layout?.dimensions?.[key]||layout?.dimensions_mm?.[key]);
+    if(Number.isFinite(value)&&value>0)return value;
+  }
+  return 0;
+}
+function designAiPlacementPreviewHtml(layout={}){
+  const placements=designAiLayoutPlacements(layout);
+  if(!placements.length){
+    return '<div class="dai-empty"><strong>No 2D placements saved yet.</strong><br>When layout_json includes placement objects, this panel will show a simple top-view preview.</div>';
+  }
+  const maxX=Math.max(...placements.map(p=>p.x+p.width),0);
+  const maxY=Math.max(...placements.map(p=>p.y+p.depth),0);
+  const vehicleWidth=designAiDimensionValue(layout,['vehicle_width_mm','width_mm','interior_width_mm','width','interior_width'])||Math.max(2400,maxX+200);
+  const vehicleDepth=designAiDimensionValue(layout,['vehicle_depth_mm','depth_mm','length_mm','interior_length_mm','depth','length','interior_length'])||Math.max(4200,maxY+200);
+  const fontSize=Math.max(70,Math.min(vehicleWidth,vehicleDepth)/24);
+  const boxes=placements.map((p,index)=>{
+    const colors=['#F9EDE0','#E8F1F8','#EFF7ED','#F8F0E8','#F4F0FA'];
+    const fill=colors[index%colors.length];
+    const labelX=p.x+p.width/2;
+    const labelY=p.y+p.depth/2;
+    return `<g>
+      <rect x="${p.x}" y="${p.y}" width="${p.width}" height="${p.depth}" rx="28" fill="${fill}" stroke="#CA741F" stroke-width="14"></rect>
+      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize}" font-weight="700" fill="#111110">${esc(p.label)}</text>
+    </g>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${vehicleWidth} ${vehicleDepth}" role="img" aria-label="Top view layout preview" style="width:100%;max-height:360px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--g50)">
+    <rect x="0" y="0" width="${vehicleWidth}" height="${vehicleDepth}" rx="44" fill="#fff" stroke="var(--g300)" stroke-width="18"></rect>
+    ${boxes}
+  </svg>
+  <div class="pc-s" style="margin-top:8px">Top-view preview in millimeters. Vehicle outline is shown as a rectangle when no floorplan.svg is available.</div>`;
+}
 async function renderDesignAiRequests(){
   designAiLoading('Request History');
   try{
@@ -2585,6 +2653,7 @@ async function renderDesignAiDetail(id){
             </div>
           </div>
           <div class="dai-panel"><div class="dai-panel-title">AI Summary</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(designAiValueText(designAiResolvedResponseValue(res,'ai_summary'))||'No AI response saved yet.')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">2D Layout Preview</div>${designAiPlacementPreviewHtml(layout)}</div>
           <div class="dai-panel"><div class="dai-panel-title">Recommended Layout</div><div class="dai-sub" style="margin:0;color:var(--black)">${designAiLayoutHtml(layout)}</div></div>
         </div>
         <div>

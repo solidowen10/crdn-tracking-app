@@ -353,10 +353,13 @@ function migrate() {
       drive_file_id TEXT UNIQUE,
       folder_type TEXT,
       name TEXT,
+      path TEXT DEFAULT '',
+      parent_drive_file_id TEXT DEFAULT '',
       mime_type TEXT,
       web_view_link TEXT,
       modified_time TEXT,
       size TEXT,
+      is_folder INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -402,6 +405,9 @@ function migrate() {
   addColumn('vehicles', 'milestones_json', "TEXT DEFAULT '[]'");
   addColumn('vehicles', 'cashflow_json', "TEXT DEFAULT ''");
   addColumn('vehicles', 'stock_status_json', "TEXT DEFAULT '{}'");
+  addColumn('design_library_files', 'path', "TEXT DEFAULT ''");
+  addColumn('design_library_files', 'parent_drive_file_id', "TEXT DEFAULT ''");
+  addColumn('design_library_files', 'is_folder', 'INTEGER NOT NULL DEFAULT 0');
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");

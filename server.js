@@ -26,6 +26,7 @@ const { syncMasterCashflow } = require('./cashflowSync');
 const {
   driveStatus,
   syncDriveFolders,
+  designLibraryReadiness,
   generateDesignResponse,
   REQUIRED_MISSING_DATA
 } = require('./designAiServices');
@@ -460,6 +461,7 @@ function designLibraryStatus() {
   return {
     total_indexed_files: total,
     folders,
+    readiness: designLibraryReadiness(designLibraryFiles('all')),
     last_sync_at: designSetting('last_sync_at'),
     last_sync_error: designSetting('last_sync_error'),
     drive: driveStatus()
@@ -838,16 +840,20 @@ app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
     const result = await syncDriveFolders(designAiSettings());
     const upsert = db.prepare(`
       INSERT INTO design_library_files (
-        drive_file_id, folder_type, name, mime_type, web_view_link, modified_time, size, updated_at
+        drive_file_id, folder_type, name, path, parent_drive_file_id, mime_type,
+        web_view_link, modified_time, size, is_folder, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(drive_file_id) DO UPDATE SET
         folder_type=excluded.folder_type,
         name=excluded.name,
+        path=excluded.path,
+        parent_drive_file_id=excluded.parent_drive_file_id,
         mime_type=excluded.mime_type,
         web_view_link=excluded.web_view_link,
         modified_time=excluded.modified_time,
         size=excluded.size,
+        is_folder=excluded.is_folder,
         updated_at=CURRENT_TIMESTAMP
     `);
     const tx = db.transaction(files => {
@@ -855,10 +861,13 @@ app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
         text(file.drive_file_id),
         text(file.folder_type),
         text(file.name),
+        text(file.path),
+        text(file.parent_drive_file_id),
         text(file.mime_type),
         text(file.web_view_link),
         text(file.modified_time),
-        text(file.size)
+        text(file.size),
+        Number(file.is_folder) ? 1 : 0
       ));
     });
     tx(result.files);
@@ -883,12 +892,15 @@ app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
 
 app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
   const folderType = text(req.query.folder_type || req.query.folder || 'all').toLowerCase();
+  const files = designLibraryFiles(folderType);
   res.json({
-    files: designLibraryFiles(folderType),
+    files,
     status: designLibraryStatus(),
+    readiness: designLibraryReadiness(files),
     required_checklist: {
-      vehicle: ['vehicle.json', 'dimensions.csv', 'mounting_points.csv', 'restricted_zones.csv', 'floorplan.svg', 'scan.glb', 'photos/'],
-      product: ['product.json', 'dimensions.csv', 'footprint.svg', 'model.glb', 'installation_rules.json', 'photos/']
+      vehicle_required: ['vehicle.json', 'dimensions.csv', 'floorplan.svg'],
+      vehicle_optional: ['mounting_points.csv', 'restricted_zones.csv', 'scan.glb', 'photos/'],
+      product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
 });

@@ -452,6 +452,24 @@ function migrate() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS design_ai_moodboards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id INTEGER,
+      vehicle_id TEXT,
+      title TEXT,
+      concept_text TEXT,
+      key_features_json TEXT,
+      layout_modes_json TEXT,
+      material_palette_json TEXT,
+      image_prompts_json TEXT,
+      brochure_copy TEXT,
+      customer_vehicle_image_drive_id TEXT,
+      raw_response_json TEXT,
+      status TEXT DEFAULT 'draft',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   addColumn('vehicles', 'job_no', 'TEXT');
@@ -498,6 +516,7 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_ai_extraction_entity ON design_ai_extraction_drafts(entity_type, entity_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_vehicle_records_status ON design_ai_vehicle_records(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_product_records_status ON design_ai_product_records(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_moodboards_status ON design_ai_moodboards(status, updated_at DESC);
   `);
 }
 

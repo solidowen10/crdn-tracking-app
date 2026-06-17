@@ -28,6 +28,7 @@ const {
   syncDriveFolders,
   designLibraryReadiness,
   extractDesignEntity,
+  generateMoodboardConcept,
   generateDesignResponse,
   REQUIRED_MISSING_DATA
 } = require('./designAiServices');
@@ -501,6 +502,18 @@ const DESIGN_AI_NUMBER_FIELDS = new Set([
   'wheel_arch_width_mm', 'wheel_arch_height_mm', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
   'install_minutes', 'price'
 ]);
+const DESIGN_AI_MOODBOARD_INPUT_KEYS = [
+  'vehicle_id',
+  'project_name',
+  'customer_name',
+  'lifestyle_theme',
+  'must_include',
+  'usage_scenario',
+  'style_direction',
+  'notes',
+  'customer_vehicle_image_drive_id',
+  'request_id'
+];
 
 function designEntityType(value) {
   const type = text(value).toLowerCase();
@@ -591,6 +604,83 @@ function designProductRecordFromRow(row) {
     compatible_vehicles: parseJson(row.compatible_vehicles_json, []),
     source_summary: parseJson(row.source_summary_json, {})
   };
+}
+
+function moodboardInputFromBody(body = {}, fallback = {}) {
+  const input = { ...(fallback || {}) };
+  DESIGN_AI_MOODBOARD_INPUT_KEYS.forEach(key => {
+    if (body[key] !== undefined) input[key] = text(body[key]);
+  });
+  input.request_id = input.request_id ? int(input.request_id, 0) : '';
+  input.vehicle_id = text(input.vehicle_id);
+  input.project_name = text(input.project_name || input.customer_name || input.title);
+  input.must_include_json = JSON.stringify(parseMustInclude(input.must_include));
+  return input;
+}
+
+function moodboardRaw(row) {
+  return parseJson(row?.raw_response_json, {});
+}
+
+function moodboardFromRow(row) {
+  if (!row) return null;
+  const raw = moodboardRaw(row);
+  return {
+    ...row,
+    request_id: row.request_id || '',
+    key_features: parseJson(row.key_features_json, []),
+    layout_modes: parseJson(row.layout_modes_json, []),
+    material_palette: parseJson(row.material_palette_json, []),
+    image_prompts: parseJson(row.image_prompts_json, []),
+    input: raw.input || {},
+    raw_response: raw
+  };
+}
+
+function moodboardDetail(id) {
+  return moodboardFromRow(db.prepare('SELECT * FROM design_ai_moodboards WHERE id=?').get(Number(id)));
+}
+
+function moodboardRecordsContext(input = {}) {
+  const request = {
+    vehicle_id: input.vehicle_id || '',
+    must_include_json: input.must_include_json || JSON.stringify(parseMustInclude(input.must_include)),
+    style_id: input.style_direction || ''
+  };
+  return generationRecordsContext(request);
+}
+
+function saveMoodboardGeneration(id, input, generated) {
+  const existing = moodboardDetail(id);
+  if (!existing) return null;
+  const raw = {
+    ...(existing.raw_response || {}),
+    input,
+    generated,
+    raw_openai_response: generated.raw_openai_response || null,
+    content_warnings: generated.content_warnings || [],
+    generated_at: new Date().toISOString()
+  };
+  db.prepare(`
+    UPDATE design_ai_moodboards
+    SET title=?, concept_text=?, key_features_json=?, layout_modes_json=?,
+      material_palette_json=?, image_prompts_json=?, brochure_copy=?,
+      customer_vehicle_image_drive_id=?, raw_response_json=?, status=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
+    text(generated.title || existing.title || input.project_name),
+    text(generated.concept_text),
+    JSON.stringify(generated.key_features || []),
+    JSON.stringify(generated.layout_modes || []),
+    JSON.stringify(generated.material_palette || []),
+    JSON.stringify(generated.mockup_image_prompts || generated.image_prompts || []),
+    text(generated.brochure_copy),
+    text(input.customer_vehicle_image_drive_id || existing.customer_vehicle_image_drive_id),
+    JSON.stringify(raw),
+    'generated',
+    existing.id
+  );
+  return moodboardDetail(existing.id);
 }
 
 function designRecordValue(value, field) {
@@ -1085,6 +1175,8 @@ app.get([
   '/design-ai/extractions/:id',
   '/design-ai/vehicles',
   '/design-ai/products',
+  '/design-ai/moodboard/new',
+  '/design-ai/moodboard/:id',
   '/design-ai/requests',
   '/design-ai/requests/:id'
 ], requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
@@ -1200,6 +1292,84 @@ app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
       product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
+});
+
+app.post('/api/design-ai/moodboards', requireAuth, (req, res) => {
+  const input = moodboardInputFromBody(req.body || {});
+  if (!input.vehicle_id) return res.status(400).json({ error: 'Vehicle ID is required.' });
+  const raw = {
+    input,
+    created_by_line_user_id: actor(req).userId || '',
+    created_at: new Date().toISOString()
+  };
+  const result = db.prepare(`
+    INSERT INTO design_ai_moodboards (
+      request_id, vehicle_id, title, customer_vehicle_image_drive_id, raw_response_json, status, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, 'draft', CURRENT_TIMESTAMP)
+  `).run(
+    input.request_id || null,
+    input.vehicle_id,
+    input.project_name || `${input.vehicle_id} Moodboard`,
+    input.customer_vehicle_image_drive_id || '',
+    JSON.stringify(raw)
+  );
+  res.status(201).json({ moodboard: moodboardDetail(result.lastInsertRowid) });
+});
+
+app.get('/api/design-ai/moodboards/:id', requireAuth, (req, res) => {
+  const moodboard = moodboardDetail(req.params.id);
+  if (!moodboard) return res.status(404).json({ error: 'Moodboard not found.' });
+  res.json({ moodboard });
+});
+
+app.patch('/api/design-ai/moodboards/:id', requireAuth, (req, res) => {
+  const existing = moodboardDetail(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Moodboard not found.' });
+  const input = moodboardInputFromBody(req.body.input || req.body || {}, existing.input);
+  const raw = {
+    ...(existing.raw_response || {}),
+    input,
+    updated_by_line_user_id: actor(req).userId || '',
+    updated_at: new Date().toISOString()
+  };
+  db.prepare(`
+    UPDATE design_ai_moodboards
+    SET request_id=?, vehicle_id=?, title=?, concept_text=?, key_features_json=?,
+      layout_modes_json=?, material_palette_json=?, image_prompts_json=?, brochure_copy=?,
+      customer_vehicle_image_drive_id=?, raw_response_json=?, status=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
+    input.request_id || null,
+    input.vehicle_id || existing.vehicle_id,
+    text(req.body.title ?? existing.title ?? input.project_name),
+    text(req.body.concept_text ?? existing.concept_text),
+    req.body.key_features !== undefined ? JSON.stringify(req.body.key_features || []) : existing.key_features_json,
+    req.body.layout_modes !== undefined ? JSON.stringify(req.body.layout_modes || []) : existing.layout_modes_json,
+    req.body.material_palette !== undefined ? JSON.stringify(req.body.material_palette || []) : existing.material_palette_json,
+    req.body.image_prompts !== undefined ? JSON.stringify(req.body.image_prompts || []) : existing.image_prompts_json,
+    text(req.body.brochure_copy ?? existing.brochure_copy),
+    input.customer_vehicle_image_drive_id || existing.customer_vehicle_image_drive_id || '',
+    JSON.stringify(raw),
+    text(req.body.status || existing.status || 'draft'),
+    existing.id
+  );
+  res.json({ moodboard: moodboardDetail(existing.id) });
+});
+
+app.post('/api/design-ai/moodboards/:id/generate', requireAuth, async (req, res) => {
+  const existing = moodboardDetail(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Moodboard not found.' });
+  const input = moodboardInputFromBody(req.body.input || {}, existing.input);
+  try {
+    db.prepare('UPDATE design_ai_moodboards SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('generating', existing.id);
+    const generated = await generateMoodboardConcept(input, designLibraryFiles('all'), moodboardRecordsContext(input));
+    const moodboard = saveMoodboardGeneration(existing.id, input, generated);
+    res.json({ moodboard });
+  } catch (err) {
+    db.prepare('UPDATE design_ai_moodboards SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('error', existing.id);
+    res.status(err.status || 502).json({ error: err.message || 'Moodboard generation failed.', moodboard: moodboardDetail(existing.id) });
+  }
 });
 
 app.post('/api/design-ai/extract', requireAuth, async (req, res) => {

@@ -2284,6 +2284,8 @@ function designAiRoute(){
   if(parts[1]==='vehicles')return {page:'vehicles'};
   if(parts[1]==='products')return {page:'products'};
   if(parts[1]==='extractions'&&parts[2])return {page:'extraction',id:parts[2]};
+  if(parts[1]==='moodboard'&&parts[2]==='new')return {page:'moodboard-new'};
+  if(parts[1]==='moodboard'&&parts[2])return {page:'moodboard',id:parts[2]};
   if(parts[1]==='new')return {page:'new'};
   if(parts[1]==='requests'&&parts[2])return {page:'detail',id:parts[2]};
   if(parts[1]==='requests')return {page:'requests'};
@@ -2295,6 +2297,8 @@ function designAiUrl(page='dashboard',opts={}){
   if(page==='vehicles')return '/design-ai/vehicles';
   if(page==='products')return '/design-ai/products';
   if(page==='extraction')return `/design-ai/extractions/${opts.id}`;
+  if(page==='moodboard-new')return '/design-ai/moodboard/new';
+  if(page==='moodboard')return `/design-ai/moodboard/${opts.id}`;
   if(page==='new')return '/design-ai/new';
   if(page==='requests')return '/design-ai/requests';
   if(page==='detail')return `/design-ai/requests/${opts.id}`;
@@ -2340,6 +2344,8 @@ async function renderDesignAI(){
   if(route.page==='vehicles')return renderDesignAiRecords('vehicles');
   if(route.page==='products')return renderDesignAiRecords('products');
   if(route.page==='extraction')return renderDesignAiExtraction(route.id);
+  if(route.page==='moodboard-new')return renderDesignAiMoodboardNew();
+  if(route.page==='moodboard')return renderDesignAiMoodboard(route.id);
   if(route.page==='new')return renderDesignAiNew();
   if(route.page==='requests')return renderDesignAiRequests();
   if(route.page==='detail')return renderDesignAiDetail(route.id);
@@ -2355,10 +2361,10 @@ async function renderDesignAiDashboard(){
       designAiStatusHtml(settings.status)+
       `<div class="dai-grid">
         <div class="dai-card" onclick="openDesignAI('new')"><strong>New AI Design Request</strong><span>Capture lifestyle, budget, vehicle, product, and style notes.</span></div>
-        <div class="dai-card" onclick="DESIGN_AI.folder='vehicles';openDesignAI('library')"><strong>Vehicle Library</strong><span>Review indexed vehicle folders and required files.</span></div>
-        <div class="dai-card" onclick="DESIGN_AI.folder='products';openDesignAI('library')"><strong>Product Library</strong><span>Review product folders, models, dimensions, and rules.</span></div>
+        <div class="dai-card" onclick="openDesignAI('moodboard-new')"><strong>Moodboard Generator</strong><span>Brochure concept + image prompt generator for customer proposal boards.</span></div>
         <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicle Database</strong><span>Review approved vehicle dimensions and extraction drafts.</span></div>
         <div class="dai-card" onclick="openDesignAI('products')"><strong>Product Database</strong><span>Review approved product dimensions and installation data.</span></div>
+        <div class="dai-card" onclick="DESIGN_AI.folder='all';openDesignAI('library')"><strong>Library Files</strong><span>Review indexed Drive evidence, extraction readiness, and source files.</span></div>
         <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
         <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Paste Drive folder IDs and run metadata sync.</span></div>
       </div>
@@ -2640,6 +2646,149 @@ async function saveDesignAiRecord(kind,id,recordKey){
     toast('Design AI record saved ✓');
     await renderDesignAiRecords(kind);
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
+}
+function renderDesignAiMoodboardNew(){
+  const el=designAiBody();if(!el)return;
+  const scenarios=['Weekend camping','Rally service camper','Motorcycle transport','Riverside cooking setup','Family camper','Mobile office'];
+  el.innerHTML=designAiHeader('Moodboard Generator','Brochure concept + image prompt generator. This phase does not generate final rendered images.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    `<div class="dai-warning"><strong>Current phase:</strong> Brochure concept + image prompt generator only. Future image generation will use these prompts and the customer vehicle reference.</div>
+    <div class="dai-panel">
+      <div class="dai-form-grid">
+        <div class="dai-field"><label>Vehicle ID</label><input id="dai-mb-vehicle" placeholder="e.g. JSpace / T6 / Delica"></div>
+        <div class="dai-field"><label>Customer name / Project name</label><input id="dai-mb-project" placeholder="e.g. Owen Weekend Basecamp"></div>
+        <div class="dai-field"><label>Lifestyle theme</label><input id="dai-mb-theme" placeholder="e.g. tactical outdoor family camper"></div>
+        <div class="dai-field"><label>Usage scenario</label><select id="dai-mb-scenario">${scenarios.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}</select></div>
+        <div class="dai-field"><label>Style direction</label><input id="dai-mb-style" placeholder="warm wood utility, rally service, matte black"></div>
+        <div class="dai-field"><label>Must include products</label><input id="dai-mb-products" placeholder="bed platform, kitchen drawer, window rack"></div>
+        <div class="dai-field"><label>Customer vehicle image URL / Drive reference</label><input id="dai-mb-image" placeholder="Paste URL or Drive file reference"></div>
+        <div class="dai-field"><label>Linked Design AI request ID</label><input id="dai-mb-request" type="number" min="1" step="1" placeholder="Optional"></div>
+        <div class="dai-field wide"><label>Notes</label><textarea id="dai-mb-notes" placeholder="Customer priorities, quote/deposit notes, feature callouts, colors, constraints"></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-brand btn-sm" id="dai-mb-submit" onclick="submitDesignAiMoodboard()">Generate Moodboard Concept</button>
+      </div>
+    </div>`;
+}
+function designAiMoodboardPayload(){
+  return {
+    vehicle_id:document.getElementById('dai-mb-vehicle')?.value||'',
+    project_name:document.getElementById('dai-mb-project')?.value||'',
+    lifestyle_theme:document.getElementById('dai-mb-theme')?.value||'',
+    usage_scenario:document.getElementById('dai-mb-scenario')?.value||'',
+    style_direction:document.getElementById('dai-mb-style')?.value||'',
+    must_include:document.getElementById('dai-mb-products')?.value||'',
+    customer_vehicle_image_drive_id:document.getElementById('dai-mb-image')?.value||'',
+    request_id:document.getElementById('dai-mb-request')?.value||'',
+    notes:document.getElementById('dai-mb-notes')?.value||''
+  };
+}
+async function submitDesignAiMoodboard(){
+  const btn=document.getElementById('dai-mb-submit');
+  const payload=designAiMoodboardPayload();
+  if(!payload.vehicle_id.trim()){toast('Vehicle ID is required');return;}
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Generating…';}
+    const created=await POST('/api/design-ai/moodboards',payload);
+    const id=created.moodboard?.id;
+    try{await POST(`/api/design-ai/moodboards/${id}/generate`,{});}
+    catch(e){toast(`Moodboard draft saved, but generation failed: ${errMsg(e)}`,6500);}
+    openDesignAI('moodboard',{id});
+  }catch(e){
+    toast(`Moodboard was not created: ${errMsg(e)}`,6500);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Generate Moodboard Concept';}
+  }
+}
+function designAiMoodboardFeatureHtml(features=[]){
+  return features.length?`<ul style="margin-left:18px;line-height:1.8">${features.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:'<div class="dai-empty">No key features saved yet.</div>';
+}
+function designAiMoodboardModeHtml(mode,index){
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">${esc(mode.name||`Layout Mode ${index+1}`)}</div>
+    <svg viewBox="0 0 420 210" role="img" aria-label="${esc(mode.name||'Layout mode')} top view placeholder" style="width:100%;border:1px solid var(--g200);border-radius:var(--rs);background:var(--g50);margin-bottom:10px">
+      <rect x="16" y="18" width="388" height="174" rx="28" fill="#fff" stroke="var(--g300)" stroke-width="4"></rect>
+      <rect x="42" y="44" width="120" height="58" rx="8" fill="#F9EDE0" stroke="#CA741F" stroke-width="3"></rect>
+      <rect x="184" y="44" width="88" height="122" rx="8" fill="#E8F1F8" stroke="#6b6b68" stroke-width="3"></rect>
+      <rect x="292" y="98" width="72" height="68" rx="8" fill="#EFF7ED" stroke="#6b6b68" stroke-width="3"></rect>
+      <text x="210" y="200" text-anchor="middle" font-size="14" fill="#6b6b68">${esc(mode.name||'Top view placeholder')}</text>
+    </svg>
+    <div class="dai-sub" style="margin:0;color:var(--black)"><strong>Purpose:</strong> ${esc(mode.purpose||'—')}<br><strong>Top view:</strong> ${esc(mode.top_view_description||'—')}</div>
+    ${(mode.included_products||[]).length?`<div class="pc-s" style="margin-top:8px">Products: ${(mode.included_products||[]).map(esc).join(', ')}</div>`:''}
+    ${mode.notes?`<div class="pc-s" style="margin-top:8px">${esc(mode.notes)}</div>`:''}
+  </div>`;
+}
+function designAiMoodboardPaletteHtml(palette=[]){
+  if(!palette.length)return '<div class="dai-empty">No material palette saved yet.</div>';
+  return `<div class="dai-grid">${palette.map(item=>`<div class="dai-card" style="cursor:default">
+    <span style="display:block;width:100%;height:34px;border-radius:var(--rs);border:1px solid var(--g200);background:${esc(item.color||'#f8f8f5')};margin-bottom:8px"></span>
+    <strong>${esc(item.name||'Material')}</strong>
+    <span>${esc(item.material||'—')} · ${esc(item.usage||'')}</span>
+  </div>`).join('')}</div>`;
+}
+function designAiCopyText(text){
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(text||'').then(()=>toast('Prompt copied ✓')).catch(()=>toast('Copy failed'));
+  }else{
+    window.prompt('Copy prompt',text||'');
+  }
+}
+function designAiMoodboardPromptHtml(prompts=[]){
+  if(!prompts.length)return '<div class="dai-empty">No image prompts saved yet.</div>';
+  return `<div class="dai-list">${prompts.map((item,index)=>`<div class="dai-row">
+    <div><strong>${esc(item.slot||`Image slot ${index+1}`)}</strong><div class="pc-s">${esc(item.prompt||'')}</div></div>
+    <button class="btn btn-out btn-sm" onclick="designAiCopyText('${designAiJsArg(item.prompt||'')}')">Copy Prompt</button>
+    <button class="btn btn-out btn-sm" disabled>Generate Image Coming Soon</button>
+  </div>`).join('')}</div>`;
+}
+function designAiMoodboardReferenceHtml(input={}){
+  const ref=input.customer_vehicle_image_drive_id||'';
+  if(!ref)return '<div class="dai-empty">No customer vehicle image reference provided yet.</div>';
+  const link=/^https?:\/\//i.test(ref)?`<a href="${esc(ref)}" target="_blank" rel="noopener">Open reference</a>`:esc(ref);
+  return `<div class="dai-panel"><div class="dai-panel-title">Customer Vehicle Reference</div><div class="dai-sub" style="margin:0;color:var(--black)">${link}</div><div class="pc-s" style="margin-top:8px">Future version will use this image as visual reference for mockup generation.</div></div>`;
+}
+async function renderDesignAiMoodboard(id){
+  designAiLoading('Moodboard Concept');
+  try{
+    const data=await GET(`/api/design-ai/moodboards/${id}`);
+    const mb=data.moodboard||{};
+    const input=mb.input||{};
+    const subtitle=mb.raw_response?.generated?.subtitle||'Brochure concept + image prompt generator';
+    designAiBody().innerHTML=designAiHeader('CRDN Moodboard Concept',`${esc(mb.title||input.project_name||'Untitled')} · ${esc(mb.vehicle_id||input.vehicle_id||'Vehicle')} · ${esc(input.lifestyle_theme||input.usage_scenario||subtitle)}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="generateDesignAiMoodboard()">Generate Again</button>')+
+      `<div class="dai-warning"><strong>Current phase:</strong> Brochure concept + image prompt generator. No photorealistic mockups have been generated yet.</div>
+      <div class="dai-result-grid">
+        <div>
+          <div class="dai-panel"><div class="dai-panel-title">Concept</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(mb.concept_text||'No concept generated yet.')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Key Features</div>${designAiMoodboardFeatureHtml(mb.key_features||[])}</div>
+          <div class="dai-panel"><div class="dai-panel-title">Brochure Copy</div><div class="dai-sub" style="margin:0;color:var(--black);white-space:pre-wrap">${esc(mb.brochure_copy||'—')}</div></div>
+        </div>
+        <div>
+          ${designAiMoodboardReferenceHtml(input)}
+          <div class="dai-panel"><div class="dai-panel-title">Mockup Image Prompt Slots</div>${designAiMoodboardPromptHtml(mb.image_prompts||[])}</div>
+          <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
+        </div>
+      </div>
+      <div class="dai-panel"><div class="dai-panel-title">Layout Modes</div><div class="dai-grid">${(mb.layout_modes||[]).map((mode,index)=>designAiMoodboardModeHtml(mode,index)).join('')||'<div class="dai-empty">No layout modes saved yet.</div>'}</div></div>
+      <div class="dai-panel"><div class="dai-panel-title">Material & Color Palette</div>${designAiMoodboardPaletteHtml(mb.material_palette||[])}</div>
+      <div id="dai-raw" style="display:${DESIGN_AI.rawOpen?'block':'none'};margin-top:14px"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div>`;
+    DESIGN_AI.moodboard=mb;
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Moodboard Concept','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function generateDesignAiMoodboard(){
+  const id=DESIGN_AI.moodboard?.id||designAiRoute().id;
+  if(!id)return;
+  try{
+    toast('Generating moodboard concept…');
+    await POST(`/api/design-ai/moodboards/${id}/generate`,{});
+    DESIGN_AI.rawOpen=false;
+    await renderDesignAiMoodboard(id);
+    toast('Moodboard concept saved ✓');
+  }catch(e){
+    toast(`Moodboard generation failed: ${errMsg(e)}`,6500);
+    await renderDesignAiMoodboard(id);
+  }
 }
 function renderDesignAiNew(){
   const el=designAiBody();if(!el)return;

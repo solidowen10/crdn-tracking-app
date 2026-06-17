@@ -1036,11 +1036,238 @@ async function generateDesignResponse(request, files, recordsContext = {}) {
   };
 }
 
+function moodboardTemplate(input = {}) {
+  const vehicle = clean(input.vehicle_id) || 'Customer Vehicle';
+  const project = clean(input.project_name || input.customer_name) || `${vehicle} Concept`;
+  const theme = clean(input.lifestyle_theme || input.usage_scenario) || 'adventure utility';
+  const products = parseJsonArray(input.must_include_json || input.must_include || '').filter(Boolean);
+  return {
+    title: project,
+    subtitle: `${vehicle} brochure concept + image prompt generator`,
+    concept_text: `A CRDN proposal board for ${vehicle}, shaped around ${theme}. This draft organizes the customer story, feature priorities, material palette, layout modes, and image prompts without generating final rendered images yet.`,
+    key_features: [
+      `Vehicle-led layout concept for ${vehicle}`,
+      `Lifestyle theme: ${theme}`,
+      products.length ? `Must include: ${products.join(', ')}` : 'Flexible product package to be confirmed'
+    ],
+    layout_modes: [
+      {
+        name: 'Travel Mode',
+        purpose: 'Keep passengers and cargo secure while preserving quick access to daily-use gear.',
+        top_view_description: 'Top-view placeholder showing clear aisle, secured product zones, and stowed camp equipment.',
+        included_products: products,
+        notes: 'Final dimensions require approved product and vehicle records.'
+      },
+      {
+        name: 'Camp Mode',
+        purpose: 'Transform the vehicle into a comfortable campsite setup with cooking, sleeping, and storage zones.',
+        top_view_description: 'Top-view placeholder showing expanded living area, sleeping surface, and accessible side utility zone.',
+        included_products: products,
+        notes: 'Use this as a brochure concept, not a final installation drawing.'
+      },
+      {
+        name: 'Utility Mode',
+        purpose: 'Support loading, transport, service work, or product-focused use without removing core modules.',
+        top_view_description: 'Top-view placeholder showing open cargo path and modular product placement.',
+        included_products: products,
+        notes: 'Mode name can be refined for the customer use case.'
+      }
+    ],
+    material_palette: [
+      { name: 'CRDN Warm Utility', color: '#CA741F', material: 'accent hardware / brand detail', usage: 'proposal accent and feature highlights' },
+      { name: 'Soft Graphite', color: '#3D3D3B', material: 'powder-coated metal', usage: 'durable utility surfaces' },
+      { name: 'Natural Birch', color: '#D6B98C', material: 'birch plywood', usage: 'warm cabinetry and panel faces' }
+    ],
+    mockup_image_prompts: [
+      { slot: 'hero rear interior', prompt: `Customer-facing brochure image prompt for ${vehicle}: rear interior view, CRDN warm utility build, ${theme}, premium modular camper details, natural light.` },
+      { slot: 'camp mode interior', prompt: `Camp mode interior prompt for ${vehicle}: organized cooking and sleeping setup, warm materials, practical CRDN craftsmanship, customer-ready proposal image.` },
+      { slot: 'utility wall closeup', prompt: `Close-up prompt for ${vehicle}: utility wall, storage modules, mounting details, material palette, tidy product callouts.` },
+      { slot: 'exterior vehicle', prompt: `Exterior prompt for ${vehicle}: lifestyle setting, CRDN proposal mood, customer vehicle reference to be used in a future image-generation phase.` }
+    ],
+    brochure_copy: `This brochure concept frames ${project} as a practical CRDN build for ${theme}. The proposal should communicate layout flexibility, material quality, and the staged path from deposit to design refinement before any final rendered mockups are generated.`,
+    designer_notes: [
+      'This phase creates brochure structure and image prompts only.',
+      'Future version can use customer vehicle images as visual references for generated mockups.'
+    ]
+  };
+}
+
+function normalizePalette(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => {
+    if (!item || typeof item !== 'object') return null;
+    return {
+      name: clean(item.name),
+      color: clean(item.color),
+      material: clean(item.material),
+      usage: clean(item.usage)
+    };
+  }).filter(item => item && (item.name || item.color || item.material || item.usage));
+}
+
+function normalizeMoodboardModes(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => {
+    if (!item || typeof item !== 'object') return null;
+    return {
+      name: clean(item.name),
+      purpose: textBlock(item.purpose),
+      top_view_description: textBlock(item.top_view_description || item.description),
+      included_products: Array.isArray(item.included_products) ? item.included_products.map(clean).filter(Boolean) : [],
+      notes: textBlock(item.notes)
+    };
+  }).filter(item => item && (item.name || item.purpose || item.top_view_description));
+}
+
+function normalizeImagePrompts(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => {
+    if (!item || typeof item !== 'object') return null;
+    return {
+      slot: clean(item.slot || item.name),
+      prompt: textBlock(item.prompt)
+    };
+  }).filter(item => item && (item.slot || item.prompt));
+}
+
+function normalizeMoodboardResult(input, parsed) {
+  const fallback = moodboardTemplate(input);
+  return {
+    title: clean(parsed.title) || fallback.title,
+    subtitle: clean(parsed.subtitle) || fallback.subtitle,
+    concept_text: textBlock(parsed.concept_text) || fallback.concept_text,
+    key_features: Array.isArray(parsed.key_features) ? parsed.key_features.map(textBlock).filter(Boolean) : fallback.key_features,
+    layout_modes: normalizeMoodboardModes(parsed.layout_modes).length ? normalizeMoodboardModes(parsed.layout_modes) : fallback.layout_modes,
+    material_palette: normalizePalette(parsed.material_palette).length ? normalizePalette(parsed.material_palette) : fallback.material_palette,
+    mockup_image_prompts: normalizeImagePrompts(parsed.mockup_image_prompts || parsed.image_prompts).length
+      ? normalizeImagePrompts(parsed.mockup_image_prompts || parsed.image_prompts)
+      : fallback.mockup_image_prompts,
+    brochure_copy: textBlock(parsed.brochure_copy) || fallback.brochure_copy,
+    designer_notes: normalizeDesignerNotes(parsed.designer_notes).length ? normalizeDesignerNotes(parsed.designer_notes) : fallback.designer_notes
+  };
+}
+
+async function generateMoodboardConcept(input = {}, files = [], recordsContext = {}) {
+  const apiKey = clean(process.env.OPENAI_API_KEY);
+  const model = clean(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
+  const requestLike = {
+    vehicle_id: input.vehicle_id || '',
+    must_include_json: input.must_include_json || JSON.stringify(parseJsonArray(input.must_include || '')),
+    style_id: input.style_direction || '',
+    customer_lifestyle: input.lifestyle_theme || input.usage_scenario || '',
+    notes: input.notes || ''
+  };
+  const libraryContext = await buildLibraryPromptContext(requestLike, files);
+  if (!apiKey) {
+    const fallback = moodboardTemplate(input);
+    return {
+      ...fallback,
+      raw_openai_response: null,
+      content_warnings: ['OPENAI_API_KEY is not configured. This moodboard uses backend fallback brochure content.']
+    };
+  }
+
+  const prompt = {
+    moodboard_input: input,
+    approved_records: recordsContext.approved_records || {},
+    latest_extraction_drafts: recordsContext.latest_extraction_drafts || {},
+    selected_content_files: libraryContext.selected_files || [],
+    readable_file_contents: libraryContext.readable_file_contents || [],
+    asset_references: libraryContext.asset_references || [],
+    content_warnings: libraryContext.content_warnings || [],
+    required_output_shape: {
+      title: '',
+      subtitle: '',
+      concept_text: '',
+      key_features: [],
+      layout_modes: [
+        {
+          name: 'Travel Mode',
+          purpose: '',
+          top_view_description: '',
+          included_products: [],
+          notes: ''
+        }
+      ],
+      material_palette: [
+        {
+          name: '',
+          color: '',
+          material: '',
+          usage: ''
+        }
+      ],
+      mockup_image_prompts: [
+        {
+          slot: 'hero rear interior',
+          prompt: ''
+        }
+      ],
+      brochure_copy: '',
+      designer_notes: []
+    }
+  };
+
+  designAiLog('moodboard request sent', {
+    vehicle_id: input.vehicle_id || '',
+    model,
+    selected_content_file_count: libraryContext.selected_files.length,
+    readable_content_file_count: libraryContext.readable_file_contents.length,
+    prompt_bytes: Buffer.byteLength(JSON.stringify(prompt), 'utf8')
+  });
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'You are CRDN internal Design AI moodboard generator. Return concise valid JSON only. Create a customer-facing brochure concept and image prompt package, not final rendered images. Prioritize approved_records, then latest_extraction_drafts, then Drive readable evidence, then user notes and style direction. Include layout mode descriptions for Travel Mode, Camp Mode, and Utility/Product Mode. Do not claim image generation has happened.'
+        },
+        { role: 'user', content: JSON.stringify(prompt) }
+      ],
+      temperature: 0.45
+    })
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    designAiLog('moodboard response error', {
+      vehicle_id: input.vehicle_id || '',
+      status: response.status,
+      body_sample: body.slice(0, 240)
+    });
+    const err = new Error(`OpenAI moodboard generation failed: ${body.slice(0, 240)}`);
+    err.status = 502;
+    throw err;
+  }
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  const parsed = parseJsonObject(content);
+  const normalized = normalizeMoodboardResult(input, parsed);
+  designAiLog('moodboard response parsed', {
+    vehicle_id: input.vehicle_id || '',
+    keys: Object.keys(parsed),
+    layout_mode_count: normalized.layout_modes.length,
+    image_prompt_count: normalized.mockup_image_prompts.length
+  });
+  return {
+    ...normalized,
+    raw_openai_response: data,
+    content_warnings: libraryContext.content_warnings || []
+  };
+}
+
 module.exports = {
   driveStatus,
   syncDriveFolders,
   designLibraryReadiness,
   extractDesignEntity,
+  generateMoodboardConcept,
   fallbackDesignResponse,
   generateDesignResponse,
   REQUIRED_MISSING_DATA

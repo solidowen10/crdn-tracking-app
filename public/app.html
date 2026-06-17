@@ -759,6 +759,7 @@ button{cursor:pointer}
   <div class="tright">
     <button class="btn btn-out btn-sm desktop-timeline-btn" onclick="openGarageTimeline()">📅 Timeline</button>
     <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
+    <button class="btn btn-out btn-sm hide-sm" onclick="openDesignAI()">🤖 AI Design</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
       <button class="menu-btn" onclick="toggleNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
@@ -768,7 +769,7 @@ button{cursor:pointer}
         <div class="menu-status"><div class="udot"></div><span id="uname-menu">...</span></div>
         <button onclick="goHome();closeNavMenu()">Projects</button>
         <button onclick="openGarageTimeline();closeNavMenu()">Timeline</button>
-        <button onclick="openDesignAI();closeNavMenu()">AI Design Library</button>
+        <button onclick="openDesignAI();closeNavMenu()">AI Design</button>
         <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
         <button onclick="logout()">Logout</button>
@@ -799,9 +800,6 @@ button{cursor:pointer}
     <div class="sc" onclick="renderWaitingPartsOverview()" style="cursor:pointer"><div class="sl">Waiting Parts</div><div class="sn" id="s-parts">—</div><div class="ss-sub" style="color:#CA741F;text-decoration:underline;text-underline-offset:3px;font-weight:700">Click to view parts</div></div>
     <div class="sc"><div class="sl">Due This Week</div><div class="sn" id="s-due" style="color:#ef4444">—</div><div class="ss-sub">Nearing deadline</div></div>
     <div class="sc"><div class="sl">Total Quoted</div><div class="sn" id="s-total">—</div><div class="ss-sub">Active jobs</div></div>
-  </div>
-  <div class="dash-ai-entry">
-    <button class="btn btn-brand btn-sm" onclick="openDesignAI()">AI Design Library</button>
   </div>
   <div class="plist" id="plist"><div style="padding:40px;text-align:center;color:var(--g300)">Loading…</div></div>
 </div>

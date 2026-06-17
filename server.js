@@ -27,6 +27,7 @@ const {
   driveStatus,
   syncDriveFolders,
   designLibraryReadiness,
+  extractDesignEntity,
   generateDesignResponse,
   REQUIRED_MISSING_DATA
 } = require('./designAiServices');
@@ -458,10 +459,11 @@ function designLibraryStatus() {
   const folders = { root: 0, vehicles: 0, products: 0, styles: 0, templates: 0 };
   byFolder.forEach(row => { folders[row.folder_type] = row.count; });
   const total = db.prepare('SELECT COUNT(*) AS count FROM design_library_files').get().count;
+  const files = designLibraryFiles('all');
   return {
     total_indexed_files: total,
     folders,
-    readiness: designLibraryReadiness(designLibraryFiles('all')),
+    readiness: designLibraryReadiness(files, designExtractionStatusLookup()),
     last_sync_at: designSetting('last_sync_at'),
     last_sync_error: designSetting('last_sync_error'),
     drive: driveStatus()
@@ -482,6 +484,298 @@ function designLibraryFiles(folderType = 'all') {
     FROM design_library_files
     ORDER BY folder_type, modified_time DESC, name COLLATE NOCASE
   `).all();
+}
+
+const DESIGN_AI_VEHICLE_FIELDS = [
+  'brand', 'model', 'year_range', 'unit', 'interior_length_mm', 'interior_width_mm', 'interior_height_mm',
+  'rear_door_width_mm', 'rear_door_height_mm', 'wheel_arch_width_mm', 'wheel_arch_height_mm',
+  'notes', 'source_drive_folder_id', 'source_summary_json', 'status'
+];
+const DESIGN_AI_PRODUCT_FIELDS = [
+  'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
+  'mounting_type', 'compatible_vehicles_json', 'requires_drilling', 'install_minutes', 'price',
+  'notes', 'source_drive_folder_id', 'source_summary_json', 'status'
+];
+const DESIGN_AI_NUMBER_FIELDS = new Set([
+  'interior_length_mm', 'interior_width_mm', 'interior_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
+  'wheel_arch_width_mm', 'wheel_arch_height_mm', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
+  'install_minutes', 'price'
+]);
+
+function designEntityType(value) {
+  const type = text(value).toLowerCase();
+  return type === 'vehicle' ? 'vehicle' : 'product';
+}
+
+function designFolderType(entityType) {
+  return designEntityType(entityType) === 'vehicle' ? 'vehicles' : 'products';
+}
+
+function designEntityFolderFiles(entityType, folderPath, entityId) {
+  const folderType = designFolderType(entityType);
+  const folder = text(folderPath || entityId);
+  if (!folder) return [];
+  return db.prepare(`
+    SELECT *
+    FROM design_library_files
+    WHERE folder_type=?
+      AND (
+        path=?
+        OR path LIKE ?
+        OR lower(name)=lower(?)
+      )
+    ORDER BY is_folder DESC, path COLLATE NOCASE, modified_time DESC
+  `).all(folderType, folder, `${folder}/%`, folder);
+}
+
+function latestExtractionDraft(entityType, entityId) {
+  return designExtractionFromRow(db.prepare(`
+    SELECT *
+    FROM design_ai_extraction_drafts
+    WHERE entity_type=? AND lower(entity_id)=lower(?)
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+  `).get(designEntityType(entityType), text(entityId)));
+}
+
+function designExtractionStatusLookup() {
+  const lookup = {};
+  const drafts = db.prepare(`
+    SELECT entity_type, entity_id, id, status
+    FROM design_ai_extraction_drafts
+    ORDER BY updated_at DESC, id DESC
+  `).all();
+  drafts.forEach(row => {
+    const folderType = designFolderType(row.entity_type);
+    const keys = [`${folderType}:${row.entity_id}`, `${folderType}:${text(row.entity_id).toLowerCase()}`];
+    keys.forEach(key => {
+      if (!lookup[key]) lookup[key] = { status: row.status || 'draft', latest_extraction_id: row.id };
+    });
+  });
+  db.prepare('SELECT id, vehicle_id FROM design_ai_vehicle_records WHERE status=?').all('approved').forEach(row => {
+    [`vehicles:${row.vehicle_id}`, `vehicles:${text(row.vehicle_id).toLowerCase()}`].forEach(key => {
+      lookup[key] = { ...(lookup[key] || {}), status: 'approved', approved_record_id: row.id };
+    });
+  });
+  db.prepare('SELECT id, product_id FROM design_ai_product_records WHERE status=?').all('approved').forEach(row => {
+    [`products:${row.product_id}`, `products:${text(row.product_id).toLowerCase()}`].forEach(key => {
+      lookup[key] = { ...(lookup[key] || {}), status: 'approved', approved_record_id: row.id };
+    });
+  });
+  return lookup;
+}
+
+function designExtractionFromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    extracted: parseJson(row.extracted_json, {}),
+    confidence: parseJson(row.confidence_json, {}),
+    source_files: parseJson(row.source_files_json, [])
+  };
+}
+
+function designVehicleRecordFromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    compatible_vehicles: [],
+    source_summary: parseJson(row.source_summary_json, {})
+  };
+}
+
+function designProductRecordFromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    compatible_vehicles: parseJson(row.compatible_vehicles_json, []),
+    source_summary: parseJson(row.source_summary_json, {})
+  };
+}
+
+function designRecordValue(value, field) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (DESIGN_AI_NUMBER_FIELDS.has(field)) return number(value, null);
+  if (field === 'requires_drilling') return value ? 1 : 0;
+  if (field === 'compatible_vehicles_json') return JSON.stringify(Array.isArray(value) ? value.map(text).filter(Boolean) : parseMustInclude(value));
+  if (field === 'source_summary_json') return typeof value === 'string' ? value : JSON.stringify(value || {});
+  return text(value);
+}
+
+function cleanRecordPayload(payload, fields) {
+  return fields.reduce((acc, field) => {
+    const value = designRecordValue(payload[field], field);
+    if (value !== undefined) acc[field] = value;
+    return acc;
+  }, {});
+}
+
+function saveExtractionDraft({ entityType, entityId, folderPath, sourceDriveFolderId, extracted, confidence, sourceFiles, createdBy }) {
+  const result = db.prepare(`
+    INSERT INTO design_ai_extraction_drafts (
+      entity_type, entity_id, folder_path, source_drive_folder_id, extracted_json,
+      confidence_json, source_files_json, status, created_by_line_user_id, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, CURRENT_TIMESTAMP)
+  `).run(
+    entityType,
+    entityId,
+    folderPath || '',
+    sourceDriveFolderId || '',
+    JSON.stringify(extracted || {}),
+    JSON.stringify(confidence || {}),
+    JSON.stringify(sourceFiles || []),
+    createdBy || ''
+  );
+  return designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(result.lastInsertRowid));
+}
+
+function updateExtractionDraft(id, body) {
+  const existing = designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(Number(id)));
+  if (!existing) return null;
+  const extracted = body.extracted || body.extracted_json || existing.extracted;
+  const confidence = body.confidence || body.confidence_json || existing.confidence;
+  const status = text(body.status || existing.status || 'draft');
+  db.prepare(`
+    UPDATE design_ai_extraction_drafts
+    SET extracted_json=?, confidence_json=?, status=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(JSON.stringify(extracted || {}), JSON.stringify(confidence || {}), status, existing.id);
+  return designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(existing.id));
+}
+
+function upsertDesignVehicleRecord(vehicleId, payload, sourceSummary = {}) {
+  const existing = db.prepare('SELECT * FROM design_ai_vehicle_records WHERE vehicle_id=?').get(vehicleId);
+  const cleanPayload = cleanRecordPayload(payload, DESIGN_AI_VEHICLE_FIELDS);
+  const merged = { ...(existing || {}), ...Object.fromEntries(Object.entries(cleanPayload).filter(([, value]) => value !== null && value !== '')) };
+  merged.unit = merged.unit || 'mm';
+  merged.status = 'approved';
+  merged.source_summary_json = JSON.stringify(sourceSummary || {});
+  const comparisonFields = DESIGN_AI_VEHICLE_FIELDS.filter(field => !['source_drive_folder_id', 'source_summary_json', 'status'].includes(field));
+  const changed = !existing || comparisonFields.some(field => String(existing[field] ?? '') !== String(merged[field] ?? ''));
+  merged.version = existing ? Number(existing.version || 1) + (changed ? 1 : 0) : 1;
+  db.prepare(`
+    INSERT INTO design_ai_vehicle_records (
+      vehicle_id, brand, model, year_range, unit, interior_length_mm, interior_width_mm, interior_height_mm,
+      rear_door_width_mm, rear_door_height_mm, wheel_arch_width_mm, wheel_arch_height_mm, notes,
+      source_drive_folder_id, source_summary_json, version, status, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(vehicle_id) DO UPDATE SET
+      brand=excluded.brand, model=excluded.model, year_range=excluded.year_range, unit=excluded.unit,
+      interior_length_mm=excluded.interior_length_mm, interior_width_mm=excluded.interior_width_mm,
+      interior_height_mm=excluded.interior_height_mm, rear_door_width_mm=excluded.rear_door_width_mm,
+      rear_door_height_mm=excluded.rear_door_height_mm, wheel_arch_width_mm=excluded.wheel_arch_width_mm,
+      wheel_arch_height_mm=excluded.wheel_arch_height_mm, notes=excluded.notes,
+      source_drive_folder_id=excluded.source_drive_folder_id, source_summary_json=excluded.source_summary_json,
+      version=excluded.version, status=excluded.status, updated_at=CURRENT_TIMESTAMP
+  `).run(
+    vehicleId, merged.brand || '', merged.model || '', merged.year_range || '', merged.unit || 'mm',
+    merged.interior_length_mm ?? null, merged.interior_width_mm ?? null, merged.interior_height_mm ?? null,
+    merged.rear_door_width_mm ?? null, merged.rear_door_height_mm ?? null, merged.wheel_arch_width_mm ?? null,
+    merged.wheel_arch_height_mm ?? null, merged.notes || '', merged.source_drive_folder_id || '',
+    merged.source_summary_json || '{}', merged.version, merged.status
+  );
+  return designVehicleRecordFromRow(db.prepare('SELECT * FROM design_ai_vehicle_records WHERE vehicle_id=?').get(vehicleId));
+}
+
+function upsertDesignProductRecord(productId, payload, sourceSummary = {}) {
+  const existing = db.prepare('SELECT * FROM design_ai_product_records WHERE product_id=?').get(productId);
+  const incoming = { ...payload };
+  if (incoming.compatible_vehicles && incoming.compatible_vehicles_json === undefined) incoming.compatible_vehicles_json = incoming.compatible_vehicles;
+  const cleanPayload = cleanRecordPayload(incoming, DESIGN_AI_PRODUCT_FIELDS);
+  const merged = { ...(existing || {}), ...Object.fromEntries(Object.entries(cleanPayload).filter(([, value]) => value !== null && value !== '')) };
+  merged.unit = merged.unit || 'mm';
+  merged.status = 'approved';
+  merged.source_summary_json = JSON.stringify(sourceSummary || {});
+  const comparisonFields = DESIGN_AI_PRODUCT_FIELDS.filter(field => !['source_drive_folder_id', 'source_summary_json', 'status'].includes(field));
+  const changed = !existing || comparisonFields.some(field => String(existing[field] ?? '') !== String(merged[field] ?? ''));
+  merged.version = existing ? Number(existing.version || 1) + (changed ? 1 : 0) : 1;
+  db.prepare(`
+    INSERT INTO design_ai_product_records (
+      product_id, sku, name, category, unit, width_mm, depth_mm, height_mm, weight_kg,
+      mounting_type, compatible_vehicles_json, requires_drilling, install_minutes, price, notes,
+      source_drive_folder_id, source_summary_json, version, status, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(product_id) DO UPDATE SET
+      sku=excluded.sku, name=excluded.name, category=excluded.category, unit=excluded.unit,
+      width_mm=excluded.width_mm, depth_mm=excluded.depth_mm, height_mm=excluded.height_mm,
+      weight_kg=excluded.weight_kg, mounting_type=excluded.mounting_type,
+      compatible_vehicles_json=excluded.compatible_vehicles_json, requires_drilling=excluded.requires_drilling,
+      install_minutes=excluded.install_minutes, price=excluded.price, notes=excluded.notes,
+      source_drive_folder_id=excluded.source_drive_folder_id, source_summary_json=excluded.source_summary_json,
+      version=excluded.version, status=excluded.status, updated_at=CURRENT_TIMESTAMP
+  `).run(
+    productId, merged.sku || '', merged.name || '', merged.category || '', merged.unit || 'mm',
+    merged.width_mm ?? null, merged.depth_mm ?? null, merged.height_mm ?? null, merged.weight_kg ?? null,
+    merged.mounting_type || '', merged.compatible_vehicles_json || '[]', merged.requires_drilling ? 1 : 0,
+    merged.install_minutes ?? null, merged.price ?? null, merged.notes || '', merged.source_drive_folder_id || '',
+    merged.source_summary_json || '{}', merged.version, merged.status
+  );
+  return designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE product_id=?').get(productId));
+}
+
+function approveExtractionDraft(id) {
+  const draft = designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(Number(id)));
+  if (!draft) return null;
+  const sourceSummary = {
+    extraction_draft_id: draft.id,
+    source_files: draft.source_files,
+    confidence: draft.confidence,
+    approved_at: new Date().toISOString()
+  };
+  let record;
+  if (draft.entity_type === 'vehicle') {
+    const vehicleId = text(draft.extracted.vehicle_id || draft.entity_id);
+    record = upsertDesignVehicleRecord(vehicleId, {
+      ...draft.extracted,
+      source_drive_folder_id: draft.source_drive_folder_id,
+      status: 'approved'
+    }, sourceSummary);
+  } else {
+    const productId = text(draft.extracted.product_id || draft.entity_id);
+    record = upsertDesignProductRecord(productId, {
+      ...draft.extracted,
+      source_drive_folder_id: draft.source_drive_folder_id,
+      status: 'approved'
+    }, sourceSummary);
+  }
+  db.prepare('UPDATE design_ai_extraction_drafts SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('approved', draft.id);
+  return { draft: designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(draft.id)), record };
+}
+
+function generationRecordsContext(request) {
+  const vehicleId = text(request.vehicle_id);
+  const products = parseJson(request.must_include_json, []);
+  const approvedRecords = { vehicle: null, products: [] };
+  const latestDrafts = { vehicle: null, products: [] };
+  if (vehicleId) {
+    approvedRecords.vehicle = designVehicleRecordFromRow(db.prepare(`
+      SELECT * FROM design_ai_vehicle_records
+      WHERE status='approved' AND lower(vehicle_id)=lower(?)
+      LIMIT 1
+    `).get(vehicleId));
+    if (!approvedRecords.vehicle) latestDrafts.vehicle = latestExtractionDraft('vehicle', vehicleId);
+  }
+  products.map(text).filter(Boolean).forEach(product => {
+    const approved = designProductRecordFromRow(db.prepare(`
+      SELECT * FROM design_ai_product_records
+      WHERE status='approved' AND (lower(product_id)=lower(?) OR lower(name)=lower(?) OR lower(sku)=lower(?))
+      LIMIT 1
+    `).get(product, product, product));
+    if (approved) {
+      approvedRecords.products.push(approved);
+    } else {
+      const draft = latestExtractionDraft('product', product);
+      if (draft) latestDrafts.products.push(draft);
+    }
+  });
+  return {
+    approved_records: approvedRecords,
+    latest_extraction_drafts: latestDrafts
+  };
 }
 
 function parseJson(raw, fallback) {
@@ -788,6 +1082,9 @@ app.get([
   '/design-ai/settings',
   '/design-ai/library',
   '/design-ai/new',
+  '/design-ai/extractions/:id',
+  '/design-ai/vehicles',
+  '/design-ai/products',
   '/design-ai/requests',
   '/design-ai/requests/:id'
 ], requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
@@ -896,13 +1193,111 @@ app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
   res.json({
     files,
     status: designLibraryStatus(),
-    readiness: designLibraryReadiness(files),
+    readiness: designLibraryReadiness(files, designExtractionStatusLookup()),
     required_checklist: {
       vehicle_required: ['vehicle.json', 'dimensions.csv', 'floorplan.svg'],
       vehicle_optional: ['mounting_points.csv', 'restricted_zones.csv', 'scan.glb', 'photos/'],
       product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
+});
+
+app.post('/api/design-ai/extract', requireAuth, async (req, res) => {
+  const entityType = designEntityType(req.body.entity_type);
+  const entityId = text(req.body.entity_id || req.body.product_id || req.body.vehicle_id || req.body.folder_path);
+  const folderPath = text(req.body.folder_path || entityId);
+  if (!entityId) return res.status(400).json({ error: 'entity_id or folder_path is required.' });
+  const files = designEntityFolderFiles(entityType, folderPath, entityId);
+  if (!files.length) return res.status(404).json({ error: 'No indexed Drive files found for that folder. Sync Google Drive Library first.' });
+  try {
+    const sourceFolder = files.find(file => Number(file.is_folder) === 1 && text(file.path) === folderPath) || files[0];
+    const result = await extractDesignEntity({
+      entity_type: entityType,
+      entity_id: entityId,
+      folder_path: folderPath,
+      files
+    });
+    const draft = saveExtractionDraft({
+      entityType,
+      entityId,
+      folderPath,
+      sourceDriveFolderId: sourceFolder?.drive_file_id || sourceFolder?.parent_drive_file_id || '',
+      extracted: {
+        ...result.extracted,
+        _content_warnings: result.content_warnings || []
+      },
+      confidence: result.confidence,
+      sourceFiles: result.source_files,
+      createdBy: actor(req).userId || ''
+    });
+    res.status(201).json({ draft, extracted: draft.extracted });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message || 'Design AI extraction failed.' });
+  }
+});
+
+app.get('/api/design-ai/extractions/:id', requireAuth, (req, res) => {
+  const draft = designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(Number(req.params.id)));
+  if (!draft) return res.status(404).json({ error: 'Extraction draft not found.' });
+  res.json({ draft });
+});
+
+app.patch('/api/design-ai/extractions/:id', requireAuth, (req, res) => {
+  const draft = updateExtractionDraft(req.params.id, req.body || {});
+  if (!draft) return res.status(404).json({ error: 'Extraction draft not found.' });
+  res.json({ draft });
+});
+
+app.post('/api/design-ai/extractions/:id/approve', requireAuth, (req, res) => {
+  const result = approveExtractionDraft(req.params.id);
+  if (!result) return res.status(404).json({ error: 'Extraction draft not found.' });
+  res.json(result);
+});
+
+app.get('/api/design-ai/vehicles', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT *
+    FROM design_ai_vehicle_records
+    ORDER BY updated_at DESC, vehicle_id COLLATE NOCASE
+  `).all().map(designVehicleRecordFromRow);
+  res.json({ records: rows });
+});
+
+app.patch('/api/design-ai/vehicles/:vehicleId', requireAuth, (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  if (!vehicleId) return res.status(400).json({ error: 'vehicle id is required.' });
+  const record = upsertDesignVehicleRecord(vehicleId, {
+    ...req.body,
+    status: text(req.body.status || 'approved')
+  }, {
+    manual_edit: true,
+    edited_by_line_user_id: actor(req).userId || '',
+    edited_at: new Date().toISOString()
+  });
+  res.json({ record });
+});
+
+app.get('/api/design-ai/products', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT *
+    FROM design_ai_product_records
+    ORDER BY updated_at DESC, product_id COLLATE NOCASE
+  `).all().map(designProductRecordFromRow);
+  res.json({ records: rows });
+});
+
+app.patch('/api/design-ai/products/:productId', requireAuth, (req, res) => {
+  const productId = text(req.params.productId);
+  if (!productId) return res.status(400).json({ error: 'product id is required.' });
+  const record = upsertDesignProductRecord(productId, {
+    ...req.body,
+    status: text(req.body.status || 'approved')
+  }, {
+    manual_edit: true,
+    edited_by_line_user_id: actor(req).userId || '',
+    edited_at: new Date().toISOString()
+  });
+  res.json({ record });
 });
 
 app.post('/api/design-ai/requests', requireAuth, (req, res) => {
@@ -951,7 +1346,7 @@ app.post('/api/design-ai/requests/:id/generate', requireAuth, async (req, res) =
     db.prepare('UPDATE ai_design_requests SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('generating', detail.request.id);
     const request = db.prepare('SELECT * FROM ai_design_requests WHERE id=?').get(detail.request.id);
     const files = designLibraryFiles('all');
-    const generated = await generateDesignResponse(request, files);
+    const generated = await generateDesignResponse(request, files, generationRecordsContext(request));
     const response = saveDesignResponse(request.id, generated);
     const updated = designRequestDetail(request.id);
     notifyDesignResultReady(updated.request).catch(err => {

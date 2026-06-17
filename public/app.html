@@ -2264,6 +2264,16 @@ const DESIGN_AI_SETTING_FIELDS=[
   ['styles_folder_id','Styles Folder ID'],
   ['templates_folder_id','Templates Folder ID']
 ];
+const DESIGN_AI_VEHICLE_RECORD_FIELDS=[
+  ['brand','Brand'],['model','Model'],['year_range','Year Range'],['interior_length_mm','Interior Length mm'],
+  ['interior_width_mm','Interior Width mm'],['interior_height_mm','Interior Height mm'],['rear_door_width_mm','Rear Door Width mm'],
+  ['rear_door_height_mm','Rear Door Height mm'],['wheel_arch_width_mm','Wheel Arch Width mm'],['wheel_arch_height_mm','Wheel Arch Height mm'],['notes','Notes']
+];
+const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
+  ['sku','SKU'],['name','Name'],['category','Category'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
+  ['weight_kg','Weight kg'],['mounting_type','Mounting Type'],['compatible_vehicles','Compatible Vehicles'],['requires_drilling','Requires Drilling'],
+  ['install_minutes','Install Minutes'],['price','Price'],['notes','Notes']
+];
 function designAiBody(){return document.getElementById('design-ai-body');}
 function designAiRoute(){
   const parts=location.pathname.split('/').filter(Boolean);
@@ -2271,6 +2281,9 @@ function designAiRoute(){
   if(!parts[1])return {page:'dashboard'};
   if(parts[1]==='settings')return {page:'settings'};
   if(parts[1]==='library')return {page:'library'};
+  if(parts[1]==='vehicles')return {page:'vehicles'};
+  if(parts[1]==='products')return {page:'products'};
+  if(parts[1]==='extractions'&&parts[2])return {page:'extraction',id:parts[2]};
   if(parts[1]==='new')return {page:'new'};
   if(parts[1]==='requests'&&parts[2])return {page:'detail',id:parts[2]};
   if(parts[1]==='requests')return {page:'requests'};
@@ -2279,6 +2292,9 @@ function designAiRoute(){
 function designAiUrl(page='dashboard',opts={}){
   if(page==='settings')return '/design-ai/settings';
   if(page==='library')return '/design-ai/library';
+  if(page==='vehicles')return '/design-ai/vehicles';
+  if(page==='products')return '/design-ai/products';
+  if(page==='extraction')return `/design-ai/extractions/${opts.id}`;
   if(page==='new')return '/design-ai/new';
   if(page==='requests')return '/design-ai/requests';
   if(page==='detail')return `/design-ai/requests/${opts.id}`;
@@ -2321,6 +2337,9 @@ async function renderDesignAI(){
   const route=designAiRoute();
   if(route.page==='settings')return renderDesignAiSettings();
   if(route.page==='library')return renderDesignAiLibrary(DESIGN_AI.folder||'all');
+  if(route.page==='vehicles')return renderDesignAiRecords('vehicles');
+  if(route.page==='products')return renderDesignAiRecords('products');
+  if(route.page==='extraction')return renderDesignAiExtraction(route.id);
   if(route.page==='new')return renderDesignAiNew();
   if(route.page==='requests')return renderDesignAiRequests();
   if(route.page==='detail')return renderDesignAiDetail(route.id);
@@ -2338,6 +2357,8 @@ async function renderDesignAiDashboard(){
         <div class="dai-card" onclick="openDesignAI('new')"><strong>New AI Design Request</strong><span>Capture lifestyle, budget, vehicle, product, and style notes.</span></div>
         <div class="dai-card" onclick="DESIGN_AI.folder='vehicles';openDesignAI('library')"><strong>Vehicle Library</strong><span>Review indexed vehicle folders and required files.</span></div>
         <div class="dai-card" onclick="DESIGN_AI.folder='products';openDesignAI('library')"><strong>Product Library</strong><span>Review product folders, models, dimensions, and rules.</span></div>
+        <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicle Database</strong><span>Review approved vehicle dimensions and extraction drafts.</span></div>
+        <div class="dai-card" onclick="openDesignAI('products')"><strong>Product Database</strong><span>Review approved product dimensions and installation data.</span></div>
         <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
         <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Paste Drive folder IDs and run metadata sync.</span></div>
       </div>
@@ -2414,9 +2435,12 @@ function designAiChecklistHtml(){
     </div>
   </div>`;
 }
-function designAiReadinessPill(status='Reference only'){
-  const cls=status==='Ready'?'done':status==='Missing required files'?'error':'work';
+function designAiReadinessPill(status='Reference Only'){
+  const cls=status==='Approved'?'done':status==='Missing Evidence'?'error':'work';
   return `<span class="dai-pill ${cls}">${esc(status)}</span>`;
+}
+function designAiJsArg(value=''){
+  return String(value||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
 }
 function designAiReadinessHtml(readiness){
   const groups=readiness?.groups||[];
@@ -2424,16 +2448,29 @@ function designAiReadinessHtml(readiness){
     return '<div class="dai-empty"><strong>No library readiness data yet.</strong><br>Sync Google Drive Library after adding vehicle or product folders. Empty folders can still be used while the AI falls back to missing-data warnings.</div>';
   }
   const rows=groups.map(group=>{
-    const missing=(group.required_missing||[]).join(', ');
-    const optional=(group.optional_present||[]).join(', ');
-    const details=missing?`Missing: ${missing}`:(optional?`Optional found: ${optional}`:'Required files present');
+    const evidence=(group.evidence_files||[]).slice(0,3).join(', ');
+    const missing=group.missing_evidence?'Missing evidence':(group.has_dimension_evidence?'Dimension evidence found':'Evidence found');
+    const canExtract=['vehicles','products'].includes(group.folder_type||'');
+    const entityType=group.folder_type==='vehicles'?'vehicle':'product';
     return `<div class="dai-row">
-      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.files_count||0)} item${group.files_count===1?'':'s'} · ${commas(group.readable_files_count||0)} readable</div></div>
-      <div>${designAiReadinessPill(group.status)}</div>
-      <div style="font-size:var(--xxs);color:var(--g500)">${esc(details)}</div>
+      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div></div>
+      <div>${designAiReadinessPill(group.status)}<div class="pc-s">${esc(group.extraction_status||'No extraction yet')}</div></div>
+      <div style="font-size:var(--xxs);color:var(--g500)">${esc(missing)}${evidence?`<br>${esc(evidence)}`:''}</div>
+      <div>${canExtract?`<button class="btn btn-out btn-sm" onclick="extractDesignAiFolder('${entityType}','${designAiJsArg(group.entity)}')">Extract Data</button>`:''}</div>
     </div>`;
   }).join('');
   return `<div class="dai-panel"><div class="dai-panel-title">Library Readiness</div><div class="dai-list">${rows}</div></div>`;
+}
+async function extractDesignAiFolder(entityType,folderPath){
+  try{
+    toast('Extracting Design AI data…');
+    const res=await POST('/api/design-ai/extract',{entity_type:entityType,entity_id:folderPath,folder_path:folderPath});
+    const id=res.draft?.id;
+    if(id)openDesignAI('extraction',{id});
+    toast('Extraction draft saved ✓');
+  }catch(e){
+    toast(`Extraction failed: ${errMsg(e)}`,6500);
+  }
 }
 async function renderDesignAiLibrary(folder='all'){
   designAiLoading('Design Library');
@@ -2459,6 +2496,150 @@ async function renderDesignAiLibrary(folder='all'){
     designAiBody().innerHTML=designAiHeader('Design Library','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
+}
+function designAiEntityFields(entityType){
+  return entityType==='vehicle'
+    ? [['vehicle_id','Vehicle ID'],...DESIGN_AI_VEHICLE_RECORD_FIELDS]
+    : [['product_id','Product ID'],...DESIGN_AI_PRODUCT_RECORD_FIELDS];
+}
+function designAiFieldValue(value){
+  if(Array.isArray(value))return value.join(', ');
+  if(value===undefined||value===null)return '';
+  return String(value);
+}
+function designAiFieldInput(prefix,field,label,value,confidence){
+  const id=`${prefix}${field}`;
+  const conf=confidence&&confidence[field]!==undefined?` · confidence ${Math.round(Number(confidence[field]||0)*100)}%`:'';
+  if(field==='notes'){
+    return `<div class="dai-field wide"><label>${esc(label)}${esc(conf)}</label><textarea id="${esc(id)}">${esc(designAiFieldValue(value))}</textarea></div>`;
+  }
+  return `<div class="dai-field"><label>${esc(label)}${esc(conf)}</label><input id="${esc(id)}" value="${esc(designAiFieldValue(value))}"></div>`;
+}
+function designAiCollectFields(prefix,fields){
+  const out={};
+  fields.forEach(([field])=>{
+    const raw=document.getElementById(`${prefix}${field}`)?.value??'';
+    if(field==='compatible_vehicles')out[field]=raw.split(',').map(x=>x.trim()).filter(Boolean);
+    else if(field==='requires_drilling')out[field]=['1','true','yes','y'].includes(raw.trim().toLowerCase());
+    else if(/(_mm|_kg|minutes|price)$/.test(field))out[field]=raw.trim()===''?null:Number(raw);
+    else out[field]=raw;
+  });
+  return out;
+}
+function designAiSourceFilesHtml(files=[]){
+  if(!files.length)return '<div class="dai-empty">No source files saved for this draft.</div>';
+  return `<div class="dai-list">${files.map(file=>`<div class="dai-row">
+    <div><strong>${esc(file.name||file.path||'Source file')}</strong><div class="pc-s">${esc(file.path||'')} · ${esc(file.evidence_type||file.mime_type||'')}</div></div>
+    <div style="font-size:var(--xxs);color:var(--g500)">${file.direct_content_available?'Readable':'Metadata only'}</div>
+    <div>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+  </div>`).join('')}</div>`;
+}
+async function renderDesignAiExtraction(id){
+  designAiLoading('Extraction Review');
+  try{
+    const data=await GET(`/api/design-ai/extractions/${id}`);
+    const draft=data.draft||{};
+    DESIGN_AI.extractionDraft=draft;
+    const extracted=draft.extracted||{};
+    const fields=designAiEntityFields(draft.entity_type);
+    const prefix='dai-ext-';
+    const warnings=extracted._content_warnings||[];
+    designAiBody().innerHTML=designAiHeader('Extraction Review',`${esc(draft.entity_type||'entity')} · ${esc(draft.entity_id||'')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
+      `${warnings.length?`<div class="dai-warning"><strong>Partial extraction:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
+      <div class="dai-result-grid">
+        <div>
+          <div class="dai-panel"><div class="dai-panel-title">Editable Extracted Fields</div>
+            <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,extracted[field],draft.confidence||{})).join('')}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+              <button class="btn btn-out btn-sm" onclick="saveDesignAiExtraction(${Number(id)})">Save Draft</button>
+              <button class="btn btn-brand btn-sm" onclick="approveDesignAiExtraction(${Number(id)})">Approve to ${draft.entity_type==='vehicle'?'Vehicle':'Product'} Database</button>
+              <button class="btn btn-out btn-sm" onclick="reextractDesignAi(${Number(id)})">Re-extract</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="dai-panel"><div class="dai-panel-title">Source Files Used</div>${designAiSourceFilesHtml(draft.source_files||[])}</div>
+          <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
+        </div>
+      </div>
+      <div id="dai-raw" style="display:${DESIGN_AI.rawOpen?'block':'none'};margin-top:14px"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div>`;
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Extraction Review','','<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function saveDesignAiExtraction(id){
+  const draft=DESIGN_AI.extractionDraft||{};
+  const fields=designAiEntityFields(draft.entity_type);
+  const extracted={...(draft.extracted||{}),...designAiCollectFields('dai-ext-',fields),entity_type:draft.entity_type};
+  try{
+    const res=await PATCH(`/api/design-ai/extractions/${id}`,{extracted,status:'draft'});
+    DESIGN_AI.extractionDraft=res.draft;
+    toast('Extraction draft saved ✓');
+    await renderDesignAiExtraction(id);
+  }catch(e){toast(`Draft save failed: ${errMsg(e)}`,5000);}
+}
+async function approveDesignAiExtraction(id){
+  try{
+    await saveDesignAiExtraction(id);
+    const res=await POST(`/api/design-ai/extractions/${id}/approve`,{});
+    toast('Approved to Design AI database ✓');
+    openDesignAI(res.draft?.entity_type==='vehicle'?'vehicles':'products');
+  }catch(e){toast(`Approval failed: ${errMsg(e)}`,6500);}
+}
+async function reextractDesignAi(id){
+  const draft=DESIGN_AI.extractionDraft||{};
+  try{
+    toast('Re-extracting…');
+    const res=await POST('/api/design-ai/extract',{entity_type:draft.entity_type,entity_id:draft.entity_id,folder_path:draft.folder_path||draft.entity_id});
+    if(res.draft?.id)openDesignAI('extraction',{id:res.draft.id});
+  }catch(e){toast(`Re-extract failed: ${errMsg(e)}`,6500);}
+}
+function designAiRecordDimensions(kind,record){
+  if(kind==='vehicles')return [record.interior_length_mm,record.interior_width_mm,record.interior_height_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ')||'—';
+  return [record.width_mm,record.depth_mm,record.height_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ')||'—';
+}
+function designAiRecordEditorHtml(kind,record){
+  const entityType=kind==='vehicles'?'vehicle':'product';
+  const fields=designAiEntityFields(entityType).filter(([field])=>!['vehicle_id','product_id'].includes(field));
+  const idKey=kind==='vehicles'?'vehicle_id':'product_id';
+  const prefix=`dai-rec-${kind}-${record.id}-`;
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">${esc(record[idKey]||'Record')}</div>
+    <div style="display:grid;gap:8px;font-size:var(--sm);color:var(--g500);margin-bottom:12px">
+      <div><strong style="color:var(--black)">Status:</strong> ${designAiStatusPill(record.status||'draft')} · <strong style="color:var(--black)">Version:</strong> ${esc(record.version||1)} · <strong style="color:var(--black)">Updated:</strong> ${record.updated_at?esc(new Date(record.updated_at).toLocaleString('zh-TW')):'—'}</div>
+      <div><strong style="color:var(--black)">Key dimensions:</strong> ${esc(designAiRecordDimensions(kind,record))}</div>
+    </div>
+    <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,field==='compatible_vehicles'?record.compatible_vehicles:record[field],{})).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-out btn-sm" onclick="saveDesignAiRecord('${kind}',${Number(record.id)},'${designAiJsArg(record[idKey])}')">Save Record</button>
+    </div>
+  </div>`;
+}
+async function renderDesignAiRecords(kind='products'){
+  designAiLoading(kind==='vehicles'?'Vehicle Database':'Product Database');
+  try{
+    const data=await GET(`/api/design-ai/${kind}`);
+    const records=data.records||[];
+    const title=kind==='vehicles'?'Vehicle Database':'Product Database';
+    const libraryFolder=kind==='vehicles'?'vehicles':'products';
+    const actions=`<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="DESIGN_AI.folder='${libraryFolder}';openDesignAI('library')">Library</button>`;
+    designAiBody().innerHTML=designAiHeader(title,'Approved Design AI records used as the source of truth for layout generation.',actions)+
+      (records.length?records.map(record=>designAiRecordEditorHtml(kind,record)).join(''):'<div class="dai-empty"><strong>No records approved yet.</strong><br>Use the Library page to extract evidence, review the draft, then approve it into this database.</div>');
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Design AI Database','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function saveDesignAiRecord(kind,id,recordKey){
+  const entityType=kind==='vehicles'?'vehicle':'product';
+  const fields=designAiEntityFields(entityType).filter(([field])=>!['vehicle_id','product_id'].includes(field));
+  const prefix=`dai-rec-${kind}-${id}-`;
+  try{
+    await PATCH(`/api/design-ai/${kind}/${encodeURIComponent(recordKey)}`,designAiCollectFields(prefix,fields));
+    toast('Design AI record saved ✓');
+    await renderDesignAiRecords(kind);
+  }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
 }
 function renderDesignAiNew(){
   const el=designAiBody();if(!el)return;

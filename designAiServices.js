@@ -4,8 +4,13 @@ const { google } = require('googleapis');
 const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 const DRIVE_FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DRIVE_LIST_MAX_DEPTH = 5;
-const TEXT_FILE_EXTENSIONS = new Set(['.json', '.csv', '.md', '.svg']);
+const TEXT_FILE_EXTENSIONS = new Set(['.json', '.csv', '.txt', '.md', '.svg']);
+const EXTRACTION_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.json', '.csv', '.svg']);
+const BINARY_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg']);
+const VEHICLE_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.svg']);
+const PRODUCT_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md']);
 const REFERENCE_FILE_EXTENSIONS = new Set(['.glb', '.obj', '.fbx', '.step', '.ply', '.e57']);
+const DIMENSION_LIKE_NAME_PARTS = ['dimension', 'size', 'measurement', 'install', 'spec', 'drawing', 'floorplan', 'layout', 'scan'];
 const MAX_TEXT_FILE_BYTES = Number(process.env.DESIGN_AI_FILE_CONTENT_MAX_BYTES || 48 * 1024);
 const MAX_PROMPT_CONTENT_BYTES = Number(process.env.DESIGN_AI_PROMPT_CONTENT_MAX_BYTES || 180 * 1024);
 const MAX_PROMPT_CONTENT_FILES = 14;
@@ -86,6 +91,39 @@ function isReferenceOnlyFile(file) {
   const canonical = fileCanonicalName(file);
   if (canonical === 'photos/') return true;
   return REFERENCE_FILE_EXTENSIONS.has(fileExtension(file.name || file.path));
+}
+
+function isStructuredLibraryFile(file) {
+  const canonical = fileCanonicalName(file);
+  return VEHICLE_REQUIRED_FILES.includes(canonical) ||
+    PRODUCT_REQUIRED_FILES.includes(canonical) ||
+    VEHICLE_OPTIONAL_FILES.includes(canonical);
+}
+
+function isExtractionEvidenceFile(file) {
+  if (isDriveFolder(file)) return false;
+  return EXTRACTION_EVIDENCE_EXTENSIONS.has(fileExtension(file.name || file.path));
+}
+
+function isEntityEvidenceFile(file, folderType) {
+  if (isDriveFolder(file)) return false;
+  const extension = fileExtension(file.name || file.path);
+  if (isStructuredLibraryFile(file)) return true;
+  if (folderType === 'vehicles') return VEHICLE_EVIDENCE_EXTENSIONS.has(extension);
+  if (folderType === 'products') return PRODUCT_EVIDENCE_EXTENSIONS.has(extension);
+  return EXTRACTION_EVIDENCE_EXTENSIONS.has(extension);
+}
+
+function isDimensionLikeEvidence(file, folderType) {
+  const canonical = fileCanonicalName(file);
+  const haystack = normalizeSearchText(`${filePath(file)} ${file.name}`);
+  if (folderType === 'vehicles' && ['dimensions.csv', 'floorplan.svg', 'mounting_points.csv', 'restricted_zones.csv', 'scan.glb'].includes(canonical)) {
+    return true;
+  }
+  if (folderType === 'products' && ['dimensions.csv', 'footprint.svg', 'installation_rules.json'].includes(canonical)) {
+    return true;
+  }
+  return DIMENSION_LIKE_NAME_PARTS.some(part => haystack.includes(part));
 }
 
 function normalizeSearchText(value) {
@@ -208,7 +246,7 @@ function normalizeLayout(value) {
   return layout;
 }
 
-function designLibraryReadiness(files = []) {
+function designLibraryReadiness(files = [], extractionStatusByEntity = {}) {
   const groupsByKey = new Map();
   files.forEach(file => {
     const folderType = clean(file.folder_type || 'root');
@@ -221,17 +259,38 @@ function designLibraryReadiness(files = []) {
         files_count: 0,
         readable_files_count: 0,
         reference_files_count: 0,
+        evidence_files_count: 0,
+        dimension_evidence_count: 0,
         required_present: [],
         required_missing: [],
         optional_present: [],
         optional_missing: [],
+        evidence_files: [],
+        dimension_evidence_files: [],
+        reference_files: [],
+        source_drive_folder_id: '',
         files: []
       });
     }
     const group = groupsByKey.get(key);
     group.files_count += 1;
     if (isTextReadableFile(file)) group.readable_files_count += 1;
-    if (isReferenceOnlyFile(file)) group.reference_files_count += 1;
+    if (!group.source_drive_folder_id && isDriveFolder(file) && pathParts(file).length <= 1) {
+      group.source_drive_folder_id = clean(file.drive_file_id);
+    }
+    if (!group.source_drive_folder_id) group.source_drive_folder_id = clean(file.parent_drive_file_id || file.drive_file_id);
+    if (isReferenceOnlyFile(file)) {
+      group.reference_files_count += 1;
+      group.reference_files.push(filePath(file));
+    }
+    if (isEntityEvidenceFile(file, folderType)) {
+      group.evidence_files_count += 1;
+      group.evidence_files.push(filePath(file));
+    }
+    if (isDimensionLikeEvidence(file, folderType)) {
+      group.dimension_evidence_count += 1;
+      group.dimension_evidence_files.push(filePath(file));
+    }
     group.files.push(file);
   });
 
@@ -249,15 +308,25 @@ function designLibraryReadiness(files = []) {
     group.required_missing = required.filter(name => !present.has(name));
     group.optional_present = optional.filter(name => present.has(name));
     group.optional_missing = optional.filter(name => !present.has(name));
-    if (!required.length) {
-      group.status = group.readable_files_count ? 'Ready' : 'Reference only';
-    } else if (!group.required_missing.length) {
-      group.status = 'Ready';
-    } else if (group.readable_files_count || group.required_present.length) {
-      group.status = 'Missing required files';
+    const lookup = extractionStatusByEntity[`${group.folder_type}:${group.entity}`] ||
+      extractionStatusByEntity[`${group.folder_type}:${normalizeSearchText(group.entity)}`] ||
+      {};
+    group.extraction_status = clean(lookup.status || '');
+    group.latest_extraction_id = lookup.latest_extraction_id || null;
+    group.approved_record_id = lookup.approved_record_id || null;
+    if (group.approved_record_id || group.extraction_status === 'approved') {
+      group.status = 'Approved';
+    } else if (group.latest_extraction_id || group.extraction_status === 'draft') {
+      group.status = 'Extracted Draft';
+    } else if (group.evidence_files_count) {
+      group.status = 'Ready for Extraction';
+    } else if (group.reference_files_count) {
+      group.status = 'Reference Only';
     } else {
-      group.status = 'Reference only';
+      group.status = 'Missing Evidence';
     }
+    group.has_dimension_evidence = group.dimension_evidence_count > 0;
+    group.missing_evidence = group.evidence_files_count === 0;
     delete group.files;
     return group;
   }).sort((a, b) => a.folder_type.localeCompare(b.folder_type) || a.entity.localeCompare(b.entity));
@@ -265,9 +334,11 @@ function designLibraryReadiness(files = []) {
   return {
     groups,
     summary: {
-      ready: groups.filter(group => group.status === 'Ready').length,
-      missing_required: groups.filter(group => group.status === 'Missing required files').length,
-      reference_only: groups.filter(group => group.status === 'Reference only').length
+      ready_for_extraction: groups.filter(group => group.status === 'Ready for Extraction').length,
+      extracted_draft: groups.filter(group => group.status === 'Extracted Draft').length,
+      approved: groups.filter(group => group.status === 'Approved').length,
+      missing_evidence: groups.filter(group => group.status === 'Missing Evidence').length,
+      reference_only: groups.filter(group => group.status === 'Reference Only').length
     }
   };
 }
@@ -549,6 +620,219 @@ async function buildLibraryPromptContext(request, files) {
   };
 }
 
+function extractionTemplate(entityType, entityId) {
+  if (entityType === 'vehicle') {
+    return {
+      entity_type: 'vehicle',
+      vehicle_id: entityId,
+      brand: '',
+      model: '',
+      year_range: '',
+      interior_length_mm: null,
+      interior_width_mm: null,
+      interior_height_mm: null,
+      rear_door_width_mm: null,
+      rear_door_height_mm: null,
+      wheel_arch_width_mm: null,
+      wheel_arch_height_mm: null,
+      notes: '',
+      field_confidence: {},
+      source_evidence: []
+    };
+  }
+  return {
+    entity_type: 'product',
+    product_id: entityId,
+    sku: '',
+    name: '',
+    category: '',
+    width_mm: null,
+    depth_mm: null,
+    height_mm: null,
+    weight_kg: null,
+    mounting_type: '',
+    compatible_vehicles: [],
+    requires_drilling: null,
+    install_minutes: null,
+    price: null,
+    notes: '',
+    field_confidence: {},
+    source_evidence: []
+  };
+}
+
+function normalizeExtractionValue(value) {
+  if (value === undefined) return null;
+  return value;
+}
+
+function normalizeExtractionResult(entityType, entityId, parsed) {
+  const template = extractionTemplate(entityType, entityId);
+  const normalized = { ...template };
+  Object.keys(template).forEach(key => {
+    if (key === 'field_confidence' || key === 'source_evidence') return;
+    if (parsed[key] !== undefined && parsed[key] !== null) normalized[key] = parsed[key];
+  });
+  if (entityType === 'product') {
+    normalized.product_id = clean(normalized.product_id || entityId);
+    normalized.compatible_vehicles = Array.isArray(parsed.compatible_vehicles) ? parsed.compatible_vehicles.map(clean).filter(Boolean) : [];
+  } else {
+    normalized.vehicle_id = clean(normalized.vehicle_id || entityId);
+  }
+  normalized.field_confidence = parsed.field_confidence && typeof parsed.field_confidence === 'object' ? parsed.field_confidence : {};
+  normalized.source_evidence = Array.isArray(parsed.source_evidence) ? parsed.source_evidence : [];
+  Object.keys(normalized).forEach(key => {
+    if (Array.isArray(normalized[key]) || normalized[key] === null || typeof normalized[key] === 'object') return;
+    normalized[key] = normalizeExtractionValue(normalized[key]);
+  });
+  return normalized;
+}
+
+async function buildExtractionEvidenceContext(files = []) {
+  const evidenceFiles = files.filter(isExtractionEvidenceFile);
+  const warnings = [];
+  const sourceFiles = evidenceFiles.map(file => ({
+    ...promptFileMetadata(file),
+    evidence_type: BINARY_EVIDENCE_EXTENSIONS.has(fileExtension(file.name || file.path)) ? 'binary_reference' : 'readable_text',
+    direct_content_available: isTextReadableFile(file)
+  }));
+  const readableFileContents = [];
+  const textFiles = evidenceFiles.filter(isTextReadableFile).slice(0, MAX_PROMPT_CONTENT_FILES);
+
+  if (!textFiles.length) {
+    if (evidenceFiles.length) {
+      warnings.push('Only PDF/image evidence metadata is available right now. Upload text, markdown, CSV, JSON, or SVG evidence for stronger extraction.');
+    }
+    return { source_files: sourceFiles, readable_file_contents: readableFileContents, content_warnings: warnings };
+  }
+
+  let drive;
+  try {
+    drive = requireDriveClient();
+  } catch (err) {
+    warnings.push(`Drive content read skipped: ${err.message}`);
+    return { source_files: sourceFiles, readable_file_contents: readableFileContents, content_warnings: warnings };
+  }
+
+  let usedBytes = 0;
+  for (const file of textFiles) {
+    try {
+      const result = await readDriveTextFile(drive, file, MAX_PROMPT_CONTENT_BYTES - usedBytes);
+      if (result.skipped) {
+        warnings.push(`${filePath(file)} skipped: ${result.reason}`);
+        continue;
+      }
+      usedBytes += Buffer.byteLength(result.content, 'utf8');
+      readableFileContents.push(result);
+    } catch (err) {
+      warnings.push(`${filePath(file)} read failed: ${err.message}`);
+    }
+  }
+
+  return { source_files: sourceFiles, readable_file_contents: readableFileContents, content_warnings: warnings };
+}
+
+function extractionSystemPrompt(entityType) {
+  const shape = extractionTemplate(entityType, '');
+  return [
+    'You are CRDN internal Design AI extraction. Return concise valid JSON only.',
+    'Extract structured dimensions and installation/product/vehicle facts from the provided evidence.',
+    'Use millimeters for dimensions, kilograms for weight, and null when a value is unknown.',
+    'Do not invent exact measurements from photos, PDFs, screenshots, scans, or 3D asset references when the content is not directly readable.',
+    'For each populated field, add field_confidence[field] from 0 to 1 and list source_evidence entries naming the source file.',
+    `Return this shape for ${entityType}: ${JSON.stringify(shape)}`
+  ].join(' ');
+}
+
+async function extractDesignEntity({ entity_type, entity_id, folder_path, files }) {
+  const entityType = clean(entity_type).toLowerCase();
+  if (!['product', 'vehicle'].includes(entityType)) {
+    const err = new Error('entity_type must be product or vehicle.');
+    err.status = 400;
+    throw err;
+  }
+  const entityId = clean(entity_id || folder_path);
+  const evidence = await buildExtractionEvidenceContext(files || []);
+  const apiKey = clean(process.env.OPENAI_API_KEY);
+  const model = clean(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
+  if (!apiKey) {
+    const extracted = extractionTemplate(entityType, entityId);
+    extracted.notes = 'OPENAI_API_KEY is not configured. This draft contains source evidence metadata only.';
+    extracted.source_evidence = evidence.source_files.map(file => file.path || file.name).filter(Boolean);
+    return {
+      extracted,
+      confidence: extracted.field_confidence,
+      source_files: evidence.source_files,
+      content_warnings: [...evidence.content_warnings, 'OpenAI extraction skipped because OPENAI_API_KEY is missing.'],
+      raw_openai_response: null
+    };
+  }
+
+  designAiLog('extraction request sent', {
+    entity_type: entityType,
+    entity_id: entityId,
+    folder_path: folder_path || '',
+    source_file_count: evidence.source_files.length,
+    readable_content_file_count: evidence.readable_file_contents.length,
+    model
+  });
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: extractionSystemPrompt(entityType) },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            entity_type: entityType,
+            entity_id: entityId,
+            folder_path: folder_path || '',
+            source_files: evidence.source_files,
+            readable_file_contents: evidence.readable_file_contents,
+            content_warnings: evidence.content_warnings
+          })
+        }
+      ],
+      temperature: 0.1
+    })
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    designAiLog('extraction response error', {
+      entity_type: entityType,
+      entity_id: entityId,
+      status: response.status,
+      body_sample: body.slice(0, 240)
+    });
+    const err = new Error(`OpenAI extraction failed: ${body.slice(0, 240)}`);
+    err.status = 502;
+    throw err;
+  }
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  const parsed = parseJsonObject(content);
+  const extracted = normalizeExtractionResult(entityType, entityId, parsed);
+  designAiLog('extraction response parsed', {
+    entity_type: entityType,
+    entity_id: entityId,
+    keys: Object.keys(parsed),
+    source_file_count: evidence.source_files.length
+  });
+  return {
+    extracted,
+    confidence: extracted.field_confidence,
+    source_files: evidence.source_files,
+    content_warnings: evidence.content_warnings,
+    raw_openai_response: data
+  };
+}
+
 function fallbackDesignResponse(request, files, warning) {
   const vehicle = clean(request.vehicle_id) || 'selected vehicle';
   const lifestyle = clean(request.customer_lifestyle) || 'balanced everyday travel';
@@ -588,7 +872,7 @@ function fallbackDesignResponse(request, files, warning) {
   };
 }
 
-function buildPrompt(request, files, libraryContext = {}) {
+function buildPrompt(request, files, libraryContext = {}, recordsContext = {}) {
   const safeFiles = files.slice(0, 80).map(file => ({
     folder_type: file.folder_type,
     name: file.name,
@@ -610,6 +894,8 @@ function buildPrompt(request, files, libraryContext = {}) {
     },
     indexed_library_files: safeFiles,
     library_readiness: libraryContext.readiness || designLibraryReadiness(files),
+    approved_records: recordsContext.approved_records || {},
+    latest_extraction_drafts: recordsContext.latest_extraction_drafts || {},
     selected_content_files: libraryContext.selected_files || [],
     readable_file_contents: libraryContext.readable_file_contents || [],
     asset_references: libraryContext.asset_references || [],
@@ -646,7 +932,7 @@ function parseJsonObject(text) {
   }
 }
 
-async function generateDesignResponse(request, files) {
+async function generateDesignResponse(request, files, recordsContext = {}) {
   const apiKey = clean(process.env.OPENAI_API_KEY);
   const model = clean(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
   const requestId = request?.id || null;
@@ -669,7 +955,7 @@ async function generateDesignResponse(request, files) {
   }
 
   const libraryContext = await buildLibraryPromptContext(request, files);
-  const prompt = buildPrompt(request, files, libraryContext);
+  const prompt = buildPrompt(request, files, libraryContext, recordsContext);
   designAiLog('request sent', {
     request_id: requestId,
     model,
@@ -691,7 +977,7 @@ async function generateDesignResponse(request, files) {
       messages: [
         {
           role: 'system',
-          content: 'You are CRDN internal AI Design Library. Return concise valid JSON with ai_summary, layout, customer_proposal, lifestyle_prompt, and designer_notes. layout must include placements as an array of top-view placement objects using millimeters: id, label, type, x, y, width, depth, notes. layout must also include constraints and missing_data arrays. Use readable_file_contents when present. Treat 3D files and photos as asset references only; do not infer exact fit from them. customer_proposal must be customer-ready text, not a JSON object. Preserve missing-data warnings whenever accurate floor plans, dimensions, mounting points, restricted zones, footprints, or installation rules are unavailable.'
+          content: 'You are CRDN internal AI Design Library. Return concise valid JSON with ai_summary, layout, customer_proposal, lifestyle_prompt, and designer_notes. layout must include placements as an array of top-view placement objects using millimeters: id, label, type, x, y, width, depth, notes. layout must also include constraints and missing_data arrays. Prioritize information in this order: approved_records, latest_extraction_drafts, readable_file_contents or evidence summaries, indexed file names. Treat 3D files and photos as asset references only; do not infer exact fit from them. customer_proposal must be customer-ready text, not a JSON object. Preserve missing-data warnings whenever accurate floor plans, dimensions, mounting points, restricted zones, footprints, or installation rules are unavailable.'
         },
         {
           role: 'user',
@@ -754,6 +1040,7 @@ module.exports = {
   driveStatus,
   syncDriveFolders,
   designLibraryReadiness,
+  extractDesignEntity,
   fallbackDesignResponse,
   generateDesignResponse,
   REQUIRED_MISSING_DATA

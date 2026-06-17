@@ -389,6 +389,69 @@ function migrate() {
       raw_response_json TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS design_ai_extraction_drafts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      folder_path TEXT,
+      source_drive_folder_id TEXT,
+      extracted_json TEXT,
+      confidence_json TEXT,
+      source_files_json TEXT,
+      status TEXT DEFAULT 'draft',
+      created_by_line_user_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_ai_vehicle_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id TEXT UNIQUE NOT NULL,
+      brand TEXT,
+      model TEXT,
+      year_range TEXT,
+      unit TEXT DEFAULT 'mm',
+      interior_length_mm REAL,
+      interior_width_mm REAL,
+      interior_height_mm REAL,
+      rear_door_width_mm REAL,
+      rear_door_height_mm REAL,
+      wheel_arch_width_mm REAL,
+      wheel_arch_height_mm REAL,
+      notes TEXT,
+      source_drive_folder_id TEXT,
+      source_summary_json TEXT,
+      version INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'draft',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_ai_product_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id TEXT UNIQUE NOT NULL,
+      sku TEXT,
+      name TEXT,
+      category TEXT,
+      unit TEXT DEFAULT 'mm',
+      width_mm REAL,
+      depth_mm REAL,
+      height_mm REAL,
+      weight_kg REAL,
+      mounting_type TEXT,
+      compatible_vehicles_json TEXT,
+      requires_drilling INTEGER DEFAULT 0,
+      install_minutes INTEGER,
+      price REAL,
+      notes TEXT,
+      source_drive_folder_id TEXT,
+      source_summary_json TEXT,
+      version INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'draft',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   addColumn('vehicles', 'job_no', 'TEXT');
@@ -432,6 +495,9 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_library_files_folder ON design_library_files(folder_type, modified_time);
     CREATE INDEX IF NOT EXISTS idx_ai_design_requests_created ON ai_design_requests(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_design_responses_request ON ai_design_responses(request_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_extraction_entity ON design_ai_extraction_drafts(entity_type, entity_id, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_vehicle_records_status ON design_ai_vehicle_records(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_product_records_status ON design_ai_product_records(status, updated_at DESC);
   `);
 }
 

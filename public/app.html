@@ -2487,6 +2487,64 @@ function designAiStatusPill(status='draft'){
   const cls=status==='completed'?'done':status==='error'?'error':status==='generating'?'work':'';
   return `<span class="dai-pill ${cls}">${esc(status||'draft')}</span>`;
 }
+function designAiLabelFromKey(key=''){
+  return String(key||'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,ch=>ch.toUpperCase());
+}
+function designAiValueText(value){
+  if(value===undefined||value===null||value==='')return '';
+  if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();
+  if(Array.isArray(value)){
+    return value.map(item=>{
+      const line=designAiValueText(item);
+      return line?`- ${line.replace(/\n/g,'\n  ')}`:'';
+    }).filter(Boolean).join('\n');
+  }
+  if(typeof value==='object'){
+    return Object.entries(value).map(([key,item])=>{
+      const line=designAiValueText(item);
+      if(!line)return '';
+      const label=designAiLabelFromKey(key);
+      return label?`${label}:\n${line}`:line;
+    }).filter(Boolean).join('\n\n');
+  }
+  return '';
+}
+function designAiRawOpenAiContent(res){
+  const content=res?.raw_response?.raw_openai_response?.choices?.[0]?.message?.content;
+  if(!content||typeof content!=='string')return {};
+  try{return JSON.parse(content);}catch(e){return {};}
+}
+function designAiResolvedResponseValue(res,key){
+  const saved=res?.[key];
+  if(saved&&saved!=='[object Object]')return saved;
+  const parsed=designAiRawOpenAiContent(res);
+  return parsed?.[key]??saved;
+}
+function designAiResolvedLayout(res){
+  const layout=res?.layout;
+  if(layout&&typeof layout==='object'&&Object.keys(layout).length)return layout;
+  const parsed=designAiRawOpenAiContent(res);
+  return parsed.layout||parsed.recommended_layout||parsed.recommendedLayout||{};
+}
+function designAiLayoutZones(layout={}){
+  const source=layout.zones||layout.recommended_zones||layout.layout_zones||layout.areas;
+  if(Array.isArray(source))return source.map((zone,index)=>({name:zone?.name||zone?.zone||`Zone ${index+1}`,body:designAiValueText(zone?.intent||zone?.description||zone?.notes||zone?.details||zone)}));
+  if(source&&typeof source==='object'){
+    return Object.entries(source).map(([key,zone])=>({name:zone?.name||designAiLabelFromKey(key)||'Zone',body:designAiValueText(zone?.intent||zone?.description||zone?.notes||zone?.details||zone)}));
+  }
+  return [];
+}
+function designAiLayoutHtml(layout={}){
+  const zones=designAiLayoutZones(layout);
+  if(zones.length){
+    return zones.map(z=>`<div style="margin-bottom:8px"><strong>${esc(z.name||'Zone')}</strong><br>${esc(z.body||'')}</div>`).join('');
+  }
+  const rows=Object.entries(layout||{}).filter(([key,value])=>!['zones','recommended_zones','layout_zones','areas','missing_data','recommended_products'].includes(key)&&designAiValueText(value));
+  if(rows.length){
+    return rows.map(([key,value])=>`<div style="margin-bottom:8px"><strong>${esc(designAiLabelFromKey(key)||key)}</strong><br>${esc(designAiValueText(value))}</div>`).join('');
+  }
+  return 'No layout zones saved yet.';
+}
 async function renderDesignAiRequests(){
   designAiLoading('Request History');
   try{
@@ -2512,7 +2570,7 @@ async function renderDesignAiDetail(id){
     DESIGN_AI.requestDetail=detail;
     const req=detail.request||{};
     const res=detail.response||null;
-    const layout=res?.layout||{};
+    const layout=designAiResolvedLayout(res);
     const missing=layout.missing_data||res?.raw_response?.missing_data_warning||[];
     const products=layout.recommended_products||req.must_include||[];
     designAiBody().innerHTML=designAiHeader('AI Design Result',`Request #${req.id||id} · ${esc(req.vehicle_id||'Untitled vehicle')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'requests\')">← History</button><button class="btn btn-brand btn-sm" onclick="generateDesignAiRequest()">Generate Again</button>')+
@@ -2528,13 +2586,13 @@ async function renderDesignAiDetail(id){
               <div><strong style="color:var(--black)">Notes:</strong> ${esc(req.notes||'—')}</div>
             </div>
           </div>
-          <div class="dai-panel"><div class="dai-panel-title">AI Summary</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(res?.ai_summary||'No AI response saved yet.')}</div></div>
-          <div class="dai-panel"><div class="dai-panel-title">Recommended Layout</div><div class="dai-sub" style="margin:0;color:var(--black)">${(layout.zones||[]).map(z=>`<div style="margin-bottom:8px"><strong>${esc(z.name||'Zone')}</strong><br>${esc(z.intent||z.description||'')}</div>`).join('')||'No layout zones saved yet.'}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">AI Summary</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(designAiValueText(designAiResolvedResponseValue(res,'ai_summary'))||'No AI response saved yet.')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Recommended Layout</div><div class="dai-sub" style="margin:0;color:var(--black)">${designAiLayoutHtml(layout)}</div></div>
         </div>
         <div>
           <div class="dai-panel"><div class="dai-panel-title">Products Used</div><div class="dai-sub" style="margin:0;color:var(--black)">${products.length?products.map(esc).join(', '):'No products listed yet.'}</div></div>
-          <div class="dai-panel"><div class="dai-panel-title">Lifestyle Image Prompt</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(res?.lifestyle_prompt||'—')}</div></div>
-          <div class="dai-panel"><div class="dai-panel-title">Customer Proposal Text</div><div class="dai-sub" style="margin:0;color:var(--black);white-space:pre-wrap">${esc(res?.customer_proposal||'—')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Lifestyle Image Prompt</div><div class="dai-sub" style="margin:0;color:var(--black)">${esc(designAiValueText(designAiResolvedResponseValue(res,'lifestyle_prompt'))||'—')}</div></div>
+          <div class="dai-panel"><div class="dai-panel-title">Customer Proposal Text</div><div class="dai-sub" style="margin:0;color:var(--black);white-space:pre-wrap">${esc(designAiValueText(designAiResolvedResponseValue(res,'customer_proposal'))||'—')}</div></div>
           <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
         </div>
       </div>

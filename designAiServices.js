@@ -12,9 +12,90 @@ const REQUIRED_MISSING_DATA = [
   'product dimensions',
   'product footprint.svg'
 ];
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const DESIGN_AI_LOG_PREFIX = '[design-ai]';
 
 function clean(value) {
   return value === undefined || value === null ? '' : String(value).trim();
+}
+
+function designAiLog(event, details = {}) {
+  try {
+    console.log(DESIGN_AI_LOG_PREFIX, JSON.stringify({ event, ...details }));
+  } catch (err) {
+    console.log(DESIGN_AI_LOG_PREFIX, event);
+  }
+}
+
+function labelFromKey(key) {
+  return clean(key)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function textBlock(value) {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return clean(value);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map(item => {
+        const line = textBlock(item);
+        return line ? `- ${line.replace(/\n/g, '\n  ')}` : '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const line = textBlock(item);
+        if (!line) return '';
+        const label = labelFromKey(key);
+        return label ? `${label}:\n${line}` : line;
+      })
+      .filter(Boolean)
+      .join('\n\n');
+  }
+  return '';
+}
+
+function normalizeDesignerNotes(value) {
+  if (Array.isArray(value)) return value.map(textBlock).filter(Boolean);
+  const note = textBlock(value);
+  return note ? [note] : [];
+}
+
+function normalizeZone(zone, fallbackName) {
+  if (zone && typeof zone === 'object' && !Array.isArray(zone)) {
+    return {
+      ...zone,
+      name: clean(zone.name || zone.zone || fallbackName) || 'Zone',
+      intent: textBlock(zone.intent || zone.description || zone.notes || zone.details || zone)
+    };
+  }
+  return {
+    name: clean(fallbackName) || 'Zone',
+    intent: textBlock(zone)
+  };
+}
+
+function normalizeZones(value) {
+  if (Array.isArray(value)) return value.map((zone, index) => normalizeZone(zone, `Zone ${index + 1}`));
+  if (value && typeof value === 'object') {
+    return Object.entries(value).map(([key, zone]) => normalizeZone(zone, labelFromKey(key)));
+  }
+  return [];
+}
+
+function normalizeLayout(value) {
+  const layout = value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {};
+  const zoneSource = layout.zones || layout.recommended_zones || layout.layout_zones || layout.areas;
+  const zones = normalizeZones(zoneSource);
+  if (zones.length) layout.zones = zones;
+  return layout;
 }
 
 function parseServiceAccountFile(filePath) {
@@ -199,7 +280,19 @@ function parseJsonObject(text) {
 
 async function generateDesignResponse(request, files) {
   const apiKey = clean(process.env.OPENAI_API_KEY);
+  const model = clean(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
+  const requestId = request?.id || null;
+  designAiLog('generation config', {
+    openai_enabled: Boolean(apiKey),
+    model,
+    request_id: requestId
+  });
   if (!apiKey) {
+    designAiLog('fallback', {
+      reason: 'missing_openai_api_key',
+      request_id: requestId,
+      model
+    });
     return fallbackDesignResponse(
       request,
       files,
@@ -207,7 +300,13 @@ async function generateDesignResponse(request, files) {
     );
   }
 
-  const model = clean(process.env.OPENAI_MODEL) || 'gpt-4o-mini';
+  const prompt = buildPrompt(request, files);
+  designAiLog('request sent', {
+    request_id: requestId,
+    model,
+    indexed_file_count: files.length,
+    prompt_bytes: Buffer.byteLength(JSON.stringify(prompt), 'utf8')
+  });
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -220,11 +319,11 @@ async function generateDesignResponse(request, files) {
       messages: [
         {
           role: 'system',
-          content: 'You are CRDN internal AI Design Library. Return concise valid JSON with ai_summary, layout, customer_proposal, lifestyle_prompt, and designer_notes. Include missing_data warnings whenever accurate floor plans cannot be verified from library metadata.'
+          content: 'You are CRDN internal AI Design Library. Return concise valid JSON with ai_summary, layout, customer_proposal, lifestyle_prompt, and designer_notes. layout must include zones as an array of objects with name and intent whenever any layout recommendation is possible. customer_proposal must be customer-ready text, not a JSON object. Include missing_data warnings whenever accurate floor plans cannot be verified from library metadata.'
         },
         {
           role: 'user',
-          content: JSON.stringify(buildPrompt(request, files))
+          content: JSON.stringify(prompt)
         }
       ],
       temperature: 0.4
@@ -233,6 +332,12 @@ async function generateDesignResponse(request, files) {
 
   if (!response.ok) {
     const body = await response.text();
+    designAiLog('response error', {
+      request_id: requestId,
+      model,
+      status: response.status,
+      body_sample: body.slice(0, 240)
+    });
     const err = new Error(`OpenAI generation failed: ${body.slice(0, 240)}`);
     err.status = 502;
     throw err;
@@ -240,13 +345,34 @@ async function generateDesignResponse(request, files) {
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
+  designAiLog('response received', {
+    request_id: requestId,
+    model: data.model || model,
+    choice_count: Array.isArray(data.choices) ? data.choices.length : 0,
+    content_bytes: Buffer.byteLength(content, 'utf8')
+  });
   const parsed = parseJsonObject(content);
+  const layout = normalizeLayout(parsed.layout || parsed.recommended_layout || parsed.recommendedLayout || {});
+  const customerProposal = textBlock(
+    parsed.customer_proposal ||
+    parsed.customerProposal ||
+    parsed.customer_proposal_text ||
+    parsed.proposal ||
+    ''
+  );
+  designAiLog('response parsed', {
+    request_id: requestId,
+    keys: Object.keys(parsed),
+    layout_keys: Object.keys(layout),
+    layout_zone_count: Array.isArray(layout.zones) ? layout.zones.length : 0,
+    customer_proposal_type: typeof parsed.customer_proposal
+  });
   return {
-    ai_summary: clean(parsed.ai_summary),
-    layout: parsed.layout || {},
-    customer_proposal: clean(parsed.customer_proposal),
-    lifestyle_prompt: clean(parsed.lifestyle_prompt),
-    designer_notes: Array.isArray(parsed.designer_notes) ? parsed.designer_notes : [],
+    ai_summary: textBlock(parsed.ai_summary),
+    layout,
+    customer_proposal: customerProposal,
+    lifestyle_prompt: textBlock(parsed.lifestyle_prompt),
+    designer_notes: normalizeDesignerNotes(parsed.designer_notes),
     raw_openai_response: data
   };
 }

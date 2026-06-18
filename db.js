@@ -415,11 +415,16 @@ function migrate() {
       interior_length_mm REAL,
       interior_width_mm REAL,
       interior_height_mm REAL,
+      rear_window_width_mm REAL,
+      rear_window_height_mm REAL,
       rear_door_width_mm REAL,
       rear_door_height_mm REAL,
       wheel_arch_width_mm REAL,
       wheel_arch_height_mm REAL,
-      notes TEXT,
+      wheel_arch_position_x_mm REAL,
+      wheel_arch_position_y_mm REAL,
+      floor_plan_notes TEXT,
+      reference_files_json TEXT,
       source_drive_folder_id TEXT,
       source_summary_json TEXT,
       version INTEGER DEFAULT 1,
@@ -444,13 +449,59 @@ function migrate() {
       requires_drilling INTEGER DEFAULT 0,
       install_minutes INTEGER,
       price REAL,
-      notes TEXT,
+      mounting_notes TEXT,
+      installation_notes TEXT,
+      reference_files_json TEXT,
       source_drive_folder_id TEXT,
       source_summary_json TEXT,
       version INTEGER DEFAULT 1,
       status TEXT DEFAULT 'draft',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_ai_style_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      style_id TEXT UNIQUE NOT NULL,
+      name TEXT,
+      description TEXT,
+      colors_json TEXT,
+      materials_json TEXT,
+      reference_images_json TEXT,
+      moodboard_notes TEXT,
+      status TEXT DEFAULT 'draft',
+      version INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_ai_workspaces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      customer_name TEXT,
+      vehicle_id TEXT,
+      products_json TEXT,
+      style_id TEXT,
+      customer_notes TEXT,
+      customer_photos_json TEXT,
+      layout_json TEXT,
+      layout_notes TEXT,
+      moodboard_text TEXT,
+      brochure_copy TEXT,
+      mockup_files_json TEXT,
+      status TEXT DEFAULT 'draft',
+      created_by_line_user_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS design_ai_workspace_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL,
+      version INTEGER NOT NULL,
+      snapshot_json TEXT NOT NULL,
+      created_by_line_user_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS design_ai_moodboards (
@@ -489,6 +540,15 @@ function migrate() {
   addColumn('design_library_files', 'path', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'parent_drive_file_id', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'is_folder', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn('design_ai_vehicle_records', 'rear_window_width_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'rear_window_height_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'wheel_arch_position_x_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'wheel_arch_position_y_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'floor_plan_notes', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'reference_files_json', 'TEXT');
+  addColumn('design_ai_product_records', 'mounting_notes', 'TEXT');
+  addColumn('design_ai_product_records', 'installation_notes', 'TEXT');
+  addColumn('design_ai_product_records', 'reference_files_json', 'TEXT');
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");
@@ -516,6 +576,9 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_ai_extraction_entity ON design_ai_extraction_drafts(entity_type, entity_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_vehicle_records_status ON design_ai_vehicle_records(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_product_records_status ON design_ai_product_records(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_style_records_status ON design_ai_style_records(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_workspaces_status ON design_ai_workspaces(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_workspace_versions_workspace ON design_ai_workspace_versions(workspace_id, version DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_moodboards_status ON design_ai_moodboards(status, updated_at DESC);
   `);
 }

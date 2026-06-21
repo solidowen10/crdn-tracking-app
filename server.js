@@ -1444,6 +1444,7 @@ app.get([
   '/design-ai',
   '/design-ai/settings',
   '/design-ai/library',
+  '/design-ai/start',
   '/design-ai/new',
   '/design-ai/extractions/:id',
   '/design-ai/vehicles',

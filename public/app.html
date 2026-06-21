@@ -2291,6 +2291,7 @@ function designAiRoute(){
   if(!parts[1])return {page:'dashboard'};
   if(parts[1]==='settings')return {page:'settings'};
   if(parts[1]==='library')return {page:'library'};
+  if(parts[1]==='start')return {page:'start'};
   if(parts[1]==='vehicles'&&parts[2])return {page:'vehicle',id:parts[2]};
   if(parts[1]==='vehicles')return {page:'vehicles'};
   if(parts[1]==='products'&&parts[2])return {page:'product',id:parts[2]};
@@ -2310,6 +2311,7 @@ function designAiRoute(){
 function designAiUrl(page='dashboard',opts={}){
   if(page==='settings')return '/design-ai/settings';
   if(page==='library')return '/design-ai/library';
+  if(page==='start')return '/design-ai/start';
   if(page==='vehicles')return '/design-ai/vehicles';
   if(page==='vehicle')return `/design-ai/vehicles/${encodeURIComponent(opts.id||'new')}`;
   if(page==='products')return '/design-ai/products';
@@ -2363,6 +2365,7 @@ async function renderDesignAI(){
   const route=designAiRoute();
   if(route.page==='settings')return renderDesignAiSettings();
   if(route.page==='library')return renderDesignAiLibrary(DESIGN_AI.folder||'all');
+  if(route.page==='start')return renderDesignAiStart();
   if(route.page==='vehicles')return renderDesignAiRecords('vehicles');
   if(route.page==='vehicle')return renderDesignAiRecordEditor('vehicles',route.id);
   if(route.page==='products')return renderDesignAiRecords('products');
@@ -2385,19 +2388,20 @@ async function renderDesignAiDashboard(){
     const [settings,requests]=await Promise.all([loadDesignAiStatus(),GET('/api/design-ai/requests')]);
     DESIGN_AI.requests=requests.requests||[];
     const el=designAiBody();
-    el.innerHTML=designAiHeader('AI Design Library','Create design directions from indexed CRDN vehicle, product, style, and template assets.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+    el.innerHTML=designAiHeader('AI Design Library','Guided workspace for customer design planning, 2D layout previews, and CRDN Design Director briefs.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
       designAiStatusHtml(settings.status)+
-      `<div class="dai-grid">
-        <div class="dai-card" onclick="openDesignAI('new')"><strong>New AI Design Request</strong><span>Capture lifestyle, budget, vehicle, product, and style notes.</span></div>
-        <div class="dai-card" onclick="openDesignAI('workspaces')"><strong>Design Workspace</strong><span>Plan customer concepts with approved records, manual layout boxes, and queue status.</span></div>
-        <div class="dai-card" onclick="openDesignAI('moodboard-new')"><strong>Moodboard Generator</strong><span>Brochure concept + image prompt generator for customer proposal boards.</span></div>
-        <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicle Database</strong><span>Review approved vehicle dimensions and extraction drafts.</span></div>
-        <div class="dai-card" onclick="openDesignAI('products')"><strong>Product Database</strong><span>Review approved product dimensions and installation data.</span></div>
-        <div class="dai-card" onclick="openDesignAI('styles')"><strong>Style Database</strong><span>Maintain approved CRDN color, material, and moodboard directions.</span></div>
-        <div class="dai-card" onclick="DESIGN_AI.folder='all';openDesignAI('library')"><strong>Library Files</strong><span>Review indexed Drive evidence, extraction readiness, and source files.</span></div>
-        <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
-        <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Paste Drive folder IDs and run metadata sync.</span></div>
-      </div>
+      `<div class="dai-panel"><div class="dai-panel-title">Primary Workflow</div><div class="dai-grid">
+        <div class="dai-card" onclick="openDesignAI('start')"><strong>Start Design</strong><span>Guided flow: vehicle, products, style, notes, then workspace.</span></div>
+        <div class="dai-card" onclick="openDesignAI('workspaces')"><strong>Design Workspaces</strong><span>Continue layout previews, agent briefs, proposal/moodboard results, and saved work.</span></div>
+        <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicle Database</strong><span>Approved vehicle dimensions used for layout and proposals.</span></div>
+        <div class="dai-card" onclick="openDesignAI('products')"><strong>Product Database</strong><span>Approved product dimensions and installation data.</span></div>
+      </div></div>
+      <div class="dai-panel"><div class="dai-panel-title">Secondary Tools</div><div class="dai-grid">
+        <div class="dai-card" onclick="openDesignAI('styles')"><strong>Style Database</strong><span>Approved CRDN color, material, and moodboard directions.</span></div>
+        <div class="dai-card" onclick="DESIGN_AI.folder='all';openDesignAI('library')"><strong>Library Files</strong><span>Drive evidence, extraction readiness, and source files.</span></div>
+        <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved legacy design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
+        <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Drive folder IDs, metadata sync, and service status.</span></div>
+      </div></div>
       ${Number(settings.status?.total_indexed_files||0)?'':
         '<div class="dai-empty"><strong>No library files indexed yet.</strong><br>Paste the Google Drive folder IDs in Settings, share folders with the service account, then run Sync Google Drive Library. Empty folders are fine for Phase 1.</div>'}`;
   }catch(e){
@@ -2728,6 +2732,45 @@ function designAiWorkspaceProductsFromText(raw=''){
     return product_id?{product_id,x_mm:Number(x_mm||0),y_mm:Number(y_mm||0),rotation:Number(rotation||0)}:null;
   }).filter(Boolean);
 }
+function designAiPlacementStatus(productId=''){
+  const placement=(DESIGN_AI.workspaceLayout?.placements||[]).find(p=>String(p.product_id).toLowerCase()===String(productId).toLowerCase());
+  return placement?designAiStatusPill(placement.status||'warning'):'—';
+}
+function designAiPlacementTableHtml(products=[]){
+  const rows=(products&&products.length?products:[{product_id:'',x_mm:0,y_mm:0,rotation:0}]).map(item=>`<tr>
+    <td><input class="dai-place-product" value="${esc(item.product_id||'')}" placeholder="product_id"></td>
+    <td><input class="dai-place-x" type="number" value="${esc(item.x_mm||0)}"></td>
+    <td><input class="dai-place-y" type="number" value="${esc(item.y_mm||0)}"></td>
+    <td><input class="dai-place-rotation" type="number" value="${esc(item.rotation||0)}"></td>
+    <td>${designAiPlacementStatus(item.product_id||'')}</td>
+  </tr>`).join('');
+  return `<div class="dai-table-wrap"><table class="dai-table" style="min-width:650px"><thead><tr><th>product_id</th><th>x_mm</th><th>y_mm</th><th>rotation</th><th>status</th></tr></thead><tbody id="dai-placement-body">${rows}</tbody></table></div>`;
+}
+function designAiWorkspaceProductsFromTable(){
+  const rows=[...document.querySelectorAll('#dai-placement-body tr')];
+  if(!rows.length)return designAiWorkspaceProductsFromText(document.getElementById('dai-ws-products')?.value||'');
+  return rows.map(row=>({
+    product_id:row.querySelector('.dai-place-product')?.value.trim()||'',
+    x_mm:Number(row.querySelector('.dai-place-x')?.value||0),
+    y_mm:Number(row.querySelector('.dai-place-y')?.value||0),
+    rotation:Number(row.querySelector('.dai-place-rotation')?.value||0)
+  })).filter(item=>item.product_id);
+}
+function addDesignAiPlacementRow(){
+  const body=document.getElementById('dai-placement-body');
+  if(!body)return;
+  body.insertAdjacentHTML('beforeend',`<tr>
+    <td><input class="dai-place-product" placeholder="product_id"></td>
+    <td><input class="dai-place-x" type="number" value="0"></td>
+    <td><input class="dai-place-y" type="number" value="0"></td>
+    <td><input class="dai-place-rotation" type="number" value="0"></td>
+    <td>—</td>
+  </tr>`);
+}
+function setDesignAiPlacementTable(products=[]){
+  const wrap=document.getElementById('dai-placement-table-wrap');
+  if(wrap)wrap.innerHTML=designAiPlacementTableHtml(products);
+}
 function designAiOptions(records=[],idKey,labelKey,current=''){
   const seen=new Set();
   const rows=[];
@@ -2750,6 +2793,95 @@ async function loadDesignAiRecordChoices(){
   ]);
   DESIGN_AI.choices={vehicles:vehicles.records||[],products:products.records||[],styles:styles.records||[]};
   return DESIGN_AI.choices;
+}
+function designAiStartProducts(){
+  const selected=[...document.getElementById('dai-start-products')?.selectedOptions||[]].map(opt=>opt.value).filter(Boolean);
+  const manual=String(document.getElementById('dai-start-products-manual')?.value||'').split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
+  return [...selected,...manual].map(product_id=>({product_id,x_mm:0,y_mm:0,rotation:0}));
+}
+function designAiStartWarnings(products=[]){
+  const choices=DESIGN_AI.choices||{products:[]};
+  const warnings=products.map(item=>{
+    const product=choices.products.find(p=>[p.product_id,p.sku,p.name].some(x=>String(x||'').toLowerCase()===String(item.product_id).toLowerCase()));
+    if(!product)return `${item.product_id}: not in approved product database yet.`;
+    if(product.status!=='approved')return `${item.product_id}: product record is ${product.status||'draft'}, not approved.`;
+    return '';
+  }).filter(Boolean);
+  return warnings.length?`<div class="dai-warning">${warnings.map(esc).join('<br>')}</div>`:'<div class="dai-empty" style="padding:12px">Selected products are approved, or no products selected yet.</div>';
+}
+function designAiDimensionSummary(record,type='vehicle'){
+  if(!record)return '<div class="dai-empty" style="padding:12px">Select a record to see dimensions.</div>';
+  if(type==='vehicle')return `<div class="dai-row" style="cursor:default"><div><strong>${esc(record.vehicle_id||'Vehicle')}</strong><div class="pc-s">${esc(record.brand||'')} ${esc(record.model||'')}</div></div><div>${designAiStatusPill(record.status)}</div><div class="pc-s">${esc(record.interior_length_mm||'?')} × ${esc(record.interior_width_mm||'?')} × ${esc(record.interior_height_mm||'?')} mm</div></div>`;
+  return `<div class="dai-row" style="cursor:default"><div><strong>${esc(record.product_id||record.name||'Product')}</strong><div class="pc-s">${esc(record.name||record.sku||'')}</div></div><div>${designAiStatusPill(record.status)}</div><div class="pc-s">${esc(record.width_mm||'?')} × ${esc(record.depth_mm||'?')} × ${esc(record.height_mm||'?')} mm</div></div>`;
+}
+function updateDesignAiStartSummary(){
+  const choices=DESIGN_AI.choices||{vehicles:[],products:[],styles:[]};
+  const vehicleId=document.getElementById('dai-start-vehicle')?.value||'';
+  const vehicle=choices.vehicles.find(v=>String(v.vehicle_id).toLowerCase()===String(vehicleId).toLowerCase());
+  const products=designAiStartProducts();
+  const productRecords=products.map(item=>choices.products.find(p=>[p.product_id,p.sku,p.name].some(x=>String(x||'').toLowerCase()===String(item.product_id).toLowerCase()))||{product_id:item.product_id,status:'manual'});
+  const vehicleBox=document.getElementById('dai-start-vehicle-summary');
+  const productBox=document.getElementById('dai-start-product-summary');
+  const warningBox=document.getElementById('dai-start-product-warnings');
+  if(vehicleBox)vehicleBox.innerHTML=designAiDimensionSummary(vehicle,'vehicle');
+  if(productBox)productBox.innerHTML=productRecords.length?`<div class="dai-list">${productRecords.map(p=>designAiDimensionSummary(p,'product')).join('')}</div>`:'<div class="dai-empty" style="padding:12px">Select products to see dimensions.</div>';
+  if(warningBox)warningBox.innerHTML=designAiStartWarnings(products);
+}
+async function renderDesignAiStart(){
+  designAiLoading('Start Design');
+  try{
+    const choices=await loadDesignAiRecordChoices();
+    const approvedProducts=choices.products.filter(p=>p.status==='approved');
+    designAiBody().innerHTML=designAiHeader('Start Design','Guided flow for team use: choose confirmed records, add notes, then create a workspace.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-panel"><div class="dai-panel-title">Step 1 · Basic Request</div>
+        <div class="dai-form-grid">
+          <div class="dai-field"><label>Project Title</label><input id="dai-start-title" placeholder="e.g. Wang Family T6 Weekend Camper"></div>
+          <div class="dai-field"><label>Customer Name</label><input id="dai-start-customer" placeholder="Customer or project owner"></div>
+          <div class="dai-field"><label>Vehicle selector</label><select id="dai-start-vehicle" onchange="updateDesignAiStartSummary()">${designAiOptions(choices.vehicles,'vehicle_id','model','')}</select></div>
+          <div class="dai-field"><label>Style selector</label><select id="dai-start-style">${designAiOptions(choices.styles,'style_id','name','')}</select></div>
+          <div class="dai-field wide"><label>Customer notes</label><textarea id="dai-start-notes" placeholder="Usage, must-haves, constraints, budget/tone, customer preferences"></textarea></div>
+        </div>
+      </div>
+      <div class="dai-panel"><div class="dai-panel-title">Step 2 · Products</div>
+        <div class="dai-form-grid">
+          <div class="dai-field"><label>Approved Product Database</label><select id="dai-start-products" multiple size="8" onchange="updateDesignAiStartSummary()">${choices.products.map(p=>`<option value="${esc(p.product_id)}">${esc(p.product_id)} · ${esc(p.name||p.sku||'')}${p.status==='approved'?'':' (draft)'}</option>`).join('')}</select></div>
+          <div class="dai-field"><label>Manual product text</label><textarea id="dai-start-products-manual" oninput="updateDesignAiStartSummary()" placeholder="One product per line if it is not in the database yet"></textarea></div>
+        </div>
+        <div class="pc-s" style="margin-top:8px">${commas(approvedProducts.length)} approved product record${approvedProducts.length===1?'':'s'} available.</div>
+        <div id="dai-start-product-warnings" style="margin-top:12px"></div>
+      </div>
+      <div class="dai-panel"><div class="dai-panel-title">Step 3 · Layout Setup</div>
+        <div class="dai-result-grid">
+          <div><div class="dai-panel-title">Vehicle Dimensions</div><div id="dai-start-vehicle-summary"></div></div>
+          <div><div class="dai-panel-title">Selected Product Dimensions</div><div id="dai-start-product-summary"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-brand btn-sm" onclick="createDesignAiStartWorkspace()">Create Workspace</button></div>
+      </div>`;
+    updateDesignAiStartSummary();
+  }catch(e){
+    designAiBody().innerHTML=designAiHeader('Start Design','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+      `<div class="dai-empty">${esc(errMsg(e))}</div>`;
+  }
+}
+async function createDesignAiStartWorkspace(){
+  const title=document.getElementById('dai-start-title')?.value||'';
+  const vehicle_id=document.getElementById('dai-start-vehicle')?.value||'';
+  if(!title.trim()){toast('Project title is required');return;}
+  if(!vehicle_id.trim()){toast('Vehicle is required');return;}
+  const payload={
+    title,
+    customer_name:document.getElementById('dai-start-customer')?.value||'',
+    vehicle_id,
+    style_id:document.getElementById('dai-start-style')?.value||'',
+    customer_notes:document.getElementById('dai-start-notes')?.value||'',
+    products:designAiStartProducts(),
+    status:'draft'
+  };
+  try{
+    const res=await POST('/api/design-ai/workspaces',payload);
+    toast('Workspace created ✓');
+    openDesignAI('workspace',{id:res.workspace.id});
+  }catch(e){toast(`Workspace create failed: ${errMsg(e)}`,6500);}
 }
 async function renderDesignAiWorkspaces(){
   designAiLoading('Design Workspace');
@@ -2775,7 +2907,7 @@ function designAiWorkspacePayload(){
     title:document.getElementById('dai-ws-title')?.value||'',
     customer_name:document.getElementById('dai-ws-customer')?.value||'',
     vehicle_id:document.getElementById('dai-ws-vehicle')?.value||'',
-    products:designAiWorkspaceProductsFromText(document.getElementById('dai-ws-products')?.value||''),
+    products:designAiWorkspaceProductsFromTable(),
     style_id:document.getElementById('dai-ws-style')?.value||'',
     customer_notes:document.getElementById('dai-ws-notes')?.value||'',
     status:document.getElementById('dai-ws-status')?.value||'draft',
@@ -2821,37 +2953,43 @@ async function renderDesignAiWorkspace(id='new'){
     const versionRows=(data.versions||[]).map(v=>`v${v.version} · ${v.created_at?new Date(v.created_at).toLocaleString('zh-TW'):'—'}`).join('<br>');
     designAiBody().innerHTML=designAiHeader(isNew?'New Design Workspace':'Design Workspace',`${esc(ws.title||'Draft')} · ${esc(ws.status||'draft')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'workspaces\')">← Workspaces</button>')+
       `<div class="dai-warning">Google Drive stores evidence files. CRDN approved database stores the values used for layout and proposals.</div>
-      <div class="dai-panel"><div class="dai-panel-title">Request</div>
+      <div class="dai-panel"><div class="dai-panel-title">1 · Brief</div>
         <div class="dai-form-grid">
-          <div class="dai-field"><label>Title</label><input id="dai-ws-title" value="${esc(ws.title||'')}"></div>
+          <div class="dai-field"><label>Project Title</label><input id="dai-ws-title" value="${esc(ws.title||'')}"></div>
           <div class="dai-field"><label>Customer Name</label><input id="dai-ws-customer" value="${esc(ws.customer_name||'')}"></div>
-          <div class="dai-field"><label>Vehicle selector</label><select id="dai-ws-vehicle">${designAiOptions(choices.vehicles,'vehicle_id','model',ws.vehicle_id||'')}</select></div>
-          <div class="dai-field"><label>Style selector</label><select id="dai-ws-style">${designAiOptions(choices.styles,'style_id','name',ws.style_id||'')}</select></div>
+          <div class="dai-field"><label>Vehicle</label><select id="dai-ws-vehicle">${designAiOptions(choices.vehicles,'vehicle_id','model',ws.vehicle_id||'')}</select></div>
+          <div class="dai-field"><label>Style</label><select id="dai-ws-style">${designAiOptions(choices.styles,'style_id','name',ws.style_id||'')}</select></div>
           <div class="dai-field"><label>Status</label><select id="dai-ws-status">${DESIGN_AI_WORKSPACE_STATUSES.map(s=>`<option value="${s}" ${(ws.status||'draft')===s?'selected':''}>${s}</option>`).join('')}</select></div>
-          <div class="dai-field wide"><label>Product selector / manual placement lines</label><textarea id="dai-ws-products" placeholder="product_id, x_mm, y_mm, rotation">${esc(designAiWorkspaceProductLines(ws.products||[]))}</textarea></div>
           <div class="dai-field wide"><label>Customer Notes</label><textarea id="dai-ws-notes">${esc(ws.customer_notes||'')}</textarea></div>
         </div>
       </div>
-      <div class="dai-panel"><div class="dai-panel-title">2D Layout Box</div>
+      <div class="dai-panel"><div class="dai-panel-title">2 · 2D Layout</div>
         <div id="dai-layout-preview">${designAiLayoutSvg(ws.layout||{})}</div>
         <div id="dai-layout-warnings" style="margin-top:10px">${designAiLayoutWarningsHtml(ws.layout||{})}</div>
-        <div class="dai-form-grid" style="margin-top:12px"><div class="dai-field wide"><label>Layout Notes</label><textarea id="dai-ws-layout-notes">${esc(ws.layout_notes||'')}</textarea></div></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-out btn-sm" onclick="refreshDesignAiLayoutPreview()">Refresh Layout Preview</button></div>
+        <div class="pc-s" style="margin-top:8px">Concept layout preview based on approved dimensions. Not production CAD.</div>
+        <div style="margin-top:12px"><div class="dai-panel-title">Placement Controls</div><div id="dai-placement-table-wrap">${designAiPlacementTableHtml(ws.products||[])}</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn btn-out btn-sm" onclick="addDesignAiPlacementRow()">Add Product Row</button>
+          <button class="btn btn-out btn-sm" onclick="autoPlaceDesignAiProducts()">Auto place selected products</button>
+          <button class="btn btn-brand btn-sm" onclick="refreshDesignAiLayoutPreview()">Refresh Layout Preview</button>
+        </div>
       </div>
-      <div class="dai-panel"><div class="dai-panel-title">Moodboard Box</div>
+      <div class="dai-panel"><div class="dai-panel-title">3 · Agent Brief</div>
+        <textarea id="dai-ws-brief" class="fi" rows="18" style="width:100%;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn btn-brand btn-sm" onclick="generateDesignAiWorkspaceBrief()">Generate Brief</button>
+          <button class="btn btn-out btn-sm" onclick="copyDesignAiWorkspaceBrief()">Copy Brief</button>
+        </div>
+      </div>
+      <div class="dai-panel"><div class="dai-panel-title">4 · Results</div>
         <div class="dai-form-grid">
+          <div class="dai-field wide"><label>2D Layout Notes</label><textarea id="dai-ws-layout-notes">${esc(ws.layout_notes||'')}</textarea></div>
           <div class="dai-field wide"><label>Moodboard Text</label><textarea id="dai-ws-moodboard">${esc(ws.moodboard_text||'')}</textarea></div>
           <div class="dai-field wide"><label>Brochure Copy</label><textarea id="dai-ws-brochure">${esc(ws.brochure_copy||'')}</textarea></div>
-          <div class="dai-field wide"><label>Mockup file/link notes</label><textarea id="dai-ws-mockups">${esc(designAiFieldValue(ws.mockup_files||[]))}</textarea></div>
+          <div class="dai-field wide"><label>Mockup image/link notes or uploaded result references</label><textarea id="dai-ws-mockups">${esc(designAiFieldValue(ws.mockup_files||[]))}</textarea></div>
         </div>
         <div class="pc-s" style="margin-top:8px">Mockups can be generated externally by CRDN Design Director and uploaded/pasted here.</div>
-      </div>
-      <div class="dai-panel"><div class="dai-panel-title">Agent Brief Box</div>
-        <textarea id="dai-ws-brief" class="fi" rows="10" style="width:100%;resize:vertical"></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-out btn-sm" onclick="generateDesignAiWorkspaceBrief()">Generate Brief</button><button class="btn btn-out btn-sm" onclick="copyDesignAiWorkspaceBrief()">Copy Brief</button></div>
-      </div>
-      <div class="dai-panel"><div class="dai-panel-title">Save</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-brand btn-sm" onclick="saveDesignAiWorkspace()">Save Workspace</button>${isNew?'':`<button class="btn btn-out btn-sm" onclick="saveDesignAiWorkspaceVersion()">Save Version</button>`}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn btn-brand btn-sm" onclick="saveDesignAiWorkspace()">Save Result</button>${isNew?'':`<button class="btn btn-out btn-sm" onclick="saveDesignAiWorkspaceVersion()">Save Version</button>`}</div>
         ${versionRows?`<div class="pc-s" style="margin-top:10px">${versionRows}</div>`:''}
       </div>`;
   }catch(e){
@@ -2868,8 +3006,34 @@ async function refreshDesignAiLayoutPreview(){
     const warnings=document.getElementById('dai-layout-warnings');
     if(preview)preview.innerHTML=designAiLayoutSvg(DESIGN_AI.workspaceLayout);
     if(warnings)warnings.innerHTML=designAiLayoutWarningsHtml(DESIGN_AI.workspaceLayout);
+    setDesignAiPlacementTable(payload.products);
     toast('Layout preview refreshed ✓');
   }catch(e){toast(`Layout preview failed: ${errMsg(e)}`,6500);}
+}
+async function autoPlaceDesignAiProducts(){
+  try{
+    const choices=await loadDesignAiRecordChoices();
+    const payload=designAiWorkspacePayload();
+    const vehicle=choices.vehicles.find(v=>String(v.vehicle_id).toLowerCase()===String(payload.vehicle_id).toLowerCase());
+    const vehicleWidth=Number(vehicle?.interior_width_mm||0);
+    let x=80,y=80,rowMaxWidth=0;
+    const placed=payload.products.map(item=>{
+      const product=choices.products.find(p=>[p.product_id,p.sku,p.name].some(value=>String(value||'').toLowerCase()===String(item.product_id).toLowerCase()));
+      const depth=Number(product?.depth_mm||product?.height_mm||300);
+      const width=Number(product?.width_mm||450);
+      if(vehicleWidth&&y+depth>vehicleWidth-80){
+        y=80;
+        x+=rowMaxWidth+80;
+        rowMaxWidth=0;
+      }
+      const next={...item,x_mm:x,y_mm:y,rotation:Number(item.rotation||0)};
+      y+=depth+80;
+      rowMaxWidth=Math.max(rowMaxWidth,width);
+      return next;
+    });
+    setDesignAiPlacementTable(placed);
+    await refreshDesignAiLayoutPreview();
+  }catch(e){toast(`Auto place failed: ${errMsg(e)}`,6500);}
 }
 async function saveDesignAiWorkspace(){
   const ctx=DESIGN_AI.workspace||{};
@@ -2894,25 +3058,64 @@ async function saveDesignAiWorkspaceVersion(){
 function generateDesignAiWorkspaceBrief(){
   const payload=designAiWorkspacePayload();
   const choices=DESIGN_AI.choices||{vehicles:[],products:[],styles:[]};
-  const vehicle=choices.vehicles.find(v=>String(v.vehicle_id).toLowerCase()===String(payload.vehicle_id).toLowerCase()&&v.status==='approved');
-  const style=choices.styles.find(s=>String(s.style_id).toLowerCase()===String(payload.style_id).toLowerCase()&&s.status==='approved');
-  const products=payload.products.map(p=>choices.products.find(r=>[r.product_id,r.sku,r.name].some(x=>String(x||'').toLowerCase()===String(p.product_id).toLowerCase())&&r.status==='approved')).filter(Boolean);
+  const vehicleAny=choices.vehicles.find(v=>String(v.vehicle_id).toLowerCase()===String(payload.vehicle_id).toLowerCase());
+  const vehicle=vehicleAny?.status==='approved'?vehicleAny:null;
+  const styleAny=choices.styles.find(s=>String(s.style_id).toLowerCase()===String(payload.style_id).toLowerCase());
+  const style=styleAny?.status==='approved'?styleAny:null;
+  const products=payload.products.map(item=>{
+    const record=choices.products.find(r=>[r.product_id,r.sku,r.name].some(x=>String(x||'').toLowerCase()===String(item.product_id).toLowerCase()));
+    return {placement:item,record,approved:record?.status==='approved'};
+  });
+  const confirmedProducts=products.filter(p=>p.approved).map(p=>`${p.record.product_id} · ${p.record.name||p.record.sku||''} · ${p.record.width_mm||'?'} x ${p.record.depth_mm||'?'} x ${p.record.height_mm||'?'} mm · placement ${p.placement.x_mm||0},${p.placement.y_mm||0}, rot ${p.placement.rotation||0}`);
+  const assumptions=[
+    !vehicle?'Vehicle dimensions are not confirmed approved.':'',
+    ...products.filter(p=>!p.approved).map(p=>`${p.placement.product_id}: product dimensions are ${p.record?`not approved (${p.record.status||'draft'})`:'not in database'}.`),
+    !style?'Style direction is not confirmed approved.':'',
+    ...(DESIGN_AI.workspaceLayout?.warnings||[])
+  ].filter(Boolean);
+  const decisions=[
+    'Confirm final product positions and access clearances.',
+    'Confirm layout modes needed for travel, camp, product use, and storage.',
+    'Confirm which customer-facing mockup angle should lead the proposal.'
+  ];
   const brief=[
-    `CRDN Design Workspace Brief: ${payload.title||'Untitled'}`,
-    `Customer: ${payload.customer_name||'—'}`,
+    'CRDN DESIGN DIRECTOR BRIEF',
     '',
-    `Confirmed approved vehicle data: ${vehicle?`${vehicle.vehicle_id} ${vehicle.brand||''} ${vehicle.model||''}, interior ${vehicle.interior_length_mm||'?'} x ${vehicle.interior_width_mm||'?'} x ${vehicle.interior_height_mm||'?'} mm`:'No approved vehicle record selected.'}`,
-    `Confirmed approved product data: ${products.length?products.map(p=>`${p.product_id} ${p.name||''} ${p.width_mm||'?'} x ${p.depth_mm||'?'} x ${p.height_mm||'?'} mm`).join('; '):'No approved product records selected.'}`,
-    `Style data: ${style?`${style.style_id} ${style.name||''} ${style.description||''}`:'No approved style selected.'}`,
+    'Confirmed Vehicle Data:',
+    vehicle?`${vehicle.vehicle_id} · ${vehicle.brand||''} ${vehicle.model||''} ${vehicle.year_range||''}\nInterior: ${vehicle.interior_length_mm||'?'} x ${vehicle.interior_width_mm||'?'} x ${vehicle.interior_height_mm||'?'} mm\nDoor/window notes: rear door ${vehicle.rear_door_width_mm||'?'} x ${vehicle.rear_door_height_mm||'?'} mm, rear window ${vehicle.rear_window_width_mm||'?'} x ${vehicle.rear_window_height_mm||'?'} mm`:'No approved vehicle data selected.',
     '',
-    `Customer notes: ${payload.customer_notes||'—'}`,
+    'Confirmed Product Data:',
+    confirmedProducts.length?confirmedProducts.join('\n'):'No approved product records selected.',
+    '',
+    'Customer Request:',
+    `Project: ${payload.title||'Untitled'}\nCustomer: ${payload.customer_name||'—'}\nNotes: ${payload.customer_notes||'—'}`,
+    '',
+    'Style Direction:',
+    style?`${style.style_id} · ${style.name||''}\n${style.description||style.moodboard_notes||''}`:'No approved style selected.',
+    '',
+    'Layout Request:',
+    `Use the current 2D layout preview placements as the starting point. Layout warnings: ${[...(DESIGN_AI.workspaceLayout?.warnings||[]),...(DESIGN_AI.workspaceLayout?.placements||[]).flatMap(p=>p.warnings||[])].join('; ')||'none recorded.'}`,
+    '',
+    'Assumptions:',
+    assumptions.length?assumptions.map(item=>`- ${item}`).join('\n'):'- All selected dimensions are approved and no layout warnings are currently recorded.',
+    '',
+    'Designer Decisions Needed:',
+    decisions.map(item=>`- ${item}`).join('\n'),
     '',
     'Requested output:',
     '1. 2D layout direction',
-    '2. mockup direction',
-    '3. moodboard',
-    '4. brochure copy',
-    '5. fitment confidence'
+    '2. Layout modes',
+    '3. Product placement logic',
+    '4. Moodboard direction',
+    '5. Mockup image prompt',
+    '6. Brochure copy',
+    '7. Fitment confidence',
+    '8. Installer measurement checklist if fitment confidence is below HIGH',
+    '',
+    'Rules:',
+    '- Do not claim production fitment unless dimensions are confirmed.',
+    '- Separate confirmed data, assumptions, and designer decisions needed.',
+    '- If creating visual mockup direction, mark it as concept only unless fitment confidence is HIGH.'
   ].join('\n');
   const box=document.getElementById('dai-ws-brief');
   if(box)box.value=brief;
@@ -2924,7 +3127,7 @@ function copyDesignAiWorkspaceBrief(){
 function renderDesignAiMoodboardNew(){
   const el=designAiBody();if(!el)return;
   const scenarios=['Weekend camping','Rally service camper','Motorcycle transport','Riverside cooking setup','Family camper','Mobile office'];
-  el.innerHTML=designAiHeader('Moodboard Generator','Brochure concept + image prompt generator. This phase does not generate final rendered images.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+  el.innerHTML=designAiHeader('Proposal / Moodboard Builder','Brochure concept + image prompt generator. This phase does not generate final rendered images.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
     `<div class="dai-warning"><strong>Current phase:</strong> Brochure concept + image prompt generator only. Future image generation will use these prompts and the customer vehicle reference.</div>
     <div class="dai-panel">
       <div class="dai-form-grid">
@@ -2939,7 +3142,7 @@ function renderDesignAiMoodboardNew(){
         <div class="dai-field wide"><label>Notes</label><textarea id="dai-mb-notes" placeholder="Customer priorities, quote/deposit notes, feature callouts, colors, constraints"></textarea></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-        <button class="btn btn-brand btn-sm" id="dai-mb-submit" onclick="submitDesignAiMoodboard()">Generate Moodboard Concept</button>
+        <button class="btn btn-brand btn-sm" id="dai-mb-submit" onclick="submitDesignAiMoodboard()">Generate Proposal / Moodboard Concept</button>
       </div>
     </div>`;
 }
@@ -2970,7 +3173,7 @@ async function submitDesignAiMoodboard(){
   }catch(e){
     toast(`Moodboard was not created: ${errMsg(e)}`,6500);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='Generate Moodboard Concept';}
+    if(btn){btn.disabled=false;btn.textContent='Generate Proposal / Moodboard Concept';}
   }
 }
 function designAiMoodboardFeatureHtml(features=[]){
@@ -3027,7 +3230,7 @@ async function renderDesignAiMoodboard(id){
     const mb=data.moodboard||{};
     const input=mb.input||{};
     const subtitle=mb.raw_response?.generated?.subtitle||'Brochure concept + image prompt generator';
-    designAiBody().innerHTML=designAiHeader('CRDN Moodboard Concept',`${esc(mb.title||input.project_name||'Untitled')} · ${esc(mb.vehicle_id||input.vehicle_id||'Vehicle')} · ${esc(input.lifestyle_theme||input.usage_scenario||subtitle)}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="generateDesignAiMoodboard()">Generate Again</button>')+
+    designAiBody().innerHTML=designAiHeader('CRDN Proposal / Moodboard Concept',`${esc(mb.title||input.project_name||'Untitled')} · ${esc(mb.vehicle_id||input.vehicle_id||'Vehicle')} · ${esc(input.lifestyle_theme||input.usage_scenario||subtitle)}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="generateDesignAiMoodboard()">Generate Again</button>')+
       `<div class="dai-warning"><strong>Current phase:</strong> Brochure concept + image prompt generator. No photorealistic mockups have been generated yet.</div>
       <div class="dai-result-grid">
         <div>
@@ -3046,7 +3249,7 @@ async function renderDesignAiMoodboard(id){
       <div id="dai-raw" style="display:${DESIGN_AI.rawOpen?'block':'none'};margin-top:14px"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div>`;
     DESIGN_AI.moodboard=mb;
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('Moodboard Concept','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    designAiBody().innerHTML=designAiHeader('Proposal / Moodboard Concept','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }

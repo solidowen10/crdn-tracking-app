@@ -16,15 +16,17 @@ const PIPELINE_STAGES = [
   { label: '03 Quoting', progress: 20 },
   { label: '04 Waiting Approval', progress: 25 },
   { label: '05 Deposit Paid', progress: 35 },
-  { label: '06 Design / Planning', progress: 45 },
-  { label: '07 Parts Ordering', progress: 55 },
-  { label: '08 Parts Arrived', progress: 65 },
-  { label: '09 Building', progress: 75 },
-  { label: '10 Installation', progress: 85 },
-  { label: '11 QC', progress: 95 },
-  { label: '12 Ready for Delivery', progress: 98 },
-  { label: '13 Delivered', progress: 100 },
-  { label: '14 Archived', progress: 100 }
+  { label: '06 Design / Consulting', progress: 45 },
+  { label: '07 Design / 3D CAD', progress: 55 },
+  { label: '08 Parts Ordering', progress: 65 },
+  { label: '09 Parts Arrived', progress: 75 },
+  { label: '10 Building', progress: 82 },
+  { label: '11 Installation', progress: 88 },
+  { label: '12 QC', progress: 93 },
+  { label: '13 Photoshoot', progress: 96 },
+  { label: '14 Ready for Delivery', progress: 98 },
+  { label: '15 Delivered', progress: 100 },
+  { label: '16 Archived', progress: 100 }
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -37,7 +39,7 @@ const DEFAULT_CATEGORIES = [
   'Storage',
   'Custom Fabrication',
   'Installation Labor',
-  'Design / Planning',
+  'Design / Consulting',
   'Other'
 ];
 
@@ -56,7 +58,7 @@ const DEFAULT_CHECKLIST_ITEMS = [
   ['Storage', 'Rear storage drawer', 'Heavy-duty storage drawer with rails.', 26000, 14000, 'Local Fabrication', 1],
   ['Custom Fabrication', 'Custom bracket or mount', 'Custom fabricated bracket, mount, or adapter.', 15000, 7000, 'Local Fabrication', 1],
   ['Installation Labor', 'Installation labor', 'Workshop installation and fitment labor.', 22000, 0, '', 0],
-  ['Design / Planning', 'Design and consultation fee', 'Layout planning, drawing, and customer consultation.', 15000, 0, '', 0],
+  ['Design / Consulting', 'Design and consultation fee', 'Layout planning, drawing, and customer consultation.', 15000, 0, '', 0],
   ['Other', 'Other custom item', 'Custom item to be defined during consultation.', 0, 0, '', 0]
 ];
 
@@ -78,13 +80,13 @@ function normalizeStage(stage) {
   const map = {
     New: '01 Intake',
     Consultation: '02 Consultation',
-    Design: '06 Design / Planning',
+    Design: '06 Design / Consulting',
     Approved: '05 Deposit Paid',
-    Production: '07 Parts Ordering',
+    Production: '08 Parts Ordering',
     Installation: '10 Installation',
     QC: '11 QC',
     Delivered: '13 Delivered',
-    '03 Parts': '07 Parts Ordering',
+    '03 Parts': '08 Parts Ordering',
     '04 Build': '09 Building',
     '05 QC': '11 QC',
     '06 Handover': '13 Delivered'
@@ -728,7 +730,7 @@ function normalizeVehicles() {
   const tx = db.transaction(() => {
     rows.forEach(row => {
       const stage = normalizeStage(row.stage);
-      update.run(row.job_no || nextJobNo(), stage, stageProgress(stage), stage === '14 Archived' ? 1 : row.archived, row.id);
+      update.run(row.job_no || nextJobNo(), stage, stageProgress(stage), stage === '16 Archived' ? 1 : row.archived, row.id);
     });
   });
   tx();

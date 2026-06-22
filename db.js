@@ -532,6 +532,8 @@ function migrate() {
       caption TEXT,
       file_id TEXT,
       file_path TEXT,
+      assigned_designer_user_id INTEGER,
+      assigned_designer_name TEXT,
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -568,6 +570,8 @@ function migrate() {
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");
   addColumn('consultation_items', 'slug', 'TEXT');
+  addColumn('telegram_mockup_requests', 'assigned_designer_user_id', 'INTEGER');
+  addColumn('telegram_mockup_requests', 'assigned_designer_name', 'TEXT');
 
   const setIcon = db.prepare("UPDATE consultation_categories SET icon=? WHERE name=? AND (icon IS NULL OR icon='')");
   DEFAULT_CATEGORIES.forEach(name => setIcon.run(categoryIcon(name), name));

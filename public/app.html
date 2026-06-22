@@ -866,6 +866,15 @@ button{cursor:pointer}
       <button class="btn btn-out btn-sm" style="margin-top:11px" onclick="openAddUser()">+ Add member</button>
     </div>
 
+    <!-- TELEGRAM MOCKUPS -->
+    <div class="ss">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px">
+        <div class="sst" style="margin:0">Telegram Mockup Requests</div>
+        <button class="btn btn-out btn-sm" onclick="loadTelegramMockupRequests()">Refresh</button>
+      </div>
+      <div id="telegram-mockup-settings"></div>
+    </div>
+
     <!-- TERMS -->
     <div class="ss">
       <div class="sst">Default Quote Terms</div>
@@ -1124,6 +1133,8 @@ let projects=[];
 
 let AP=null, activeTab='overview', currentFilter='All', dashboardSummaryState=null, settingsLoaded=false;
 let currentUser={displayName:'Owen',role:'admin'};
+let TELEGRAM_MOCKUP_REQUESTS=[];
+const TELEGRAM_MOCKUP_STATUSES=['pending','in_progress','done','cancelled'];
 const CATALOG_COLLAPSED=new Set();
 const CATALOG_COLLAPSE_SEEN=new Set();
 const MASTER_CF_ROLES=['admin'];
@@ -5449,6 +5460,7 @@ async function loadAdminSettings(opts={}){
     const contractTerms=document.getElementById('default-contract-terms');
     if(contractTerms&&data?.contract_terms!==undefined)contractTerms.value=data.contract_terms;
     renderGarageSettings();
+    renderTelegramMockupRequests();
     if(data?.master_cashflow_entries!==undefined){
       try{
         const parsed=JSON.parse(data.master_cashflow_entries||'[]');
@@ -5471,7 +5483,9 @@ function renderSettings(){
   renderPipeline();
   renderGarageSettings();
   renderUsers();
-  loadAdminSettings().then(()=>renderUsers());
+  renderTelegramMockupRequests();
+  loadAdminSettings().then(()=>{renderUsers();renderTelegramMockupRequests();});
+  loadTelegramMockupRequests({silent:true});
   loadSheetsStatus();
 }
 
@@ -6251,6 +6265,120 @@ function renderUsers(){
     </div>`).join('');
   updatePendingBadge();
 }
+
+function telegramMockupFromApi(row){
+  return {
+    id:Number(row.id||0),
+    senderName:row.sender_name||'Team',
+    caption:row.caption||'No description',
+    fileId:row.file_id||'',
+    filePath:row.file_path||'',
+    status:row.status||'pending',
+    assignedDesignerUserId:row.assigned_designer_user_id?String(row.assigned_designer_user_id):'',
+    assignedDesignerName:row.assigned_designer_name||'',
+    createdAt:row.created_at||'',
+    updatedAt:row.updated_at||''
+  };
+}
+
+function telegramMockupTime(value){
+  if(!value)return '—';
+  const d=new Date(String(value).replace(' ','T'));
+  return Number.isNaN(d.getTime())?String(value):d.toLocaleString('zh-TW');
+}
+
+function telegramDesignerOptions(selectedId,selectedName){
+  const team=USERS
+    .filter(u=>['admin','member'].includes(u.role))
+    .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  const selected=String(selectedId||'');
+  const hasSelected=selected&&team.some(u=>String(u.id)===selected);
+  return [
+    `<option value="">Unassigned</option>`,
+    selected&&!hasSelected?`<option value="${esc(selected)}" selected>${esc(selectedName||'Assigned designer')}</option>`:'',
+    ...team.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===selected?'selected':''}>${esc(u.name)}</option>`)
+  ].join('');
+}
+
+function renderTelegramMockupRequests(){
+  const el=document.getElementById('telegram-mockup-settings');if(!el)return;
+  if(!TELEGRAM_MOCKUP_REQUESTS.length){
+    el.innerHTML='<div style="font-size:var(--sm);color:var(--g400);padding:10px 0">No Telegram mockup requests yet.</div>';
+    return;
+  }
+  el.innerHTML=TELEGRAM_MOCKUP_REQUESTS.map(req=>{
+    const imageUrl=`/api/telegram/mockup-requests/${req.id}/image`;
+    const statusOptions=TELEGRAM_MOCKUP_STATUSES.map(status=>`<option value="${status}" ${req.status===status?'selected':''}>${status.replace('_',' ')}</option>`).join('');
+    return `<div style="display:grid;grid-template-columns:94px minmax(0,1fr);gap:12px;padding:13px 0;border-bottom:1px solid var(--g100)">
+      <div>
+        ${req.fileId?`<a href="${imageUrl}" target="_blank" rel="noopener"><img src="${imageUrl}" alt="Mockup request ${req.id}" style="width:94px;height:94px;object-fit:cover;border-radius:var(--rs);border:1px solid var(--g200);background:var(--g50)" loading="lazy"></a>`:`<div style="width:94px;height:94px;border-radius:var(--rs);border:1px solid var(--g200);background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:var(--xxs);color:var(--g400)">No image</div>`}
+        ${req.fileId?`<a class="btn btn-out btn-xs" href="${imageUrl}" target="_blank" rel="noopener" style="margin-top:7px;width:94px;justify-content:center">View image</a>`:''}
+      </div>
+      <div style="min-width:0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:var(--sm);font-weight:700">Request #${req.id}</div>
+            <div style="font-size:var(--xxs);color:var(--g400)">${esc(req.senderName)} · ${esc(telegramMockupTime(req.createdAt))}</div>
+          </div>
+          <div style="font-size:var(--xxs);font-weight:700;color:var(--brand);text-transform:capitalize">${esc(req.status.replace('_',' '))}</div>
+        </div>
+        <div style="font-size:var(--sm);color:var(--black);margin-top:7px;line-height:1.45;overflow-wrap:anywhere">${esc(req.caption)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:var(--xxxs);font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.04em">Status
+            <select class="role-select" style="border-radius:var(--rs);text-transform:none;min-width:126px" onchange="updateTelegramMockupStatus(${req.id},this.value)">${statusOptions}</select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:var(--xxxs);font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.04em">Designer
+            <select class="role-select" style="border-radius:var(--rs);text-transform:none;min-width:150px" onchange="assignTelegramMockupDesigner(${req.id},this.value)">${telegramDesignerOptions(req.assignedDesignerUserId,req.assignedDesignerName)}</select>
+          </label>
+        </div>
+        ${req.assignedDesignerName?`<div style="font-size:var(--xxs);color:var(--g400);margin-top:7px">Assigned to ${esc(req.assignedDesignerName)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadTelegramMockupRequests(opts={}){
+  if(currentUser.role!=='admin')return;
+  const el=document.getElementById('telegram-mockup-settings');
+  if(el&&!TELEGRAM_MOCKUP_REQUESTS.length)el.innerHTML='<div style="font-size:var(--sm);color:var(--g400);padding:10px 0">Loading Telegram mockup requests…</div>';
+  try{
+    const data=await GET('/api/telegram/mockup-requests');
+    TELEGRAM_MOCKUP_REQUESTS=(data?.requests||[]).map(telegramMockupFromApi);
+    renderTelegramMockupRequests();
+  }catch(e){
+    if(el)el.innerHTML=`<div style="font-size:var(--sm);color:#dc2626;padding:10px 0">Could not load Telegram mockup requests: ${esc(errMsg(e))}</div>`;
+    if(!opts.silent)toast(`Mockup requests failed: ${errMsg(e)}`,4000);
+  }
+}
+
+function updateTelegramMockupState(row){
+  const updated=telegramMockupFromApi(row);
+  TELEGRAM_MOCKUP_REQUESTS=TELEGRAM_MOCKUP_REQUESTS.map(req=>req.id===updated.id?updated:req);
+  renderTelegramMockupRequests();
+}
+
+async function updateTelegramMockupStatus(id,status){
+  try{
+    const res=await PATCH(`/api/telegram/mockup-requests/${id}`,{status});
+    updateTelegramMockupState(res.request);
+    toast(`Request #${id} status updated`);
+  }catch(e){
+    renderTelegramMockupRequests();
+    toast(`Status update failed: ${errMsg(e)}`,4000);
+  }
+}
+
+async function assignTelegramMockupDesigner(id,userId){
+  try{
+    const res=await PATCH(`/api/telegram/mockup-requests/${id}`,{assigned_designer_user_id:userId});
+    updateTelegramMockupState(res.request);
+    toast(userId?`Request #${id} assigned`:`Request #${id} unassigned`);
+  }catch(e){
+    renderTelegramMockupRequests();
+    toast(`Designer update failed: ${errMsg(e)}`,4000);
+  }
+}
+
 async function updateUserRole(i,role){
   const u=USERS[i];if(!u)return;
   if(u.role===role)return;

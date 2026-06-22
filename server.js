@@ -386,7 +386,7 @@ function dashboardRows(filter = 'All') {
     if (filter === 'All') return true;
     if (filter === 'Active') return !['13 Delivered', '14 Archived'].includes(project.stage) && !project.archived;
     if (filter === 'Waiting Approval') return project.stage === '04 Waiting Approval';
-    if (filter === 'Parts Ordering') return ['07 Parts Ordering', '08 Parts Arrived'].includes(project.stage);
+    if (filter === 'Parts Ordering') return ['08 Parts Ordering', '09 Parts Arrived'].includes(project.stage);
     if (filter === 'Building') return ['09 Building', '10 Installation', '11 QC'].includes(project.stage);
     if (filter === 'Overdue') return project.finish_date && project.finish_date < today && !['13 Delivered', '14 Archived'].includes(project.stage);
     if (filter === 'Delivered') return project.stage === '13 Delivered';
@@ -2764,6 +2764,72 @@ app.post('/api/admin/google-sheets/sync', requireAdmin, async (req, res) => {
       error: message,
       status: googleSheetsStatus(setting('google_sheets_last_synced_at'), message)
     });
+  }
+});
+
+app.post('/api/telegram/webhook/:secret', async (req, res) => {
+  try {
+    if (req.params.secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+      return res.status(403).json({ ok: false });
+    }
+
+    const update = req.body;
+    const message = update.message;
+    if (!message) return res.json({ ok: true });
+
+    const chatId = String(message.chat.id);
+    const allowed = process.env.TELEGRAM_ALLOWED_CHAT_IDS;
+
+    if (allowed && !allowed.split(',').map(x => x.trim()).includes(chatId)) {
+      return res.json({ ok: true });
+    }
+
+    const text = message.text || message.caption || '';
+    const senderName = message.from?.first_name || 'Team';
+
+    let reply = '';
+
+    if (text.startsWith('/status')) {
+      reply = `CRDN Agent online.\nChat ID: ${chatId}`;
+    } else if (text.startsWith('/help')) {
+      reply = [
+        'CRDN Agent commands:',
+        '/status - check bot status',
+        '/help - show commands',
+        '/project PROJECT_NAME - project lookup',
+        '/mockup DESCRIPTION - save mockup request with photo'
+      ].join('\n');
+    } else if (text.startsWith('/project')) {
+      reply = 'Project lookup is not connected yet.';
+    } else if (text.startsWith('/mockup')) {
+      const photos = message.photo || [];
+      const largestPhoto = photos[photos.length - 1];
+
+      if (!largestPhoto) {
+        reply = 'Please send /mockup with a vehicle photo.';
+      } else {
+        reply = [
+          'Mockup request received.',
+          `From: ${senderName}`,
+          `Description: ${text.replace('/mockup', '').trim() || 'No description'}`,
+          `Telegram file_id: ${largestPhoto.file_id}`,
+          'Status: pending'
+        ].join('\n');
+      }
+    } else {
+      return res.json({ ok: true });
+    }
+
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: reply })
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Telegram webhook error:', err);
+    return res.status(500).json({ ok: false });
   }
 });
 

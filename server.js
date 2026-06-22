@@ -43,6 +43,7 @@ const allowedLineIds = new Set((process.env.ALLOWED_LINE_IDS || '').split(',').m
 
 const PART_STATUSES = ['Not Needed', 'Need to Order', 'Ordered', 'Arrived', 'Installed', 'Backordered', 'Cancelled'];
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
+const TELEGRAM_MOCKUP_STATUSES = new Set(['pending', 'in_progress', 'done', 'cancelled']);
 
 function slugify(value){return String(value||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'item';}
 
@@ -2767,6 +2768,90 @@ app.post('/api/admin/google-sheets/sync', requireAdmin, async (req, res) => {
   }
 });
 
+function telegramSenderName(from = {}) {
+  return [from.first_name, from.last_name].map(text).filter(Boolean).join(' ') || text(from.username) || 'Team';
+}
+
+function telegramMockupDescription(caption = '') {
+  return text(caption).replace(/^\/mockup(?:@\w+)?\s*/i, '').trim() || 'No description';
+}
+
+async function telegramFilePath(fileId) {
+  const token = text(process.env.TELEGRAM_BOT_TOKEN);
+  if (!token || !fileId) return '';
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`);
+    if (!response.ok) return '';
+    const data = await response.json();
+    return data.ok ? text(data.result?.file_path) : '';
+  } catch (err) {
+    console.warn('Telegram getFile failed:', err.message || err);
+    return '';
+  }
+}
+
+async function sendTelegramMessage(chatId, reply) {
+  const token = text(process.env.TELEGRAM_BOT_TOKEN);
+  if (!token || !reply) {
+    console.warn('Telegram sendMessage skipped: TELEGRAM_BOT_TOKEN missing or reply empty.');
+    return false;
+  }
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: reply })
+    });
+    if (!response.ok) console.warn('Telegram sendMessage failed:', response.status, await response.text());
+    return response.ok;
+  } catch (err) {
+    console.warn('Telegram sendMessage failed:', err.message || err);
+    return false;
+  }
+}
+
+function saveTelegramMockupRequest({ chatId, messageId, senderName, caption, fileId, filePath }) {
+  const result = db.prepare(`
+    INSERT INTO telegram_mockup_requests (
+      chat_id, message_id, sender_name, caption, file_id, file_path, status, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+  `).run(
+    text(chatId),
+    text(messageId),
+    text(senderName),
+    text(caption),
+    text(fileId),
+    text(filePath)
+  );
+  return db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(result.lastInsertRowid);
+}
+
+app.get('/api/telegram/mockup-requests', requireAuth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT *
+    FROM telegram_mockup_requests
+    ORDER BY created_at DESC, id DESC
+    LIMIT 100
+  `).all();
+  res.json({ requests: rows });
+});
+
+app.patch('/api/telegram/mockup-requests/:id', requireAuth, (req, res) => {
+  const status = text(req.body.status).toLowerCase();
+  if (!TELEGRAM_MOCKUP_STATUSES.has(status)) {
+    return res.status(400).json({ error: 'Invalid status.' });
+  }
+  const result = db.prepare(`
+    UPDATE telegram_mockup_requests
+    SET status=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(status, Number(req.params.id));
+  if (!result.changes) return res.status(404).json({ error: 'Mockup request not found.' });
+  const row = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(Number(req.params.id));
+  res.json({ request: row });
+});
+
 app.post('/api/telegram/webhook/:secret', async (req, res) => {
   try {
     if (req.params.secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
@@ -2785,7 +2870,7 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
     }
 
     const text = message.text || message.caption || '';
-    const senderName = message.from?.first_name || 'Team';
+    const senderName = telegramSenderName(message.from);
 
     let reply = '';
 
@@ -2801,18 +2886,27 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
       ].join('\n');
     } else if (text.startsWith('/project')) {
       reply = 'Project lookup is not connected yet.';
-    } else if (text.startsWith('/mockup')) {
+    } else if (/^\/mockup(?:@\w+)?/i.test(text)) {
       const photos = message.photo || [];
       const largestPhoto = photos[photos.length - 1];
 
       if (!largestPhoto) {
         reply = 'Please send /mockup with a vehicle photo.';
       } else {
+        const description = telegramMockupDescription(text);
+        const filePath = await telegramFilePath(largestPhoto.file_id);
+        const saved = saveTelegramMockupRequest({
+          chatId,
+          messageId: message.message_id,
+          senderName,
+          caption: description,
+          fileId: largestPhoto.file_id,
+          filePath
+        });
         reply = [
-          'Mockup request received.',
+          `Mockup request #${saved.id} saved.`,
           `From: ${senderName}`,
-          `Description: ${text.replace('/mockup', '').trim() || 'No description'}`,
-          `Telegram file_id: ${largestPhoto.file_id}`,
+          `Description: ${description}`,
           'Status: pending'
         ].join('\n');
       }
@@ -2820,11 +2914,7 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
       return res.json({ ok: true });
     }
 
-    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: reply })
-    });
+    await sendTelegramMessage(chatId, reply);
 
     return res.json({ ok: true });
   } catch (err) {

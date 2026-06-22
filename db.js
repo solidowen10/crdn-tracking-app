@@ -521,6 +521,19 @@ function migrate() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS telegram_mockup_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      chat_id TEXT,
+      message_id TEXT,
+      sender_name TEXT,
+      caption TEXT,
+      file_id TEXT,
+      file_path TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   addColumn('vehicles', 'job_no', 'TEXT');
@@ -580,6 +593,7 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_ai_workspaces_status ON design_ai_workspaces(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_workspace_versions_workspace ON design_ai_workspace_versions(workspace_id, version DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_moodboards_status ON design_ai_moodboards(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_telegram_mockup_requests_status ON telegram_mockup_requests(status, created_at DESC);
   `);
 }
 

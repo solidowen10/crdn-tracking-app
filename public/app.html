@@ -6294,6 +6294,9 @@ function telegramMockupFromApi(row){
     resultImagePath:row.result_image_path||'',
     resultUploadedAt:row.result_uploaded_at||'',
     resultSentToTelegramAt:row.result_sent_to_telegram_at||'',
+    generatedPrompt:row.generated_prompt||'',
+    matchedProduct:row.matched_product||null,
+    productReferences:row.product_references||null,
     createdAt:row.created_at||'',
     updatedAt:row.updated_at||''
   };
@@ -6343,10 +6346,26 @@ function telegramMockupProduct(caption){
 }
 
 function telegramMockupPrompt(req){
+  if(req.generatedPrompt)return req.generatedPrompt;
   const product=telegramMockupProduct(req.caption);
   const context=req.caption&&req.caption!=='No description'?` Request details: ${req.caption}.`:'';
   const sender=req.senderName?` This request came from ${req.senderName}.`:'';
   return `Use the uploaded vehicle photo as the base image.${sender} Create a realistic customer preview mockup showing ${product} installed on the vehicle.${context} Keep the original vehicle shape, camera angle, lighting, proportions, background, and license plate unchanged. Add CRDN brand styling: clean, practical, premium adventure-van hardware with realistic fitment and material finish. Make it look like a real installed product, not a fantasy concept. Do not change the vehicle body shape. Output should look like a customer preview mockup.`;
+}
+
+function telegramMockupReferenceHtml(req){
+  const matched=req.matchedProduct;
+  const refs=req.productReferences||{};
+  const product=refs.product||{};
+  const files=Array.isArray(refs.files)?refs.files:[];
+  if(!matched&&!files.length)return '<div class="pc-s" style="margin-top:7px">No matching Design AI product reference found yet. Prompt uses the caption only.</div>';
+  const parts=[
+    matched?`<strong>${esc(matched.name||matched.product_id||matched.sku||'Matched product')}</strong>${matched.status?` · ${esc(matched.status)}`:''}${matched.source?` · ${esc(matched.source)}`:''}`:'',
+    product.width_mm||product.depth_mm||product.height_mm?`Dimensions ${esc([product.width_mm,product.depth_mm,product.height_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' x '))} ${esc(product.unit||'mm')}`:'',
+    product.mounting_type?`Mounting ${esc(product.mounting_type)}`:'',
+    files.length?`Drive refs: ${files.map(file=>file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">${esc(file.name||file.path||'Reference')}</a>`:esc(file.name||file.path||'Reference')).join(', ')}`:''
+  ].filter(Boolean);
+  return `<div class="pc-s" style="margin-top:7px;line-height:1.55">${parts.join('<br>')}</div>`;
 }
 
 function renderMockups(){
@@ -6399,6 +6418,7 @@ function renderTelegramMockupRequests(){
         <div style="margin-top:13px">
           <div class="sst" style="margin-bottom:7px">Generated Prompt</div>
           <textarea class="mockup-prompt" id="mockup-prompt-${req.id}">${esc(prompt)}</textarea>
+          ${telegramMockupReferenceHtml(req)}
           <div class="mockup-actions">
             <button class="btn btn-out btn-xs" onclick="copyTelegramMockupPrompt(${req.id})">Copy Prompt</button>
             <button class="btn btn-amber btn-xs" onclick="generateTelegramMockup(${req.id})">Generate Mockup</button>
@@ -6459,6 +6479,18 @@ function triggerTelegramResultUpload(id){
   document.getElementById(`mockup-result-file-${id}`)?.click();
 }
 
+async function telegramJsonResponse(res){
+  const contentType=res.headers.get('content-type')||'';
+  const textBody=await res.text();
+  if(!textBody)return {};
+  try{
+    return JSON.parse(textBody);
+  }catch(e){
+    const snippet=textBody.replace(/\s+/g,' ').trim().slice(0,600);
+    throw new Error(`HTTP ${res.status} ${res.statusText||''} returned ${contentType||'unknown content type'} instead of JSON: ${snippet}`);
+  }
+}
+
 async function uploadTelegramMockupResult(id,input){
   const file=input?.files?.[0];
   if(!file)return;
@@ -6485,9 +6517,8 @@ async function uploadTelegramMockupResult(id,input){
       headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({name:file.name,type:file.type,data})
     });
-    const bodyText=await res.text();
-    const body=bodyText?JSON.parse(bodyText):{};
-    if(!res.ok)throw new Error(body?.error||'Upload failed');
+    const body=await telegramJsonResponse(res);
+    if(!res.ok)throw new Error(body?.error||`HTTP ${res.status} ${res.statusText||'upload failed'}`);
     updateTelegramMockupState(body.request);
     toast(`Request #${id} result uploaded`);
   }catch(e){

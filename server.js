@@ -2783,6 +2783,191 @@ function telegramMockupDescription(caption = '') {
   return text(caption).replace(/^\/mockup(?:@\w+)?\s*/i, '').trim() || 'No description';
 }
 
+function normalizeMockupLookup(value = '') {
+  return text(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function mockupLookupTokens(value = '') {
+  const stop = new Set(['the', 'and', 'for', 'with', 'crdn', 'mockup', 'photo', 'image', 'black', 'outdoor', 'lifestyle']);
+  return normalizeMockupLookup(value).split(/\s+/).filter(token => token.length > 1 && !stop.has(token));
+}
+
+function scoreMockupProduct(record, captionNorm, captionTokens) {
+  const aliases = [record.product_id, record.sku, record.name].map(normalizeMockupLookup).filter(Boolean);
+  let score = 0;
+  aliases.forEach((alias, index) => {
+    if (!alias) return;
+    if (captionNorm === alias) score = Math.max(score, 120 - index);
+    if (captionNorm.includes(alias)) score = Math.max(score, 100 - index);
+    const aliasTokens = alias.split(/\s+/).filter(Boolean);
+    if (aliasTokens.length && aliasTokens.every(token => captionTokens.has(token))) {
+      score = Math.max(score, Math.min(95, 45 + aliasTokens.length * 12 - index));
+    }
+  });
+  return score;
+}
+
+function mockupProductLibraryFiles(product = {}) {
+  const seen = new Map();
+  const addRows = rows => rows.forEach(row => {
+    if (row && !row.is_folder) seen.set(row.drive_file_id || `${row.name}:${row.path}`, row);
+  });
+  const sourceId = text(product.source_drive_folder_id);
+  if (sourceId) {
+    addRows(db.prepare(`
+      SELECT drive_file_id, is_folder, name, path, mime_type, web_view_link, modified_time
+      FROM design_library_files
+      WHERE drive_file_id=? OR parent_drive_file_id=?
+      ORDER BY is_folder DESC, modified_time DESC, id DESC
+      LIMIT 12
+    `).all(sourceId, sourceId));
+  }
+  (product.reference_files || []).slice(0, 8).forEach(ref => {
+    const refId = text(ref.drive_file_id || ref.id);
+    const refName = text(ref.name || ref.path);
+    if (refId) {
+      addRows(db.prepare(`
+        SELECT drive_file_id, is_folder, name, path, mime_type, web_view_link, modified_time
+        FROM design_library_files
+        WHERE drive_file_id=?
+        LIMIT 1
+      `).all(refId));
+    } else if (refName) {
+      addRows(db.prepare(`
+        SELECT drive_file_id, is_folder, name, path, mime_type, web_view_link, modified_time
+        FROM design_library_files
+        WHERE lower(name)=lower(?) OR lower(path)=lower(?)
+        LIMIT 1
+      `).all(refName, refName));
+    }
+  });
+  const tokens = mockupLookupTokens([product.product_id, product.sku, product.name].filter(Boolean).join(' '));
+  if (tokens.length) {
+    const candidates = db.prepare(`
+      SELECT drive_file_id, is_folder, name, path, mime_type, web_view_link, modified_time
+      FROM design_library_files
+      WHERE folder_type LIKE '%product%' OR folder_type='products'
+      ORDER BY modified_time DESC, id DESC
+      LIMIT 160
+    `).all();
+    candidates
+      .map(row => ({
+        row,
+        score: tokens.reduce((sum, token) => sum + (normalizeMockupLookup(`${row.path} ${row.name}`).includes(token) ? 1 : 0), 0)
+      }))
+      .filter(item => item.score >= Math.min(2, tokens.length))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .forEach(item => addRows([item.row]));
+  }
+  return [...seen.values()].slice(0, 6);
+}
+
+function mockupProductReferenceForCaption(caption = '') {
+  const captionNorm = normalizeMockupLookup(caption);
+  const captionTokens = new Set(mockupLookupTokens(caption));
+  if (!captionNorm) return null;
+
+  const records = db.prepare(`
+    SELECT *
+    FROM design_ai_product_records
+    ORDER BY CASE status WHEN 'approved' THEN 0 WHEN 'draft' THEN 1 ELSE 2 END, updated_at DESC
+    LIMIT 250
+  `).all().map(designProductRecordFromRow);
+  const bestRecord = records
+    .map(record => ({ type: 'record', product: record, score: scoreMockupProduct(record, captionNorm, captionTokens) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+  if (bestRecord) {
+    const files = mockupProductLibraryFiles(bestRecord.product);
+    return { ...bestRecord, files };
+  }
+
+  const drafts = db.prepare(`
+    SELECT *
+    FROM design_ai_extraction_drafts
+    WHERE entity_type='product'
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 150
+  `).all().map(designExtractionFromRow);
+  const bestDraft = drafts
+    .map(draft => {
+      const extracted = draft.extracted || {};
+      const product = {
+        product_id: extracted.product_id || draft.entity_id,
+        sku: extracted.sku || '',
+        name: extracted.name || draft.entity_id,
+        category: extracted.category || '',
+        width_mm: extracted.width_mm,
+        depth_mm: extracted.depth_mm,
+        height_mm: extracted.height_mm,
+        mounting_type: extracted.mounting_type || '',
+        mounting_notes: extracted.mounting_notes || extracted.notes || '',
+        installation_notes: extracted.installation_notes || '',
+        status: draft.status || 'draft',
+        reference_files: draft.source_files || []
+      };
+      return { type: 'draft', product, draft_id: draft.id, score: scoreMockupProduct(product, captionNorm, captionTokens), files: draft.source_files || [] };
+    })
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+  return bestDraft || null;
+}
+
+function telegramMockupGeneratedPrompt(row = {}) {
+  const caption = text(row.caption);
+  const match = mockupProductReferenceForCaption(caption);
+  const product = match?.product || {};
+  const productName = text(product.name || product.product_id || product.sku) || 'the requested CRDN product or accessory';
+  const dims = [product.width_mm, product.depth_mm, product.height_mm].filter(value => value !== null && value !== undefined && value !== '').join(' x ');
+  const referenceLines = [];
+  if (match) {
+    referenceLines.push(`Matched CRDN Design AI product reference: ${[product.product_id, product.sku, product.name].map(text).filter(Boolean).join(' · ') || productName}.`);
+    if (product.status) referenceLines.push(`Record status: ${product.status}${match.type === 'draft' ? ' extraction draft' : ' product record'}.`);
+    if (product.category) referenceLines.push(`Category: ${product.category}.`);
+    if (dims) referenceLines.push(`Dimensions: ${dims} ${product.unit || 'mm'}.`);
+    if (product.mounting_type) referenceLines.push(`Mounting type: ${product.mounting_type}.`);
+    if (product.mounting_notes) referenceLines.push(`Mounting notes: ${product.mounting_notes}.`);
+    if (product.installation_notes) referenceLines.push(`Installation notes: ${product.installation_notes}.`);
+    const files = (match.files || []).slice(0, 5).map(file => [file.path, file.name].map(text).filter(Boolean).join(' / ') || text(file.web_view_link)).filter(Boolean);
+    if (files.length) referenceLines.push(`Google Drive / library references: ${files.join('; ')}.`);
+  } else {
+    referenceLines.push('No matching saved Design AI product record was found. Use the caption as the primary product request and avoid inventing exact dimensions.');
+  }
+
+  const prompt = [
+    'Use the uploaded vehicle photo as the base image.',
+    row.sender_name ? `This request came from ${text(row.sender_name)}.` : '',
+    `Create a realistic customer preview mockup showing ${productName} installed on the vehicle.`,
+    caption && caption !== 'No description' ? `Request details: ${caption}.` : '',
+    'Use the source vehicle image context: keep the original vehicle shape, camera angle, lighting, proportions, background, and license plate unchanged.',
+    ...referenceLines,
+    'Apply CRDN brand direction: clean, practical, premium adventure-van hardware with realistic fitment and material finish.',
+    'Make it look like a real installed product, not a fantasy concept.',
+    'Do not change the vehicle body shape. Output should look like a customer preview mockup.'
+  ].filter(Boolean).join(' ');
+
+  return {
+    generated_prompt: prompt,
+    matched_product: match ? {
+      source: match.type,
+      product_id: product.product_id || '',
+      sku: product.sku || '',
+      name: product.name || '',
+      status: product.status || '',
+      score: match.score || 0
+    } : null,
+    product_references: match ? {
+      product,
+      files: (match.files || []).slice(0, 6)
+    } : null
+  };
+}
+
+function telegramMockupResponseRow(row) {
+  return row ? { ...row, ...telegramMockupGeneratedPrompt(row) } : null;
+}
+
 async function telegramFilePath(fileId) {
   const token = text(process.env.TELEGRAM_BOT_TOKEN);
   if (!token || !fileId) return '';
@@ -2898,13 +3083,14 @@ app.get('/api/telegram/mockup-requests', requireAuth, (req, res) => {
     ORDER BY created_at DESC, id DESC
     LIMIT 100
   `).all();
+  const requests = rows.map(telegramMockupResponseRow);
   const designers = db.prepare(`
     SELECT id, display_name, role
     FROM users
     WHERE role IN ('admin','member')
     ORDER BY display_name COLLATE NOCASE, id
   `).all();
-  res.json({ requests: rows, designers });
+  res.json({ requests, designers });
 });
 
 app.patch('/api/telegram/mockup-requests/:id', requireAuth, (req, res) => {
@@ -2964,7 +3150,7 @@ app.patch('/api/telegram/mockup-requests/:id', requireAuth, (req, res) => {
   `).run(...values, id);
   if (!result.changes) return res.status(404).json({ error: 'Mockup request not found.' });
   const row = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
-  res.json({ request: row });
+  res.json({ request: telegramMockupResponseRow(row) });
 });
 
 app.get('/api/telegram/mockup-requests/:id/image', requireAuth, async (req, res) => {
@@ -3061,7 +3247,7 @@ app.post('/api/telegram/mockup-requests/:id/result-image', requireAuth, express.
     WHERE id=?
   `).run(filename, id);
   const row = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
-  res.json({ request: row });
+  res.json({ request: telegramMockupResponseRow(row) });
 });
 
 app.post('/api/telegram/mockup-requests/:id/send-result', requireAuth, async (req, res) => {
@@ -3080,7 +3266,7 @@ app.post('/api/telegram/mockup-requests/:id/send-result', requireAuth, async (re
       WHERE id=?
     `).run(id);
     const updated = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
-    res.json({ request: updated });
+    res.json({ request: telegramMockupResponseRow(updated) });
   } catch (err) {
     res.status(err.status || 502).json({ error: err.message || 'Could not send result to Telegram.' });
   }

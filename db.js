@@ -534,6 +534,9 @@ function migrate() {
       file_path TEXT,
       assigned_designer_user_id INTEGER,
       assigned_designer_name TEXT,
+      result_image_path TEXT,
+      result_uploaded_at DATETIME,
+      result_sent_to_telegram_at DATETIME,
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -572,6 +575,9 @@ function migrate() {
   addColumn('consultation_items', 'slug', 'TEXT');
   addColumn('telegram_mockup_requests', 'assigned_designer_user_id', 'INTEGER');
   addColumn('telegram_mockup_requests', 'assigned_designer_name', 'TEXT');
+  addColumn('telegram_mockup_requests', 'result_image_path', 'TEXT');
+  addColumn('telegram_mockup_requests', 'result_uploaded_at', 'DATETIME');
+  addColumn('telegram_mockup_requests', 'result_sent_to_telegram_at', 'DATETIME');
 
   const setIcon = db.prepare("UPDATE consultation_categories SET icon=? WHERE name=? AND (icon IS NULL OR icon='')");
   DEFAULT_CATEGORIES.forEach(name => setIcon.run(categoryIcon(name), name));

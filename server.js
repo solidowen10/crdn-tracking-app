@@ -1,5 +1,6 @@
 require('dotenv').config();
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const axios = require('axios');
 const express = require('express');
@@ -44,6 +45,12 @@ const allowedLineIds = new Set((process.env.ALLOWED_LINE_IDS || '').split(',').m
 const PART_STATUSES = ['Not Needed', 'Need to Order', 'Ordered', 'Arrived', 'Installed', 'Backordered', 'Cancelled'];
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const TELEGRAM_MOCKUP_STATUSES = new Set(['pending', 'in_progress', 'done', 'cancelled']);
+const MOCKUP_RESULT_DIR = path.join(__dirname, 'data', 'mockup-results');
+const MOCKUP_IMAGE_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+};
 
 function slugify(value){return String(value||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'item';}
 
@@ -2797,6 +2804,27 @@ function telegramFileUrl(filePath) {
   return `https://api.telegram.org/file/bot${token}/${cleanPath.split('/').map(encodeURIComponent).join('/')}`;
 }
 
+function ensureMockupResultDir() {
+  fs.mkdirSync(MOCKUP_RESULT_DIR, { recursive: true });
+}
+
+function mockupResultFilename(value) {
+  const filename = path.basename(text(value));
+  return filename && /^[a-zA-Z0-9._-]+$/.test(filename) ? filename : '';
+}
+
+function mockupResultPath(value) {
+  const filename = mockupResultFilename(value);
+  return filename ? path.join(MOCKUP_RESULT_DIR, filename) : '';
+}
+
+function mockupImageType(filename) {
+  const ext = path.extname(text(filename)).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
 async function sendTelegramMessage(chatId, reply) {
   const token = text(process.env.TELEGRAM_BOT_TOKEN);
   if (!token || !reply) {
@@ -2815,6 +2843,35 @@ async function sendTelegramMessage(chatId, reply) {
     console.warn('Telegram sendMessage failed:', err.message || err);
     return false;
   }
+}
+
+async function sendTelegramPhoto(chatId, filename, caption) {
+  const token = text(process.env.TELEGRAM_BOT_TOKEN);
+  const cleanChatId = text(chatId);
+  const resultPath = mockupResultPath(filename);
+  if (!token) throw Object.assign(new Error('Telegram bot token is not configured.'), { status: 500 });
+  if (!cleanChatId) throw Object.assign(new Error('Telegram chat ID is missing.'), { status: 400 });
+  if (!resultPath || !fs.existsSync(resultPath)) throw Object.assign(new Error('Result image is missing.'), { status: 400 });
+
+  const buffer = fs.readFileSync(resultPath);
+  const form = new FormData();
+  form.append('chat_id', cleanChatId);
+  form.append('caption', caption);
+  form.append('photo', new Blob([buffer], { type: mockupImageType(filename) }), path.basename(resultPath));
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    method: 'POST',
+    body: form
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw Object.assign(new Error(`Telegram sendPhoto failed: ${body}`), { status: 502 });
+  }
+  const data = await response.json().catch(() => ({}));
+  if (data && data.ok === false) {
+    throw Object.assign(new Error(`Telegram sendPhoto failed: ${data.description || 'Unknown error'}`), { status: 502 });
+  }
+  return data;
 }
 
 function saveTelegramMockupRequest({ chatId, messageId, senderName, caption, fileId, filePath }) {
@@ -2841,7 +2898,13 @@ app.get('/api/telegram/mockup-requests', requireAuth, (req, res) => {
     ORDER BY created_at DESC, id DESC
     LIMIT 100
   `).all();
-  res.json({ requests: rows });
+  const designers = db.prepare(`
+    SELECT id, display_name, role
+    FROM users
+    WHERE role IN ('admin','member')
+    ORDER BY display_name COLLATE NOCASE, id
+  `).all();
+  res.json({ requests: rows, designers });
 });
 
 app.patch('/api/telegram/mockup-requests/:id', requireAuth, (req, res) => {
@@ -2927,10 +2990,99 @@ app.get('/api/telegram/mockup-requests/:id/image', requireAuth, async (req, res)
     const buffer = Buffer.from(await response.arrayBuffer());
     res.setHeader('Content-Type', type);
     res.setHeader('Cache-Control', 'private, max-age=300');
+    if (req.query.download === '1') {
+      const ext = type.includes('png') ? 'png' : type.includes('webp') ? 'webp' : 'jpg';
+      res.setHeader('Content-Disposition', `attachment; filename="mockup-request-${id}-source.${ext}"`);
+    }
     return res.send(buffer);
   } catch (err) {
     console.warn('Telegram image proxy failed:', err.message || err);
     return res.status(502).send('Telegram image fetch failed');
+  }
+});
+
+app.get('/api/telegram/mockup-requests/:id/result-image', requireAuth, (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT id, result_image_path FROM telegram_mockup_requests WHERE id=?').get(id);
+  const resultPath = row ? mockupResultPath(row.result_image_path) : '';
+  if (!row || !resultPath || !fs.existsSync(resultPath)) return res.status(404).send('Result image not found');
+
+  res.setHeader('Content-Type', mockupImageType(row.result_image_path));
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  if (req.query.download === '1') {
+    res.setHeader('Content-Disposition', `attachment; filename="mockup-request-${id}-result${path.extname(resultPath) || '.jpg'}"`);
+  }
+  return res.sendFile(resultPath);
+});
+
+app.post('/api/telegram/mockup-requests/:id/result-image', requireAuth, express.text({ type: 'text/plain', limit: '12mb' }), (req, res) => {
+  const id = Number(req.params.id);
+  const current = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
+  if (!current) return res.status(404).json({ error: 'Mockup request not found.' });
+
+  let payload = {};
+  try {
+    payload = JSON.parse(String(req.body || '{}'));
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid upload payload.' });
+  }
+
+  const mime = text(payload.type).toLowerCase();
+  const ext = MOCKUP_IMAGE_TYPES[mime];
+  const base64 = text(payload.data).replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '');
+  if (!ext || !base64) return res.status(400).json({ error: 'Upload a JPG, PNG, or WebP image.' });
+
+  let buffer;
+  try {
+    buffer = Buffer.from(base64, 'base64');
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid image data.' });
+  }
+  if (!buffer.length || buffer.length > 8 * 1024 * 1024) {
+    return res.status(400).json({ error: 'Result image must be 8MB or smaller.' });
+  }
+
+  ensureMockupResultDir();
+  const filename = `mockup-result-${id}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  fs.writeFileSync(path.join(MOCKUP_RESULT_DIR, filename), buffer);
+
+  const previousPath = mockupResultPath(current.result_image_path);
+  if (previousPath && previousPath !== path.join(MOCKUP_RESULT_DIR, filename) && fs.existsSync(previousPath)) {
+    try { fs.unlinkSync(previousPath); } catch (err) { console.warn('Previous mockup result cleanup failed:', err.message || err); }
+  }
+
+  db.prepare(`
+    UPDATE telegram_mockup_requests
+    SET result_image_path=?,
+        result_uploaded_at=CURRENT_TIMESTAMP,
+        result_sent_to_telegram_at=NULL,
+        status='done',
+        updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(filename, id);
+  const row = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
+  res.json({ request: row });
+});
+
+app.post('/api/telegram/mockup-requests/:id/send-result', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
+  if (!row) return res.status(404).json({ error: 'Mockup request not found.' });
+  if (!row.result_image_path) return res.status(400).json({ error: 'Upload a result image first.' });
+
+  try {
+    await sendTelegramPhoto(row.chat_id, row.result_image_path, `Mockup request #${row.id} completed.`);
+    db.prepare(`
+      UPDATE telegram_mockup_requests
+      SET status='done',
+          result_sent_to_telegram_at=CURRENT_TIMESTAMP,
+          updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(id);
+    const updated = db.prepare('SELECT * FROM telegram_mockup_requests WHERE id=?').get(id);
+    res.json({ request: updated });
+  } catch (err) {
+    res.status(err.status || 502).json({ error: err.message || 'Could not send result to Telegram.' });
   }
 });
 

@@ -496,10 +496,13 @@ function designLibraryFiles(folderType = 'all') {
 }
 
 const DESIGN_AI_VEHICLE_FIELDS = [
-  'brand', 'model', 'year_range', 'unit', 'interior_length_mm', 'interior_width_mm', 'interior_height_mm',
+  'brand', 'make', 'model', 'generation', 'market', 'body_type', 'year_range', 'unit',
+  'overall_length_mm', 'overall_width_mm', 'overall_height_mm', 'wheelbase_mm',
+  'interior_length_mm', 'interior_width_mm', 'interior_height_mm',
+  'side_door_width_mm', 'side_door_height_mm',
   'rear_window_width_mm', 'rear_window_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
   'wheel_arch_width_mm', 'wheel_arch_height_mm', 'wheel_arch_position_x_mm', 'wheel_arch_position_y_mm',
-  'floor_plan_notes', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
+  'payload_kg', 'floor_plan_notes', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
 ];
 const DESIGN_AI_PRODUCT_FIELDS = [
   'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
@@ -517,10 +520,12 @@ const DESIGN_AI_WORKSPACE_FIELDS = [
   'mockup_files_json', 'status'
 ];
 const DESIGN_AI_NUMBER_FIELDS = new Set([
-  'interior_length_mm', 'interior_width_mm', 'interior_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
+  'overall_length_mm', 'overall_width_mm', 'overall_height_mm', 'wheelbase_mm',
+  'interior_length_mm', 'interior_width_mm', 'interior_height_mm',
+  'side_door_width_mm', 'side_door_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
   'rear_window_width_mm', 'rear_window_height_mm', 'wheel_arch_width_mm', 'wheel_arch_height_mm',
   'wheel_arch_position_x_mm', 'wheel_arch_position_y_mm', 'width_mm', 'depth_mm', 'height_mm',
-  'weight_kg', 'install_minutes', 'price'
+  'payload_kg', 'weight_kg', 'install_minutes', 'price'
 ]);
 const DESIGN_AI_JSON_FIELDS = new Set([
   'compatible_vehicles_json', 'reference_files_json', 'source_summary_json', 'colors_json',

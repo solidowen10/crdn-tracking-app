@@ -411,12 +411,22 @@ function migrate() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       vehicle_id TEXT UNIQUE NOT NULL,
       brand TEXT,
+      make TEXT,
       model TEXT,
+      generation TEXT,
+      market TEXT,
+      body_type TEXT,
       year_range TEXT,
       unit TEXT DEFAULT 'mm',
+      overall_length_mm REAL,
+      overall_width_mm REAL,
+      overall_height_mm REAL,
+      wheelbase_mm REAL,
       interior_length_mm REAL,
       interior_width_mm REAL,
       interior_height_mm REAL,
+      side_door_width_mm REAL,
+      side_door_height_mm REAL,
       rear_window_width_mm REAL,
       rear_window_height_mm REAL,
       rear_door_width_mm REAL,
@@ -425,6 +435,7 @@ function migrate() {
       wheel_arch_height_mm REAL,
       wheel_arch_position_x_mm REAL,
       wheel_arch_position_y_mm REAL,
+      payload_kg REAL,
       floor_plan_notes TEXT,
       reference_files_json TEXT,
       source_drive_folder_id TEXT,
@@ -560,6 +571,17 @@ function migrate() {
   addColumn('design_library_files', 'path', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'parent_drive_file_id', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'is_folder', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn('design_ai_vehicle_records', 'make', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'generation', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'market', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'body_type', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'overall_length_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'overall_width_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'overall_height_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'wheelbase_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'side_door_width_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'side_door_height_mm', 'REAL');
+  addColumn('design_ai_vehicle_records', 'payload_kg', 'REAL');
   addColumn('design_ai_vehicle_records', 'rear_window_width_mm', 'REAL');
   addColumn('design_ai_vehicle_records', 'rear_window_height_mm', 'REAL');
   addColumn('design_ai_vehicle_records', 'wheel_arch_position_x_mm', 'REAL');

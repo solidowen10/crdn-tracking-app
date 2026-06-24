@@ -2303,11 +2303,13 @@ const DESIGN_AI_SETTING_FIELDS=[
   ['templates_folder_id','Templates Folder ID']
 ];
 const DESIGN_AI_VEHICLE_RECORD_FIELDS=[
-  ['brand','Brand'],['model','Model'],['year_range','Year Range'],['interior_length_mm','Interior Length mm'],
-  ['interior_width_mm','Interior Width mm'],['interior_height_mm','Interior Height mm'],['rear_window_width_mm','Rear Window Width mm'],
+  ['brand','Brand'],['make','Make'],['model','Model'],['generation','Generation'],['market','Market'],['body_type','Body Type'],['year_range','Year Range'],
+  ['overall_length_mm','Overall Length mm'],['overall_width_mm','Overall Width mm'],['overall_height_mm','Overall Height mm'],['wheelbase_mm','Wheelbase mm'],
+  ['interior_length_mm','Interior Length mm'],['interior_width_mm','Interior Width mm'],['interior_height_mm','Interior Height mm'],
+  ['side_door_width_mm','Side Door Width mm'],['side_door_height_mm','Side Door Height mm'],['rear_window_width_mm','Rear Window Width mm'],
   ['rear_window_height_mm','Rear Window Height mm'],['rear_door_width_mm','Rear Door Width mm'],['rear_door_height_mm','Rear Door Height mm'],
   ['wheel_arch_width_mm','Wheel Arch Width mm'],['wheel_arch_height_mm','Wheel Arch Height mm'],['wheel_arch_position_x_mm','Wheel Arch Position X mm'],
-  ['wheel_arch_position_y_mm','Wheel Arch Position Y mm'],['floor_plan_notes','Floor Plan Notes'],['reference_files_json','Reference Files'],['status','Status']
+  ['wheel_arch_position_y_mm','Wheel Arch Position Y mm'],['payload_kg','Payload kg'],['floor_plan_notes','Floor Plan Notes'],['reference_files_json','Reference Files'],['status','Status']
 ];
 const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
   ['sku','SKU'],['name','Name'],['category','Category'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
@@ -2591,9 +2593,26 @@ function designAiFieldValue(value){
   if(value===undefined||value===null)return '';
   return String(value);
 }
+function designAiConfidenceValue(confidence,field){
+  if(!confidence||confidence[field]===undefined||confidence[field]===null||confidence[field]==='')return '';
+  const raw=confidence[field];
+  const upper=String(raw).trim().toUpperCase();
+  if(['HIGH','MEDIUM','LOW'].includes(upper))return upper;
+  const num=Number(raw);
+  if(Number.isFinite(num))return `${Math.round(num*100)}%`;
+  return String(raw);
+}
+function designAiConfidencePill(value){
+  const label=String(value||'').trim();
+  if(!label)return '<span class="dai-pill">—</span>';
+  const upper=label.toUpperCase();
+  const cls=upper==='HIGH'?'done':upper==='LOW'?'error':'work';
+  return `<span class="dai-pill ${cls}">${esc(label)}</span>`;
+}
 function designAiFieldInput(prefix,field,label,value,confidence){
   const id=`${prefix}${field}`;
-  const conf=confidence&&confidence[field]!==undefined?` · confidence ${Math.round(Number(confidence[field]||0)*100)}%`:'';
+  const confValue=designAiConfidenceValue(confidence,field);
+  const conf=confValue?` · confidence ${confValue}`:'';
   if(field==='status'){
     return `<div class="dai-field"><label>${esc(label)}${esc(conf)}</label><select id="${esc(id)}">${DESIGN_AI_RECORD_STATUSES.map(s=>`<option value="${s}" ${String(value||'draft')===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   }
@@ -2628,6 +2647,47 @@ function designAiSourceFilesHtml(files=[]){
     <div>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
   </div>`).join('')}</div>`;
 }
+function designAiSourceTraceHtml(fields,extracted={},confidence={}){
+  const sources=extracted._field_sources||{};
+  const rows=fields
+    .filter(([field])=>!['status','reference_files_json'].includes(field))
+    .map(([field,label])=>{
+      const source=sources[field]||{};
+      const value=extracted[field];
+      const display=value===undefined||value===null||value===''?'—':designAiFieldValue(value);
+      const conf=source.confidence||designAiConfidenceValue(confidence,field);
+      return `<tr>
+        <td><strong>${esc(label)}</strong><div class="pc-s">${esc(field)}</div></td>
+        <td>${esc(display)}</td>
+        <td>${designAiConfidencePill(conf)}</td>
+        <td>${esc(source.source_file||'—')}</td>
+        <td>${esc(source.original_source_field||'—')}</td>
+      </tr>`;
+    }).join('');
+  return `<div class="dai-table-wrap"><table class="dai-table" style="min-width:760px">
+    <thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Source File</th><th>Original Field</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+function designAiUnmappedSourceHtml(items=[]){
+  if(!items.length)return '<div class="dai-empty" style="padding:12px">No unmapped source values found.</div>';
+  const rows=items.slice(0,80).map(item=>`<tr>
+    <td>${esc(item.source_field||'—')}</td>
+    <td>${esc(designAiFieldValue(item.value))}</td>
+    <td>${esc(item.source_file||'—')}</td>
+  </tr>`).join('');
+  return `<div class="dai-table-wrap"><table class="dai-table" style="min-width:560px">
+    <thead><tr><th>Source Field</th><th>Value</th><th>Source File</th></tr></thead><tbody>${rows}</tbody>
+  </table></div>`;
+}
+function designAiMeasurementRequiredHtml(items=[]){
+  if(!items.length)return '<div class="dai-empty" style="padding:12px">No required physical measurements flagged.</div>';
+  return `<div class="dai-list">${items.map(item=>`<div class="dai-row">
+    <div><strong>${esc(item.label||item.field||'Measurement')}</strong><div class="pc-s">${esc(item.field||'')}</div></div>
+    <div>${designAiConfidencePill('LOW')}</div>
+    <div style="font-size:var(--xxs);color:var(--g500)">${esc(item.status||'Physical measurement required')}</div>
+  </div>`).join('')}</div>`;
+}
 async function renderDesignAiExtraction(id){
   designAiLoading('Extraction Review');
   try{
@@ -2642,6 +2702,7 @@ async function renderDesignAiExtraction(id){
       `${warnings.length?`<div class="dai-warning"><strong>Partial extraction:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
       <div class="dai-result-grid">
         <div>
+          <div class="dai-panel"><div class="dai-panel-title">Field Source Traceability</div>${designAiSourceTraceHtml(fields,extracted,draft.confidence||{})}</div>
           <div class="dai-panel"><div class="dai-panel-title">Editable Extracted Fields</div>
             <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,extracted[field],draft.confidence||{})).join('')}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
@@ -2653,6 +2714,8 @@ async function renderDesignAiExtraction(id){
         </div>
         <div>
           <div class="dai-panel"><div class="dai-panel-title">Source Files Used</div>${designAiSourceFilesHtml(draft.source_files||[])}</div>
+          <div class="dai-panel"><div class="dai-panel-title">Physical Measurement Required</div>${designAiMeasurementRequiredHtml(extracted._measurement_required||[])}</div>
+          <div class="dai-panel"><div class="dai-panel-title">Unmapped Source Data</div>${designAiUnmappedSourceHtml(extracted._unmapped_source_data||[])}</div>
           <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
         </div>
       </div>

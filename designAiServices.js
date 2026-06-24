@@ -7,8 +7,8 @@ const DRIVE_LIST_MAX_DEPTH = 5;
 const TEXT_FILE_EXTENSIONS = new Set(['.json', '.csv', '.txt', '.md', '.svg']);
 const EXTRACTION_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.json', '.csv', '.svg']);
 const BINARY_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg']);
-const VEHICLE_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.svg']);
-const PRODUCT_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md']);
+const VEHICLE_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.json', '.csv', '.svg']);
+const PRODUCT_EVIDENCE_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.txt', '.md', '.json', '.csv']);
 const REFERENCE_FILE_EXTENSIONS = new Set(['.glb', '.obj', '.fbx', '.step', '.ply', '.e57']);
 const DIMENSION_LIKE_NAME_PARTS = ['dimension', 'size', 'measurement', 'install', 'spec', 'drawing', 'floorplan', 'layout', 'scan'];
 const MAX_TEXT_FILE_BYTES = Number(process.env.DESIGN_AI_FILE_CONTENT_MAX_BYTES || 48 * 1024);
@@ -29,6 +29,79 @@ const REQUIRED_MISSING_DATA = [
 ];
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DESIGN_AI_LOG_PREFIX = '[design-ai]';
+const VEHICLE_METADATA_FIELDS = new Set([
+  'brand', 'make', 'model', 'generation', 'market', 'body_type', 'year_range', 'notes'
+]);
+const VEHICLE_NUMERIC_FIELDS = new Set([
+  'overall_length_mm', 'overall_width_mm', 'overall_height_mm', 'wheelbase_mm',
+  'interior_length_mm', 'interior_width_mm', 'interior_height_mm',
+  'side_door_width_mm', 'side_door_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
+  'rear_window_width_mm', 'rear_window_height_mm',
+  'wheel_arch_width_mm', 'wheel_arch_height_mm', 'wheel_arch_position_x_mm', 'wheel_arch_position_y_mm',
+  'payload_kg'
+]);
+const VEHICLE_PHYSICAL_MEASUREMENT_FIELDS = [
+  'wheel_arch_width_mm',
+  'wheel_arch_height_mm',
+  'rear_window_width_mm',
+  'rear_window_height_mm',
+  'mounting_point_locations'
+];
+const VEHICLE_FIELD_ALIASES = {
+  brand: ['brand', 'make', 'manufacturer', 'marque'],
+  make: ['make', 'brand', 'manufacturer', 'marque'],
+  model: ['model', 'vehicle_model', 'model_name'],
+  generation: ['generation', 'gen', 'model_generation', 'series'],
+  market: ['market', 'region', 'country', 'market_region'],
+  body_type: ['body_type', 'body style', 'body_style', 'vehicle_type', 'van_type'],
+  year_range: ['year_range', 'model_years', 'production_years', 'years', 'year'],
+  overall_length_mm: ['overall_length_mm', 'exterior_length_mm', 'vehicle_length_mm', 'length_mm', 'overall length', 'exterior length'],
+  overall_width_mm: ['overall_width_mm', 'exterior_width_mm', 'vehicle_width_mm', 'width_mm', 'overall width', 'exterior width'],
+  overall_height_mm: ['overall_height_mm', 'exterior_height_mm', 'vehicle_height_mm', 'height_mm', 'overall height', 'exterior height'],
+  wheelbase_mm: ['wheelbase_mm', 'wheel_base_mm', 'wheelbase', 'wheel base'],
+  interior_length_mm: [
+    'interior_length_mm', 'cargo_length_mm', 'load_length_mm', 'luggage_length_mm',
+    'max_cargo_length_mm', 'max_cargo_length_2_seat_mm', 'maximum_cargo_length_mm',
+    'cargo floor length', 'cargo length', 'load length', 'luggage length'
+  ],
+  interior_width_mm: [
+    'interior_width_mm', 'cargo_width_mm', 'load_width_mm', 'luggage_width_mm',
+    'max_cargo_width_mm', 'maximum_cargo_width_mm', 'cargo width', 'load width', 'luggage width'
+  ],
+  interior_height_mm: [
+    'interior_height_mm', 'cargo_height_mm', 'load_height_mm', 'luggage_height_mm',
+    'max_cargo_height_mm', 'cargo height', 'load height', 'luggage height'
+  ],
+  side_door_width_mm: [
+    'side_door_width_mm', 'side_door_opening_width_mm', 'side_sliding_door_opening_width_mm',
+    'sliding_door_opening_width_mm', 'side sliding door opening width', 'side door opening width'
+  ],
+  side_door_height_mm: [
+    'side_door_height_mm', 'side_door_opening_height_mm', 'side_sliding_door_opening_height_mm',
+    'sliding_door_opening_height_mm', 'side sliding door opening height', 'side door opening height'
+  ],
+  rear_door_width_mm: [
+    'rear_door_width_mm', 'rear_door_opening_width_mm', 'back_door_opening_width_mm',
+    'tailgate_opening_width_mm', 'rear door opening width'
+  ],
+  rear_door_height_mm: [
+    'rear_door_height_mm', 'rear_door_opening_height_mm', 'back_door_opening_height_mm',
+    'tailgate_opening_height_mm', 'rear door opening height'
+  ],
+  rear_window_width_mm: ['rear_window_width_mm', 'back_window_width_mm', 'tailgate_window_width_mm', 'rear window width'],
+  rear_window_height_mm: ['rear_window_height_mm', 'back_window_height_mm', 'tailgate_window_height_mm', 'rear window height'],
+  wheel_arch_width_mm: ['wheel_arch_width_mm', 'wheel_well_width_mm', 'wheelhouse_width_mm', 'wheel arch width'],
+  wheel_arch_height_mm: ['wheel_arch_height_mm', 'wheel_well_height_mm', 'wheelhouse_height_mm', 'wheel arch height'],
+  wheel_arch_position_x_mm: ['wheel_arch_position_x_mm', 'wheel_arch_x_mm', 'wheelhouse_position_x_mm'],
+  wheel_arch_position_y_mm: ['wheel_arch_position_y_mm', 'wheel_arch_y_mm', 'wheelhouse_position_y_mm'],
+  payload_kg: ['payload_kg', 'payload', 'max_payload_kg', 'maximum_payload_kg', 'cargo_payload_kg']
+};
+const VEHICLE_ALIAS_LOOKUP = Object.entries(VEHICLE_FIELD_ALIASES).reduce((acc, [field, aliases]) => {
+  aliases.forEach(alias => {
+    acc[normalizeSourceFieldName(alias)] = field;
+  });
+  return acc;
+}, {});
 
 function clean(value) {
   return value === undefined || value === null ? '' : String(value).trim();
@@ -47,6 +120,44 @@ function labelFromKey(key) {
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function normalizeSourceFieldName(value) {
+  return clean(value)
+    .toLowerCase()
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(mm|millimeters?|kg|kilograms?|m|meters?|litres?|liters?|l)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function sourceFieldSegments(sourceField) {
+  return clean(sourceField)
+    .split(/[./>]+/)
+    .map(segment => segment.replace(/\[[^\]]*\]/g, ''))
+    .map(normalizeSourceFieldName)
+    .filter(Boolean);
+}
+
+function vehicleFieldMatch(sourceField) {
+  const segments = sourceFieldSegments(sourceField);
+  const candidates = [
+    normalizeSourceFieldName(sourceField),
+    ...segments,
+    segments.slice(-2).join('_'),
+    segments.slice(-3).join('_')
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (VEHICLE_NUMERIC_FIELDS.has(candidate) || VEHICLE_METADATA_FIELDS.has(candidate)) {
+      return { field: candidate, confidence: 'HIGH', match_type: 'direct' };
+    }
+  }
+  for (const candidate of candidates) {
+    const field = VEHICLE_ALIAS_LOOKUP[candidate];
+    if (field) return { field, confidence: 'MEDIUM', match_type: 'alias' };
+  }
+  return null;
 }
 
 function fileExtension(name) {
@@ -620,24 +731,331 @@ async function buildLibraryPromptContext(request, files) {
   };
 }
 
+function isScalarSourceValue(value) {
+  return value !== undefined && value !== null && ['string', 'number', 'boolean'].includes(typeof value);
+}
+
+function compactSourceValue(value) {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  return clean(value).replace(/\s+/g, ' ').slice(0, 240);
+}
+
+function extractNumberValue(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const raw = clean(value).replace(/,/g, '');
+  if (!raw) return null;
+  const match = raw.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  if (!Number.isFinite(parsed)) return null;
+  if (/\bcm\b/i.test(raw)) return parsed * 10;
+  if (/\bm\b/i.test(raw) && !/\bmm\b/i.test(raw) && Math.abs(parsed) < 100) return parsed * 1000;
+  return parsed;
+}
+
+function normalizeVehicleValue(field, value) {
+  if (VEHICLE_NUMERIC_FIELDS.has(field)) return extractNumberValue(value);
+  const out = compactSourceValue(value);
+  return out === '' ? null : out;
+}
+
+function addSourceCandidate(candidates, candidate) {
+  if (!candidate || !clean(candidate.source_field) || !isScalarSourceValue(candidate.value)) return;
+  const value = compactSourceValue(candidate.value);
+  if (value === '') return;
+  candidates.push({
+    source_file: clean(candidate.source_file),
+    source_field: clean(candidate.source_field),
+    value,
+    parser: clean(candidate.parser)
+  });
+}
+
+function flattenJsonSource(value, sourceFile, path = [], candidates = []) {
+  const root = clean(path[0]);
+  if (['field_confidence', 'source_evidence', '_field_sources', '_unmapped_source_data', '_measurement_required', '_content_warnings'].includes(root)) {
+    return candidates;
+  }
+  if (isScalarSourceValue(value)) {
+    addSourceCandidate(candidates, {
+      source_file: sourceFile,
+      source_field: path.join('.'),
+      value,
+      parser: 'json'
+    });
+    return candidates;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => flattenJsonSource(item, sourceFile, [...path, `[${index}]`], candidates));
+    return candidates;
+  }
+  if (value && typeof value === 'object') {
+    Object.entries(value).forEach(([key, item]) => flattenJsonSource(item, sourceFile, [...path, key], candidates));
+  }
+  return candidates;
+}
+
+function parseCsvRows(input) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  const raw = String(input || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    const next = raw[index + 1];
+    if (quoted) {
+      if (char === '"' && next === '"') {
+        cell += '"';
+        index += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      row.push(clean(cell));
+      cell = '';
+    } else if (char === '\n') {
+      row.push(clean(cell));
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += char;
+    }
+  }
+  row.push(clean(cell));
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+}
+
+function csvColumnIndex(headers, names) {
+  const normalizedNames = names.map(normalizeSourceFieldName);
+  return headers.findIndex(header => normalizedNames.includes(normalizeSourceFieldName(header)));
+}
+
+function csvCandidates(content, sourceFile) {
+  const rows = parseCsvRows(content);
+  const candidates = [];
+  if (!rows.length) return candidates;
+  const headers = rows[0] || [];
+  const valueRows = rows.slice(1, 20);
+  const labelColumn = csvColumnIndex(headers, ['field', 'key', 'dimension', 'measurement', 'spec', 'item', 'name']);
+  const valueColumn = csvColumnIndex(headers, ['value', 'mm', 'dimension_mm', 'measurement_mm', 'size', 'specification']);
+  const hasDimensionTable = labelColumn >= 0 && valueColumn >= 0 && labelColumn !== valueColumn;
+  valueRows.forEach((row, index) => {
+    if (row.length >= 2) {
+      addSourceCandidate(candidates, {
+        source_file: sourceFile,
+        source_field: row[0],
+        value: row[1],
+        parser: `csv_row_${index + 2}`
+      });
+    }
+  });
+  if (!hasDimensionTable) {
+    valueRows.forEach((row, rowIndex) => {
+      headers.forEach((header, colIndex) => {
+        if (!clean(header) || row[colIndex] === undefined || row[colIndex] === '') return;
+        addSourceCandidate(candidates, {
+          source_file: sourceFile,
+          source_field: header,
+          value: row[colIndex],
+          parser: `csv_column_${rowIndex + 2}`
+        });
+      });
+    });
+  }
+  if (hasDimensionTable) {
+    valueRows.forEach((row, rowIndex) => {
+      addSourceCandidate(candidates, {
+        source_file: sourceFile,
+        source_field: row[labelColumn],
+        value: row[valueColumn],
+        parser: `csv_dimension_table_${rowIndex + 2}`
+      });
+    });
+  }
+  return candidates;
+}
+
+function textCandidates(content, sourceFile, parser = 'text') {
+  const candidates = [];
+  String(content || '').split(/\n/).slice(0, 800).forEach((line, index) => {
+    const trimmed = clean(line.replace(/<[^>]+>/g, ' '));
+    if (!trimmed || trimmed.length > 260) return;
+    let match = trimmed.match(/^([A-Za-z0-9][A-Za-z0-9 _./()%-]{2,90})\s*[:=]\s*(.+)$/);
+    if (!match) match = trimmed.match(/^([A-Za-z0-9][A-Za-z0-9 _./()%-]{2,90})\s{2,}(.+)$/);
+    if (!match) match = trimmed.match(/^([A-Za-z][A-Za-z _./()%-]{2,80})\s+(-?\d[\d,.]*(?:\s*(?:mm|cm|m|kg|l))?)$/i);
+    if (!match) return;
+    addSourceCandidate(candidates, {
+      source_file: sourceFile,
+      source_field: match[1],
+      value: match[2],
+      parser: `${parser}_line_${index + 1}`
+    });
+  });
+  return candidates;
+}
+
+function sourceCandidatesFromReadableFile(file) {
+  const sourceFile = clean(file.path || file.name || 'readable content');
+  const extension = fileExtension(file.name || file.path);
+  const content = file.content || '';
+  if (extension === '.json') {
+    try {
+      return flattenJsonSource(JSON.parse(content), sourceFile);
+    } catch (err) {
+      return textCandidates(content, sourceFile, 'json_text');
+    }
+  }
+  if (extension === '.csv') return csvCandidates(content, sourceFile);
+  if (extension === '.svg') return textCandidates(content, sourceFile, 'svg_text');
+  return textCandidates(content, sourceFile);
+}
+
+function dedupeSourceCandidates(candidates, limit = 160) {
+  const seen = new Set();
+  const out = [];
+  for (const candidate of candidates) {
+    const key = `${candidate.source_file}|${candidate.source_field}|${candidate.value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(candidate);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function discoveredSourceCandidates(parsed, evidence) {
+  const candidates = [];
+  (evidence?.readable_file_contents || []).forEach(file => {
+    candidates.push(...sourceCandidatesFromReadableFile(file));
+  });
+  if (parsed && typeof parsed === 'object') {
+    candidates.push(...flattenJsonSource(parsed, 'OpenAI response'));
+  }
+  return dedupeSourceCandidates(candidates);
+}
+
+function confidenceRank(confidence) {
+  const value = clean(confidence).toUpperCase();
+  if (value === 'HIGH') return 3;
+  if (value === 'MEDIUM') return 2;
+  if (value === 'LOW') return 1;
+  const numeric = Number(confidence);
+  return Number.isFinite(numeric) ? numeric * 3 : 0;
+}
+
+function sourceSummaryForField(candidate, match, value) {
+  return {
+    value,
+    confidence: match.confidence,
+    source_file: candidate.source_file,
+    original_source_field: candidate.source_field,
+    match_type: match.match_type
+  };
+}
+
+function applyVehicleNormalization(entityId, parsed, evidence) {
+  const template = extractionTemplate('vehicle', entityId);
+  const normalized = { ...template };
+  Object.keys(template).forEach(key => {
+    if (key.startsWith('_') || key === 'field_confidence' || key === 'source_evidence') return;
+    if (parsed?.[key] !== undefined && parsed[key] !== null) normalized[key] = parsed[key];
+  });
+  normalized.vehicle_id = clean(normalized.vehicle_id || parsed?.vehicle_id || entityId);
+  const confidence = parsed?.field_confidence && typeof parsed.field_confidence === 'object' ? { ...parsed.field_confidence } : {};
+  const fieldSources = parsed?._field_sources && typeof parsed._field_sources === 'object' ? { ...parsed._field_sources } : {};
+  const unmapped = [];
+  const candidates = discoveredSourceCandidates(parsed, evidence);
+
+  candidates.forEach(candidate => {
+    const match = vehicleFieldMatch(candidate.source_field);
+    if (!match || !Object.prototype.hasOwnProperty.call(template, match.field)) {
+      unmapped.push(candidate);
+      return;
+    }
+    const value = normalizeVehicleValue(match.field, candidate.value);
+    if (value === null || value === '') return;
+    const current = normalized[match.field];
+    const currentRank = confidenceRank(confidence[match.field]);
+    const nextRank = confidenceRank(match.confidence);
+    if (current === null || current === undefined || current === '' || nextRank > currentRank) {
+      normalized[match.field] = value;
+      confidence[match.field] = match.confidence;
+      fieldSources[match.field] = sourceSummaryForField(candidate, match, value);
+    }
+  });
+
+  if (!normalized.brand && normalized.make) normalized.brand = normalized.make;
+  if (!normalized.make && normalized.brand) normalized.make = normalized.brand;
+  ['brand', 'make'].forEach(field => {
+    if (normalized[field] && !confidence[field]) confidence[field] = field === 'brand' && parsed?.brand ? 'HIGH' : 'MEDIUM';
+  });
+
+  normalized.field_confidence = confidence;
+  normalized.source_evidence = Array.isArray(parsed?.source_evidence) ? parsed.source_evidence : [];
+  normalized._field_sources = fieldSources;
+  normalized._unmapped_source_data = dedupeSourceCandidates(unmapped, 80);
+  normalized._measurement_required = VEHICLE_PHYSICAL_MEASUREMENT_FIELDS.filter(field => {
+    if (field === 'mounting_point_locations') return true;
+    const value = normalized[field];
+    return value === null || value === undefined || value === '';
+  }).map(field => ({
+    field,
+    label: labelFromKey(field),
+    status: 'Physical measurement required'
+  }));
+  Object.keys(normalized).forEach(key => {
+    if (Array.isArray(normalized[key]) || normalized[key] === null || typeof normalized[key] === 'object') return;
+    normalized[key] = normalizeExtractionValue(normalized[key]);
+  });
+  return normalized;
+}
+
 function extractionTemplate(entityType, entityId) {
   if (entityType === 'vehicle') {
     return {
       entity_type: 'vehicle',
       vehicle_id: entityId,
       brand: '',
+      make: '',
       model: '',
+      generation: '',
+      market: '',
+      body_type: '',
       year_range: '',
+      overall_length_mm: null,
+      overall_width_mm: null,
+      overall_height_mm: null,
+      wheelbase_mm: null,
       interior_length_mm: null,
       interior_width_mm: null,
       interior_height_mm: null,
+      side_door_width_mm: null,
+      side_door_height_mm: null,
       rear_door_width_mm: null,
       rear_door_height_mm: null,
+      rear_window_width_mm: null,
+      rear_window_height_mm: null,
       wheel_arch_width_mm: null,
       wheel_arch_height_mm: null,
+      wheel_arch_position_x_mm: null,
+      wheel_arch_position_y_mm: null,
+      payload_kg: null,
       notes: '',
       field_confidence: {},
-      source_evidence: []
+      source_evidence: [],
+      _field_sources: {},
+      _unmapped_source_data: [],
+      _measurement_required: []
     };
   }
   return {
@@ -666,7 +1084,8 @@ function normalizeExtractionValue(value) {
   return value;
 }
 
-function normalizeExtractionResult(entityType, entityId, parsed) {
+function normalizeExtractionResult(entityType, entityId, parsed, evidence = null) {
+  if (entityType === 'vehicle') return applyVehicleNormalization(entityId, parsed || {}, evidence || {});
   const template = extractionTemplate(entityType, entityId);
   const normalized = { ...template };
   Object.keys(template).forEach(key => {
@@ -734,14 +1153,18 @@ async function buildExtractionEvidenceContext(files = []) {
 
 function extractionSystemPrompt(entityType) {
   const shape = extractionTemplate(entityType, '');
+  const vehicleGuidance = entityType === 'vehicle'
+    ? 'For vehicle extraction, preserve manufacturer source field names in _field_sources when possible. Map cargo/load/luggage dimensions into interior fields, door opening measurements into side/rear door fields, and keep discovered-but-unmapped values in _unmapped_source_data. Confidence labels must be HIGH for exact field matches, MEDIUM for alias matches, LOW only for clearly inferred values. Do not invent wheel arch, rear window, or mounting point dimensions.'
+    : '';
   return [
     'You are CRDN internal Design AI extraction. Return concise valid JSON only.',
     'Extract structured dimensions and installation/product/vehicle facts from the provided evidence.',
     'Use millimeters for dimensions, kilograms for weight, and null when a value is unknown.',
     'Do not invent exact measurements from photos, PDFs, screenshots, scans, or 3D asset references when the content is not directly readable.',
-    'For each populated field, add field_confidence[field] from 0 to 1 and list source_evidence entries naming the source file.',
+    'For each populated field, add field_confidence[field] and list source_evidence entries naming the source file.',
+    vehicleGuidance,
     `Return this shape for ${entityType}: ${JSON.stringify(shape)}`
-  ].join(' ');
+  ].filter(Boolean).join(' ');
 }
 
 async function extractDesignEntity({ entity_type, entity_id, folder_path, files }) {
@@ -756,8 +1179,8 @@ async function extractDesignEntity({ entity_type, entity_id, folder_path, files 
   const apiKey = clean(process.env.OPENAI_API_KEY);
   const model = clean(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
   if (!apiKey) {
-    const extracted = extractionTemplate(entityType, entityId);
-    extracted.notes = 'OPENAI_API_KEY is not configured. This draft contains source evidence metadata only.';
+    const extracted = normalizeExtractionResult(entityType, entityId, {}, evidence);
+    extracted.notes = extracted.notes || 'OPENAI_API_KEY is not configured. This draft contains source evidence metadata and deterministic field normalization only.';
     extracted.source_evidence = evidence.source_files.map(file => file.path || file.name).filter(Boolean);
     return {
       extracted,
@@ -817,7 +1240,7 @@ async function extractDesignEntity({ entity_type, entity_id, folder_path, files 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   const parsed = parseJsonObject(content);
-  const extracted = normalizeExtractionResult(entityType, entityId, parsed);
+  const extracted = normalizeExtractionResult(entityType, entityId, parsed, evidence);
   designAiLog('extraction response parsed', {
     entity_type: entityType,
     entity_id: entityId,

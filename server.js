@@ -4021,6 +4021,209 @@ app.post('/api/vehicles', requireAuth, (req, res, next) => {
   req.url = '/api/projects';
   next();
 });
+app.get('/api/mcp/health', requireAgentRead, (req, res) => {
+  res.json({
+    ok: true,
+    service: 'CRDN MCP read-only wrapper',
+    version: '0.1.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
+function mcpToolResult(data) {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify(data, null, 2)
+      }
+    ]
+  };
+}
+function mcpToolDefinitions() {
+  return [
+    {
+      name: 'get_crdn_context',
+      description: 'Get CRDN read-only API context and available data categories.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'list_crdn_vehicles',
+      description: 'List safe CRDN vehicle records from the Design AI vehicle database.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'list_crdn_products',
+      description: 'List safe CRDN product records from the Design AI product database.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'list_crdn_mockups',
+      description: 'List safe Telegram mockup request summaries.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'list_crdn_projects',
+      description: 'List safe active CRDN project summaries.',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'get_crdn_project',
+      description: 'Get a safe CRDN project detail summary by project id.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', description: 'CRDN project id' }
+        },
+        required: ['id'],
+        additionalProperties: false
+      }
+    }
+  ];
+}
+function handleMcpToolCall(name, args = {}) {
+  if (name === 'get_crdn_context') {
+    return {
+      app: 'CRDN Tracking App',
+      routes: AGENT_ROUTE_LIST,
+      timestamp: new Date().toISOString(),
+      exposed_data: 'Read-only summaries for Design AI vehicle/product records, Telegram mockup request status summaries, and minimal project planning fields.'
+    };
+  }
+  if (name === 'list_crdn_vehicles') {
+    return {
+      records: db.prepare(`
+        SELECT *
+        FROM design_ai_vehicle_records
+        ORDER BY updated_at DESC, vehicle_id COLLATE NOCASE
+        LIMIT 500
+      `).all().map(agentVehicleRecord)
+    };
+  }
+  if (name === 'list_crdn_products') {
+    return {
+      records: db.prepare(`
+        SELECT *
+        FROM design_ai_product_records
+        ORDER BY updated_at DESC, product_id COLLATE NOCASE
+        LIMIT 500
+      `).all().map(agentProductRecord)
+    };
+  }
+  if (name === 'list_crdn_mockups') {
+    return {
+      requests: db.prepare(`
+        SELECT id, caption, status, assigned_designer_name,
+          result_uploaded_at, result_sent_to_telegram_at, created_at, updated_at
+        FROM telegram_mockup_requests
+        ORDER BY created_at DESC, id DESC
+        LIMIT 200
+      `).all().map(row => ({
+        id: row.id,
+        caption: row.caption || '',
+        status: row.status || 'pending',
+        assigned_designer_name: row.assigned_designer_name || '',
+        result_status: {
+          uploaded: Boolean(row.result_uploaded_at),
+          sent_to_telegram: Boolean(row.result_sent_to_telegram_at),
+          uploaded_at: row.result_uploaded_at || '',
+          sent_to_telegram_at: row.result_sent_to_telegram_at || ''
+        },
+        created_at: row.created_at || '',
+        updated_at: row.updated_at || ''
+      }))
+    };
+  }
+  if (name === 'list_crdn_projects') {
+    return {
+      projects: db.prepare(`
+        SELECT id, job_no, name, stage, designer, priority, progress,
+          start_date, finish_date, updated_at
+        FROM vehicles
+        WHERE archived=0
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 300
+      `).all().map(agentProjectSummary)
+    };
+  }
+  if (name === 'get_crdn_project') {
+    const project = db.prepare(`
+      SELECT id, job_no, name, stage, designer, priority, progress,
+        start_date, finish_date, milestones_json, archived, created_at, updated_at
+      FROM vehicles
+      WHERE id=?
+      LIMIT 1
+    `).get(Number(args.id));
+    const detail = agentProjectDetail(project);
+    if (!detail) {
+      const err = new Error('Project not found.');
+      err.code = -32004;
+      throw err;
+    }
+    return { project: detail };
+  }
+  const err = new Error(`Unknown tool: ${name}`);
+  err.code = -32601;
+  throw err;
+}
+app.post('/api/mcp', requireAgentRead, (req, res) => {
+  const rpc = req.body || {};
+  const id = rpc.id ?? null;
+  try {
+    if (rpc.jsonrpc !== '2.0') {
+      return res.json({ jsonrpc: '2.0', id, error: { code: -32600, message: 'Invalid JSON-RPC request.' } });
+    }
+    if (rpc.method === 'initialize') {
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          protocolVersion: '2024-11-05',
+          capabilities: {
+            tools: {}
+          },
+          serverInfo: {
+            name: 'crdn-readonly-mcp',
+            version: '0.1.0'
+          }
+        }
+      });
+    }
+    if (rpc.method === 'tools/list') {
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          tools: mcpToolDefinitions()
+        }
+      });
+    }
+    if (rpc.method === 'tools/call') {
+      const params = rpc.params || {};
+      const result = handleMcpToolCall(params.name, params.arguments || {});
+      return res.json({
+        jsonrpc: '2.0',
+        id,
+        result: mcpToolResult(result)
+      });
+    }
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      error: { code: -32601, message: `Method not found: ${rpc.method}` }
+    });
+  } catch (err) {
+    console.error('MCP error:', err);
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      error: {
+        code: err.code || -32000,
+        message: err.message || 'MCP server error.'
+      }
+    });
+  }
+});
 
 app.use((err, req, res, next) => {
   if (!err) return next();

@@ -155,7 +155,7 @@ button{cursor:pointer}
 .dai-table-wrap{overflow-x:auto;border:1px solid var(--g200);border-radius:var(--r);background:var(--w)}
 .dai-table{width:100%;border-collapse:collapse;min-width:760px}
 .dai-table th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100)}
-.dai-table td{padding:10px 11px;border-bottom:1px solid var(--g100);font-size:var(--sm);vertical-align:top}
+.dai-table td{padding:10px 11px;border-bottom:1px solid var(--g100);font-size:var(--sm);vertical-align:top;overflow-wrap:anywhere}
 .dai-table tr:last-child td{border-bottom:none}.dai-table a{color:var(--brand);font-weight:800;text-decoration:underline;text-underline-offset:3px}
 .dai-empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:22px;text-align:center;color:var(--g500);line-height:1.65}
 .dai-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -163,12 +163,19 @@ button{cursor:pointer}
 .dai-list{display:flex;flex-direction:column;gap:10px}
 .dai-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) 130px 130px;gap:12px;align-items:center}
 .dai-row:hover{border-color:var(--brand);background:var(--brand-f)}
+.dai-source-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:start}
+.dai-source-card strong,.dai-review-row strong{line-height:1.2}
+.dai-source-path{font-size:var(--xxs);color:var(--g500);line-height:1.45;overflow-wrap:anywhere;word-break:break-word;margin-top:5px}
+.dai-source-meta{font-size:var(--xxs);color:var(--g500);white-space:nowrap}
+.dai-source-action{font-size:var(--xxs);text-align:right;white-space:nowrap}
+.dai-review-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,.8fr);gap:12px;align-items:center}
+.dai-review-row .pc-s{overflow-wrap:anywhere}
 .dai-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em;background:var(--g100);color:var(--g500)}
 .dai-pill.done{background:#f0fdf4;color:#15803d}.dai-pill.error{background:#fef2f2;color:#dc2626}.dai-pill.work{background:#eff6ff;color:#2563eb}
 .dai-result-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:14px}
 .dai-pre{background:#111110;color:#f8f8f5;border-radius:var(--r);padding:13px;overflow:auto;font-size:12px;line-height:1.5;max-height:420px}
 .dai-warning{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:var(--r);padding:12px 14px;font-size:var(--sm);line-height:1.55;margin-bottom:13px}
-@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid{grid-template-columns:1fr}.dai-row{grid-template-columns:1fr}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
+@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid{grid-template-columns:1fr}.dai-row,.dai-source-card,.dai-review-row{grid-template-columns:1fr}.dai-source-action{text-align:left}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
 .job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:left}
 .pc-status{font-size:var(--xxxs);padding:2px 8px;border-radius:99px;width:max-content}
 .pc-status.unsaved{background:#fff7ed;color:#f97316}
@@ -2641,10 +2648,12 @@ function designAiCollectFields(prefix,fields){
 }
 function designAiSourceFilesHtml(files=[]){
   if(!files.length)return '<div class="dai-empty">No source files saved for this draft.</div>';
-  return `<div class="dai-list">${files.map(file=>`<div class="dai-row">
-    <div><strong>${esc(file.name||file.path||'Source file')}</strong><div class="pc-s">${esc(file.path||'')} · ${esc(file.evidence_type||file.mime_type||'')}</div></div>
-    <div style="font-size:var(--xxs);color:var(--g500)">${file.direct_content_available?'Readable':'Metadata only'}</div>
-    <div>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+  return `<div class="dai-list">${files.map(file=>`<div class="dai-source-card">
+    <div><strong>${esc(file.name||file.path||'Source file')}</strong><div class="dai-source-path">${esc(file.path||'')}${file.evidence_type||file.mime_type?`<br>${esc(file.evidence_type||file.mime_type||'')}`:''}</div></div>
+    <div>
+      <div class="dai-source-meta">${file.direct_content_available?'Readable':'Metadata only'}</div>
+      <div class="dai-source-action">${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+    </div>
   </div>`).join('')}</div>`;
 }
 function designAiSourceTraceHtml(fields,extracted={},confidence={}){
@@ -2682,7 +2691,7 @@ function designAiUnmappedSourceHtml(items=[]){
 }
 function designAiMeasurementRequiredHtml(items=[]){
   if(!items.length)return '<div class="dai-empty" style="padding:12px">No required physical measurements flagged.</div>';
-  return `<div class="dai-list">${items.map(item=>`<div class="dai-row">
+  return `<div class="dai-list">${items.map(item=>`<div class="dai-review-row">
     <div><strong>${esc(item.label||item.field||'Measurement')}</strong><div class="pc-s">${esc(item.field||'')}</div></div>
     <div>${designAiConfidencePill('LOW')}</div>
     <div style="font-size:var(--xxs);color:var(--g500)">${esc(item.status||'Physical measurement required')}</div>

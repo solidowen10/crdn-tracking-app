@@ -157,6 +157,24 @@ function requirePageAuth(req, res, next) {
   next();
 }
 
+function secureTokenEqual(actual, expected) {
+  const actualText = text(actual);
+  const expectedText = text(expected);
+  if (!actualText || !expectedText) return false;
+  const actualHash = crypto.createHash('sha256').update(actualText).digest();
+  const expectedHash = crypto.createHash('sha256').update(expectedText).digest();
+  return crypto.timingSafeEqual(actualHash, expectedHash);
+}
+
+function requireAgentRead(req, res, next) {
+  const header = text(req.get('authorization'));
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match || !secureTokenEqual(match[1], process.env.AGENT_READ_TOKEN)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
 function actor(req) {
   return req.session.user || {};
 }
@@ -382,6 +400,148 @@ function projectSummary(row) {
     quote_count: totals.count,
     parts_status: projectPartsStatus(row.id),
     next_action: row.next_action || row.customer_action || row.customer_update || row.notes || ''
+  };
+}
+
+const AGENT_ROUTE_LIST = [
+  'GET /api/agent/context',
+  'GET /api/agent/vehicles',
+  'GET /api/agent/products',
+  'GET /api/agent/mockups',
+  'GET /api/agent/projects',
+  'GET /api/agent/projects/:id'
+];
+
+function agentReferenceFileMetadata(value) {
+  const files = parseJson(value, []);
+  const list = Array.isArray(files) ? files : [files];
+  return list.map(item => {
+    if (!item) return null;
+    if (typeof item === 'string') return { name: item };
+    if (typeof item !== 'object') return null;
+    return {
+      name: text(item.name || item.filename || item.path || item.label),
+      path: text(item.path),
+      folder_type: text(item.folder_type),
+      mime_type: text(item.mime_type || item.type),
+      modified_time: text(item.modified_time),
+      size: text(item.size),
+      is_folder: Boolean(item.is_folder)
+    };
+  }).filter(item => item && Object.values(item).some(Boolean));
+}
+
+function agentSourceSummary(value) {
+  const summary = parseJson(value, {});
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return {};
+  return {
+    extraction_draft_id: summary.extraction_draft_id || null,
+    confidence: summary.confidence || {},
+    approved_at: text(summary.approved_at)
+  };
+}
+
+function agentVehicleRecord(row) {
+  const record = designVehicleRecordFromRow(row);
+  return {
+    id: record.id,
+    vehicle_id: record.vehicle_id,
+    make: record.make || record.brand || '',
+    model: record.model || '',
+    year_range: record.year_range || '',
+    market: record.market || '',
+    body_type: record.body_type || '',
+    exterior_dimensions_mm: {
+      length: record.overall_length_mm,
+      width: record.overall_width_mm,
+      height: record.overall_height_mm,
+      wheelbase: record.wheelbase_mm
+    },
+    interior_dimensions_mm: {
+      length: record.interior_length_mm,
+      width: record.interior_width_mm,
+      height: record.interior_height_mm,
+      side_door_width: record.side_door_width_mm,
+      side_door_height: record.side_door_height_mm,
+      rear_door_width: record.rear_door_width_mm,
+      rear_door_height: record.rear_door_height_mm,
+      rear_window_width: record.rear_window_width_mm,
+      rear_window_height: record.rear_window_height_mm,
+      wheel_arch_width: record.wheel_arch_width_mm,
+      wheel_arch_height: record.wheel_arch_height_mm
+    },
+    cargo: {
+      payload_kg: record.payload_kg
+    },
+    confidence: record.source_summary?.confidence || {},
+    status: record.status || 'draft',
+    source_notes: record.floor_plan_notes || '',
+    source_summary: agentSourceSummary(record.source_summary_json),
+    updated_at: record.updated_at
+  };
+}
+
+function agentProductRecord(row) {
+  const record = designProductRecordFromRow(row);
+  return {
+    id: record.id,
+    product_id: record.product_id,
+    sku: record.sku || '',
+    name: record.name || '',
+    category: record.category || '',
+    dimensions_mm: {
+      width: record.width_mm,
+      depth: record.depth_mm,
+      height: record.height_mm
+    },
+    weight_kg: record.weight_kg,
+    mounting_type: record.mounting_type || '',
+    mounting_notes: record.mounting_notes || '',
+    installation_notes: record.installation_notes || '',
+    compatible_vehicles: record.compatible_vehicles || [],
+    approved_status: record.status || 'draft',
+    reference_files: agentReferenceFileMetadata(record.reference_files_json),
+    source_summary: agentSourceSummary(record.source_summary_json),
+    updated_at: record.updated_at
+  };
+}
+
+function agentProjectSummary(row) {
+  if (!row) return null;
+  const stage = normalizeStage(row.stage);
+  return {
+    id: row.id,
+    job_no: row.job_no || '',
+    vehicle_name: row.name || '',
+    stage,
+    designer: row.designer || '',
+    priority: row.priority || 'Normal',
+    progress: stageProgress(stage),
+    start_date: row.start_date || '',
+    due_date: row.finish_date || '',
+    updated_at: row.updated_at || ''
+  };
+}
+
+function agentProjectDetail(row) {
+  const summary = agentProjectSummary(row);
+  if (!summary) return null;
+  let milestones = [];
+  try {
+    milestones = JSON.parse(row.milestones_json || '[]');
+  } catch (err) {
+    milestones = [];
+  }
+  return {
+    ...summary,
+    archived: Boolean(row.archived),
+    created_at: row.created_at || '',
+    milestones: Array.isArray(milestones) ? milestones.map(item => ({
+      label: text(item.label || item.name || item.milestone),
+      scheduled_date: text(item.scheduled_date || item.schedule_date || item.date),
+      actual_date: text(item.actual_date),
+      status: text(item.status)
+    })).filter(item => item.label || item.scheduled_date || item.actual_date || item.status) : []
   };
 }
 
@@ -1485,6 +1645,84 @@ app.get('/api/meta', requireAuth, (req, res) => {
     garage_timeline: garageSettings(),
     user: req.session.user
   });
+});
+
+app.get('/api/agent/context', requireAgentRead, (req, res) => {
+  res.json({
+    app: 'CRDN Tracking App',
+    routes: AGENT_ROUTE_LIST,
+    timestamp: new Date().toISOString(),
+    exposed_data: 'Read-only summaries for Design AI vehicle/product records, Telegram mockup request status summaries, and minimal project planning fields. Customer contact details, LINE session/auth data, secrets, Telegram tokens, file IDs, and payment-sensitive data are not exposed.'
+  });
+});
+
+app.get('/api/agent/vehicles', requireAgentRead, (req, res) => {
+  const records = db.prepare(`
+    SELECT *
+    FROM design_ai_vehicle_records
+    ORDER BY updated_at DESC, vehicle_id COLLATE NOCASE
+    LIMIT 500
+  `).all().map(agentVehicleRecord);
+  res.json({ records });
+});
+
+app.get('/api/agent/products', requireAgentRead, (req, res) => {
+  const records = db.prepare(`
+    SELECT *
+    FROM design_ai_product_records
+    ORDER BY updated_at DESC, product_id COLLATE NOCASE
+    LIMIT 500
+  `).all().map(agentProductRecord);
+  res.json({ records });
+});
+
+app.get('/api/agent/mockups', requireAgentRead, (req, res) => {
+  const requests = db.prepare(`
+    SELECT id, caption, status, assigned_designer_name,
+      result_uploaded_at, result_sent_to_telegram_at, created_at, updated_at
+    FROM telegram_mockup_requests
+    ORDER BY created_at DESC, id DESC
+    LIMIT 200
+  `).all().map(row => ({
+    id: row.id,
+    caption: row.caption || '',
+    status: row.status || 'pending',
+    assigned_designer_name: row.assigned_designer_name || '',
+    result_status: {
+      uploaded: Boolean(row.result_uploaded_at),
+      sent_to_telegram: Boolean(row.result_sent_to_telegram_at),
+      uploaded_at: row.result_uploaded_at || '',
+      sent_to_telegram_at: row.result_sent_to_telegram_at || ''
+    },
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || ''
+  }));
+  res.json({ requests });
+});
+
+app.get('/api/agent/projects', requireAgentRead, (req, res) => {
+  const projects = db.prepare(`
+    SELECT id, job_no, name, stage, designer, priority, progress,
+      start_date, finish_date, updated_at
+    FROM vehicles
+    WHERE archived=0
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 300
+  `).all().map(agentProjectSummary);
+  res.json({ projects });
+});
+
+app.get('/api/agent/projects/:id', requireAgentRead, (req, res) => {
+  const project = db.prepare(`
+    SELECT id, job_no, name, stage, designer, priority, progress,
+      start_date, finish_date, milestones_json, archived, created_at, updated_at
+    FROM vehicles
+    WHERE id=?
+    LIMIT 1
+  `).get(Number(req.params.id));
+  const detail = agentProjectDetail(project);
+  if (!detail) return res.status(404).json({ error: 'Project not found.' });
+  res.json({ project: detail });
 });
 
 app.get('/api/dashboard', requireAuth, (req, res) => {

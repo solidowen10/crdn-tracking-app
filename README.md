@@ -88,3 +88,33 @@ OPENAI_API_KEY=
 ```
 
 Share the configured Drive folders with the Google service account email before running Design AI sync. `GOOGLE_APPLICATION_CREDENTIALS` can still be used for the existing Google Sheets export.
+
+## Read-only Agent API
+
+ChatGPT Agent can read selected CRDN context through `/api/agent/*` without using LINE login. These routes are read-only and require a server-side bearer token.
+
+Set a strong random token on the server:
+
+```env
+AGENT_READ_TOKEN=replace-with-a-long-random-secret
+```
+
+Example request:
+
+```bash
+curl -H "Authorization: Bearer $AGENT_READ_TOKEN" \
+  https://tool.creativeden.studio/api/agent/context
+```
+
+Available routes:
+
+```text
+GET /api/agent/context
+GET /api/agent/vehicles
+GET /api/agent/products
+GET /api/agent/mockups
+GET /api/agent/projects
+GET /api/agent/projects/:id
+```
+
+Security note: rotate `AGENT_READ_TOKEN` immediately if it is exposed. Do not put this token in frontend HTML/JS, browser storage, screenshots, or shared docs.

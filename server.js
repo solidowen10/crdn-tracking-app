@@ -3639,41 +3639,104 @@ function telegramContextReply() {
 async function telegramAgentChatReply(userText) {
   if (!openai) return 'AI chat is not configured yet. OPENAI_API_KEY is missing.';
 
-  const projects = handleMcpToolCall('list_crdn_projects', {}).projects.slice(0, 30);
-  const mockups = handleMcpToolCall('list_crdn_mockups', {}).requests.slice(0, 20);
-
-  const input = [
+  const tools = [
     {
-      role: 'system',
-      content: [
-        'You are CRDN Agent inside Telegram.',
-        'Answer naturally and concisely.',
-        'Use only the CRDN data provided below.',
-        'Do not expose secrets, customer contact info, tokens, LINE auth/session data, or private implementation details.',
-        'If the user asks for write actions, explain that Telegram AI chat is read-only for now.',
-        'If the user wants to create a mockup request, tell them to send a vehicle photo with /mockup and a description.'
-      ].join('\n')
+      type: 'function',
+      name: 'get_crdn_context',
+      description: 'Get CRDN read-only API context and available data categories.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
-      role: 'user',
-      content: [
-        `User message: ${userText}`,
-        '',
-        `Active projects JSON:\n${JSON.stringify(projects, null, 2)}`,
-        '',
-        `Latest mockup requests JSON:\n${JSON.stringify(mockups, null, 2)}`
-      ].join('\n')
+      type: 'function',
+      name: 'list_crdn_projects',
+      description: 'List safe active CRDN project summaries.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      type: 'function',
+      name: 'get_crdn_project',
+      description: 'Get safe CRDN project detail and milestones by project id.',
+      parameters: {
+        type: 'object',
+        properties: { id: { type: 'number' } },
+        required: ['id'],
+        additionalProperties: false
+      }
+    },
+    {
+      type: 'function',
+      name: 'list_crdn_mockups',
+      description: 'List safe Telegram mockup request summaries.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      type: 'function',
+      name: 'list_crdn_products',
+      description: 'List safe CRDN product records from Design AI database.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      type: 'function',
+      name: 'list_crdn_vehicles',
+      description: 'List safe CRDN vehicle records from Design AI database.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false }
     }
   ];
 
-  const response = await openai.responses.create({
-    model: OPENAI_MODEL,
-    input,
-    max_output_tokens: 700
-  });
+  const system = [
+    'You are CRDN Agent inside Telegram.',
+    'Answer naturally and concisely.',
+    'Use CRDN tools when the user asks about projects, milestones, mockups, products, vehicles, due dates, or current status.',
+    'Do not expose secrets, customer contact info, tokens, LINE auth/session data, or private implementation details.',
+    'Telegram AI chat is read-only for now. If the user asks to change data, say you cannot write yet.',
+    'For mockup creation, tell the user to send a vehicle photo with /mockup and a description.'
+  ].join('\n');
 
-  const answer = text(response.output_text || '').trim();
-  return answer || 'I could not generate a useful answer.';
+  let input = [
+    { role: 'system', content: system },
+    { role: 'user', content: userText }
+  ];
+
+  for (let i = 0; i < 4; i += 1) {
+    const response = await openai.responses.create({
+      model: OPENAI_MODEL,
+      input,
+      tools,
+      max_output_tokens: 700
+    });
+
+    const calls = (response.output || []).filter(item => item.type === 'function_call');
+    if (!calls.length) {
+      const answer = text(response.output_text || '').trim();
+      return answer || 'I could not generate a useful answer.';
+    }
+
+    input = input.concat(response.output);
+
+    for (const call of calls) {
+      let args = {};
+      try {
+        args = call.arguments ? JSON.parse(call.arguments) : {};
+      } catch (_) {
+        args = {};
+      }
+
+      let result;
+      try {
+        result = handleMcpToolCall(call.name, args);
+      } catch (err) {
+        result = { error: err.message || 'Tool call failed.' };
+      }
+
+      input.push({
+        type: 'function_call_output',
+        call_id: call.call_id,
+        output: JSON.stringify(result)
+      });
+    }
+  }
+
+  return 'I could not finish the CRDN lookup in time. Please try a more specific question.';
 }
 
 app.post('/api/telegram/webhook/:secret', async (req, res) => {

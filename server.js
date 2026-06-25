@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const axios = require('axios');
+const OpenAI = require('openai');
 const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -39,6 +40,8 @@ init();
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = process.env.BASE_URL || 'https://tool.creativeden.studio';
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const CALLBACK_URL = process.env.LINE_CALLBACK_URL || `${BASE_URL}/auth/callback`;
 const allowedLineIds = new Set((process.env.ALLOWED_LINE_IDS || '').split(',').map(s => s.trim()).filter(Boolean));
 
@@ -3632,6 +3635,47 @@ function telegramContextReply() {
   ].join('\n');
 }
 
+
+async function telegramAgentChatReply(userText) {
+  if (!openai) return 'AI chat is not configured yet. OPENAI_API_KEY is missing.';
+
+  const projects = handleMcpToolCall('list_crdn_projects', {}).projects.slice(0, 30);
+  const mockups = handleMcpToolCall('list_crdn_mockups', {}).requests.slice(0, 20);
+
+  const input = [
+    {
+      role: 'system',
+      content: [
+        'You are CRDN Agent inside Telegram.',
+        'Answer naturally and concisely.',
+        'Use only the CRDN data provided below.',
+        'Do not expose secrets, customer contact info, tokens, LINE auth/session data, or private implementation details.',
+        'If the user asks for write actions, explain that Telegram AI chat is read-only for now.',
+        'If the user wants to create a mockup request, tell them to send a vehicle photo with /mockup and a description.'
+      ].join('\n')
+    },
+    {
+      role: 'user',
+      content: [
+        `User message: ${userText}`,
+        '',
+        `Active projects JSON:\n${JSON.stringify(projects, null, 2)}`,
+        '',
+        `Latest mockup requests JSON:\n${JSON.stringify(mockups, null, 2)}`
+      ].join('\n')
+    }
+  ];
+
+  const response = await openai.responses.create({
+    model: OPENAI_MODEL,
+    input,
+    max_output_tokens: 700
+  });
+
+  const answer = text(response.output_text || '').trim();
+  return answer || 'I could not generate a useful answer.';
+}
+
 app.post('/api/telegram/webhook/:secret', async (req, res) => {
   try {
     if (req.params.secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
@@ -3645,7 +3689,7 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
     const chatId = String(message.chat.id);
     const allowed = process.env.TELEGRAM_ALLOWED_CHAT_IDS;
 
-    if (allowed && !allowed.split(',').map(x => x.trim()).includes(chatId)) {
+    if (allowed && !allowed.split(',').map(x => x.trim().replace(/^['"]|['"]$/g, '')).includes(chatId)) {
       return res.json({ ok: true });
     }
 
@@ -3700,7 +3744,7 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
         ].join('\n');
       }
     } else {
-      return res.json({ ok: true });
+      reply = await telegramAgentChatReply(text);
     }
 
     await sendTelegramMessage(chatId, reply);

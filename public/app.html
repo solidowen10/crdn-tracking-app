@@ -2248,7 +2248,6 @@ function renderDash(filter='All'){
         <span class="dash-milestone-chip ${mp.statusClass}"><span class="sdot"></span>${esc(mp.label)}</span>
         <div class="dash-progress-wrap">
           <div class="prog"><div class="pbar"><div class="pfill" style="width:${mp.percent}%"></div></div><span class="ppct">${mp.percent}%</span></div>
-          <div class="dash-milestone-meta">${esc(mp.label)}</div>
         </div>
         <span class="designer-pill">👤 ${p.designer||'—'}</span>
         ${p.archived?'<span class="pc-status archived">Archived</span>':''}

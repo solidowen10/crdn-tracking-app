@@ -3518,6 +3518,120 @@ app.post('/api/telegram/mockup-requests/:id/send-result', requireAuth, async (re
   }
 });
 
+
+function telegramFormatProjectSummary(project) {
+  const parts = [
+    `#${project.id} ${project.job_no ? `[${project.job_no}] ` : ''}${project.name || 'Untitled project'}`,
+    `Stage: ${project.stage || '-'}`,
+    `Designer: ${project.designer || '-'}`,
+    `Priority: ${project.priority || '-'}`,
+    `Progress: ${project.progress ?? 0}%`
+  ];
+  if (project.start_date || project.finish_date) parts.push(`Timeline: ${project.start_date || '-'} → ${project.finish_date || '-'}`);
+  return parts.join('\n');
+}
+
+function telegramListProjectsReply() {
+  const projects = db.prepare(`
+    SELECT id, job_no, name, stage, designer, priority, progress,
+      start_date, finish_date, updated_at
+    FROM vehicles
+    WHERE archived=0
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 10
+  `).all().map(agentProjectSummary);
+
+  if (!projects.length) return 'No active CRDN projects found.';
+
+  return [
+    `Active CRDN projects: ${projects.length} shown`,
+    '',
+    ...projects.map(p => telegramFormatProjectSummary(p))
+  ].join('\n\n');
+}
+
+function telegramProjectLookupReply(queryText) {
+  const query = text(queryText).replace(/^\/project(?:@\w+)?/i, '').trim();
+  if (!query) return 'Usage: /project PROJECT_ID or /project PROJECT_NAME';
+
+  let row = null;
+  const id = Number(query);
+  if (Number.isFinite(id) && id > 0) {
+    row = db.prepare(`
+      SELECT id, job_no, name, stage, designer, priority, progress,
+        start_date, finish_date, milestones_json, archived, created_at, updated_at
+      FROM vehicles
+      WHERE id=?
+      LIMIT 1
+    `).get(id);
+  }
+
+  if (!row) {
+    row = db.prepare(`
+      SELECT id, job_no, name, stage, designer, priority, progress,
+        start_date, finish_date, milestones_json, archived, created_at, updated_at
+      FROM vehicles
+      WHERE archived=0 AND (
+        name LIKE ? OR job_no LIKE ? OR stage LIKE ? OR designer LIKE ?
+      )
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1
+    `).get(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`);
+  }
+
+  const detail = agentProjectDetail(row);
+  if (!detail) return `No project found for: ${query}`;
+
+  const milestones = Array.isArray(detail.milestones) ? detail.milestones : [];
+  const milestoneLines = milestones.slice(0, 8).map(m => {
+    return `- ${m.label || m.key}: ${m.status || '-'}${m.scheduled_date ? ` / ${m.scheduled_date}` : ''}`;
+  });
+
+  return [
+    telegramFormatProjectSummary(detail),
+    '',
+    `Updated: ${detail.updated_at || '-'}`,
+    milestoneLines.length ? `Milestones:\n${milestoneLines.join('\n')}` : 'Milestones: none'
+  ].join('\n');
+}
+
+function telegramMockupsReply() {
+  const rows = db.prepare(`
+    SELECT id, caption, status, assigned_designer_name,
+      result_uploaded_at, result_sent_to_telegram_at, created_at, updated_at
+    FROM telegram_mockup_requests
+    ORDER BY created_at DESC, id DESC
+    LIMIT 10
+  `).all();
+
+  if (!rows.length) return 'No Telegram mockup requests found.';
+
+  return [
+    `Latest mockup requests: ${rows.length} shown`,
+    '',
+    ...rows.map(r => [
+      `#${r.id} ${r.status || 'pending'}`,
+      `Caption: ${r.caption || '-'}`,
+      `Designer: ${r.assigned_designer_name || '-'}`,
+      `Uploaded: ${r.result_uploaded_at ? 'yes' : 'no'}`,
+      `Sent: ${r.result_sent_to_telegram_at ? 'yes' : 'no'}`
+    ].join('\n'))
+  ].join('\n\n');
+}
+
+function telegramContextReply() {
+  return [
+    'CRDN Agent read-only context:',
+    '- Active project summaries',
+    '- Project detail + milestones',
+    '- Design AI vehicle records',
+    '- Design AI product records',
+    '- Telegram mockup request status',
+    '',
+    'No customer contact info, LINE auth/session data, Telegram secrets, or write actions are exposed.'
+  ].join('\n');
+}
+
 app.post('/api/telegram/webhook/:secret', async (req, res) => {
   try {
     if (req.params.secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
@@ -3542,16 +3656,25 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
 
     if (text.startsWith('/status')) {
       reply = `CRDN Agent online.\nChat ID: ${chatId}`;
-    } else if (text.startsWith('/help')) {
+    } else if (/^\/help(?:@\w+)?/i.test(text)) {
       reply = [
         'CRDN Agent commands:',
         '/status - check bot status',
         '/help - show commands',
-        '/project PROJECT_NAME - project lookup',
+        '/context - show read-only agent scope',
+        '/projects - list active projects',
+        '/project PROJECT_ID_OR_NAME - project lookup',
+        '/mockups - list latest mockup requests',
         '/mockup DESCRIPTION - save mockup request with photo'
       ].join('\n');
-    } else if (text.startsWith('/project')) {
-      reply = 'Project lookup is not connected yet.';
+    } else if (/^\/context(?:@\w+)?/i.test(text)) {
+      reply = telegramContextReply();
+    } else if (/^\/projects(?:@\w+)?/i.test(text)) {
+      reply = telegramListProjectsReply();
+    } else if (/^\/project(?:@\w+)?/i.test(text)) {
+      reply = telegramProjectLookupReply(text);
+    } else if (/^\/mockups(?:@\w+)?/i.test(text)) {
+      reply = telegramMockupsReply();
     } else if (/^\/mockup(?:@\w+)?/i.test(text)) {
       const photos = message.photo || [];
       const largestPhoto = photos[photos.length - 1];

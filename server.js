@@ -3957,6 +3957,17 @@ async function telegramAgentChatReply(userText) {
     },
     {
       type: 'function',
+      name: 'get_crdn_product',
+      description: 'Get one safe CRDN product detail by product_id, sku, or name search.',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+        additionalProperties: false
+      }
+    },
+    {
+      type: 'function',
       name: 'list_crdn_vehicles',
       description: 'List safe CRDN vehicle records from Design AI database.',
       parameters: { type: 'object', properties: {}, additionalProperties: false }
@@ -3966,7 +3977,7 @@ async function telegramAgentChatReply(userText) {
   const system = [
     'You are CRDN Agent inside Telegram.',
     'Answer naturally and concisely.',
-    'Use CRDN tools when the user asks about projects, milestones, mockups, products, vehicles, due dates, or current status.',
+    'Use CRDN tools when the user asks about projects, milestones, mockups, products, vehicles, due dates, or current status. For one specific product, use get_crdn_product before answering.',
     'Do not expose secrets, customer contact info, tokens, LINE auth/session data, or private implementation details.',
     'Telegram AI chat is read-only for now. If the user asks to change data, say you cannot write yet.',
     'For mockup creation, tell the user to send a vehicle photo with /mockup and a description.'
@@ -4575,6 +4586,18 @@ function mcpToolDefinitions() {
       inputSchema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'get_crdn_product',
+      description: 'Get one safe CRDN product detail by product_id, sku, or name search.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Product ID, SKU, or product name search text' }
+        },
+        required: ['query'],
+        additionalProperties: false
+      }
+    },
+    {
       name: 'list_crdn_mockups',
       description: 'List safe Telegram mockup request summaries.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false }
@@ -4626,6 +4649,44 @@ function handleMcpToolCall(name, args = {}) {
         LIMIT 500
       `).all().map(agentProductRecord)
     };
+  }
+  if (name === 'get_crdn_product') {
+    const query = text(args.query).trim();
+    if (!query) {
+      const err = new Error('Product query is required.');
+      err.code = -32602;
+      throw err;
+    }
+
+    const like = `%${query}%`;
+    const row = db.prepare(`
+      SELECT *
+      FROM design_ai_product_records
+      WHERE product_id = ?
+         OR sku = ?
+         OR name = ?
+         OR product_id LIKE ?
+         OR sku LIKE ?
+         OR name LIKE ?
+      ORDER BY
+        CASE
+          WHEN product_id = ? THEN 0
+          WHEN sku = ? THEN 1
+          WHEN name = ? THEN 2
+          ELSE 3
+        END,
+        updated_at DESC,
+        product_id COLLATE NOCASE
+      LIMIT 1
+    `).get(query, query, query, like, like, like, query, query, query);
+
+    if (!row) {
+      const err = new Error('Product not found.');
+      err.code = -32004;
+      throw err;
+    }
+
+    return { product: agentProductRecord(row) };
   }
   if (name === 'list_crdn_mockups') {
     return {

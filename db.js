@@ -716,11 +716,14 @@ function seedSettings() {
   upsert.run('google_sheets_last_synced_at', '');
   upsert.run('google_sheets_last_error', '');
   upsert.run('garage_capacity', '2');
+  upsert.run('default_deposit_to_design_consulting_days', '0');
+  upsert.run('default_design_consulting_to_3d_cad_days', '0');
   upsert.run('default_deposit_to_parts_ordered_days', '0');
   upsert.run('default_parts_ordered_to_arrived_days', '7');
   upsert.run('default_parts_arrived_to_garage_days', '0');
   upsert.run('default_build_days', '14');
   upsert.run('default_qc_days', '2');
+  upsert.run('default_qc_to_photoshoot_days', '0');
   upsert.run('default_delivery_buffer_days', '1');
 }
 

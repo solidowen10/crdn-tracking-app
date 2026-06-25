@@ -453,8 +453,8 @@ button{cursor:pointer}
 .pt-compare.early{background:#ecfdf3;color:#15803d}
 .pt-compare.delayed{background:var(--dl);color:var(--danger)}
 .pt-compare.schedule{background:var(--brand-l);color:var(--brand-d)}
-.pt-scroll{overflow-x:auto;overflow-y:hidden;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
-.pt-steps{position:relative;display:grid;grid-template-columns:repeat(8,minmax(128px,1fr));gap:0;min-width:1024px;padding:20px 0 4px}
+.pt-scroll{overflow-x:hidden;overflow-y:hidden;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.pt-steps{position:relative;display:grid;grid-template-columns:repeat(var(--pt-count,11),minmax(0,1fr));gap:0;min-width:0;padding:20px 0 4px}
 .pt-line{position:absolute;left:64px;right:64px;top:35px;height:3px;background:var(--g200);border-radius:99px}
 .pt-line-fill{position:absolute;left:0;top:0;height:100%;background:var(--brand);border-radius:99px;transition:width .25s}
 .pt-step{position:relative;text-align:center;padding:0 8px;z-index:1}
@@ -526,7 +526,8 @@ button{cursor:pointer}
   .pt-card-grid{grid-template-columns:1fr}
   .pt-delivery{font-size:30px}
   .pt-finish-input{font-size:28px}
-  .pt-steps{min-width:960px;grid-template-columns:repeat(8,minmax(120px,1fr))}
+  .pt-scroll{overflow-x:auto}
+  .pt-steps{min-width:calc(var(--pt-count,11) * 120px);grid-template-columns:repeat(var(--pt-count,11),minmax(120px,1fr))}
 }
 /* ADMIN PROFIT */
 .psum{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:13px;margin-bottom:13px}
@@ -906,12 +907,15 @@ button{cursor:pointer}
     <div class="ss">
       <div class="sst">Garage Timeline Settings</div>
       <div class="fr"><span class="fl">Capacity</span><input class="fi" id="gt-capacity" type="number" min="1" step="1"></div>
-      <div class="fr"><span class="fl">Deposit → Parts ordered</span><input class="fi" id="gt-deposit-parts-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">Deposit → Design / Consulting</span><input class="fi" id="gt-deposit-design-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">Design / Consulting → 3D CAD</span><input class="fi" id="gt-design-cad-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">Design / 3D CAD → Parts ordered</span><input class="fi" id="gt-deposit-parts-days" type="number" min="0" step="1"></div>
       <div class="fr"><span class="fl">Parts ordered → Arrived</span><input class="fi" id="gt-parts-arrived-days" type="number" min="0" step="1"></div>
       <div class="fr"><span class="fl">Parts arrived → Garage</span><input class="fi" id="gt-arrived-garage-days" type="number" min="0" step="1"></div>
       <div class="fr"><span class="fl">Build days</span><input class="fi" id="gt-build-days" type="number" min="0" step="1"></div>
       <div class="fr"><span class="fl">QC days</span><input class="fi" id="gt-qc-days" type="number" min="0" step="1"></div>
-      <div class="fr"><span class="fl">Delivery buffer</span><input class="fi" id="gt-delivery-buffer" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">QC → Photoshoot</span><input class="fi" id="gt-qc-photoshoot-days" type="number" min="0" step="1"></div>
+      <div class="fr"><span class="fl">Photoshoot → Delivery</span><input class="fi" id="gt-delivery-buffer" type="number" min="0" step="1"></div>
       <button class="btn btn-brand btn-sm" onclick="saveGarageSettings()">Save Garage Settings</button>
     </div>
 
@@ -1254,11 +1258,14 @@ const GARAGE_MILESTONES=[
 ];
 let GARAGE_SETTINGS={
   garage_capacity:2,
+  default_deposit_to_design_consulting_days:0,
+  default_design_consulting_to_3d_cad_days:0,
   default_deposit_to_parts_ordered_days:0,
   default_parts_ordered_to_arrived_days:7,
   default_parts_arrived_to_garage_days:0,
   default_build_days:14,
   default_qc_days:2,
+  default_qc_to_photoshoot_days:0,
   default_delivery_buffer_days:1
 };
 let GARAGE_MONTH_CURSOR='';
@@ -1322,11 +1329,14 @@ function applyGarageSettings(data={}){
   const num=(key,fallback)=>source[key]!==undefined&&source[key]!==''?Number(source[key]):fallback;
   GARAGE_SETTINGS={
     garage_capacity:Math.max(1,num('garage_capacity',GARAGE_SETTINGS.garage_capacity||2)),
+    default_deposit_to_design_consulting_days:Math.max(0,num('default_deposit_to_design_consulting_days',GARAGE_SETTINGS.default_deposit_to_design_consulting_days||0)),
+    default_design_consulting_to_3d_cad_days:Math.max(0,num('default_design_consulting_to_3d_cad_days',GARAGE_SETTINGS.default_design_consulting_to_3d_cad_days||0)),
     default_deposit_to_parts_ordered_days:Math.max(0,num('default_deposit_to_parts_ordered_days',GARAGE_SETTINGS.default_deposit_to_parts_ordered_days||0)),
     default_parts_ordered_to_arrived_days:Math.max(0,num('default_parts_ordered_to_arrived_days',GARAGE_SETTINGS.default_parts_ordered_to_arrived_days||7)),
     default_parts_arrived_to_garage_days:Math.max(0,num('default_parts_arrived_to_garage_days',GARAGE_SETTINGS.default_parts_arrived_to_garage_days||0)),
     default_build_days:Math.max(0,num('default_build_days',GARAGE_SETTINGS.default_build_days||14)),
     default_qc_days:Math.max(0,num('default_qc_days',GARAGE_SETTINGS.default_qc_days||2)),
+    default_qc_to_photoshoot_days:Math.max(0,num('default_qc_to_photoshoot_days',GARAGE_SETTINGS.default_qc_to_photoshoot_days||0)),
     default_delivery_buffer_days:Math.max(0,num('default_delivery_buffer_days',GARAGE_SETTINGS.default_delivery_buffer_days||1))
   };
 }
@@ -1793,7 +1803,7 @@ function renderProjectTimelineVisual(project){
         <span class="pt-status-pill pt-status-${projectTimelineCurrentStatus(project)}">${projectTimelineCurrentStatus(project)}</span>
       </div>
       <div class="pt-scroll" id="project-timeline-scroll">
-        <div class="pt-steps">
+        <div class="pt-steps" style="--pt-count:${milestones.length}">
           <div class="pt-line"><div class="pt-line-fill" style="width:${fill}%"></div></div>
           ${milestones.map((m,i)=>{
             const done=projectMilestoneDone(m);
@@ -2235,7 +2245,7 @@ function renderDash(filter='All'){
         <span class="dash-milestone-chip ${mp.statusClass}"><span class="sdot"></span>${esc(mp.label)}</span>
         <div class="dash-progress-wrap">
           <div class="prog"><div class="pbar"><div class="pfill" style="width:${mp.percent}%"></div></div><span class="ppct">${mp.percent}%</span></div>
-          <div class="dash-milestone-meta">${commas(mp.done)} / ${commas(mp.total)} Done · ${esc(mp.status)}</div>
+          <div class="dash-milestone-meta">Milestone Progress</div>
         </div>
         <span class="designer-pill">👤 ${p.designer||'—'}</span>
         ${p.archived?'<span class="pc-status archived">Archived</span>':''}
@@ -3848,28 +3858,34 @@ async function scheduleProjectTimeline(){
     toast('Mark Deposit Paid as Done and set its date first');
     return;
   }
-  const depositToParts=Math.max(0,Number(GARAGE_SETTINGS.default_deposit_to_parts_ordered_days||0));
+  const depositToDesign=Math.max(0,Number(GARAGE_SETTINGS.default_deposit_to_design_consulting_days||0));
+  const designToCad=Math.max(0,Number(GARAGE_SETTINGS.default_design_consulting_to_3d_cad_days||0));
+  const cadToParts=Math.max(0,Number(GARAGE_SETTINGS.default_deposit_to_parts_ordered_days||0));
   const partsToArrived=Math.max(0,Number(GARAGE_SETTINGS.default_parts_ordered_to_arrived_days||0));
   const arrivedToGarage=Math.max(0,Number(GARAGE_SETTINGS.default_parts_arrived_to_garage_days||0));
   const buildDays=Math.max(0,Number(GARAGE_SETTINGS.default_build_days||0));
   const qcDays=Math.max(0,Number(GARAGE_SETTINGS.default_qc_days||0));
+  const qcToPhotoshoot=Math.max(0,Number(GARAGE_SETTINGS.default_qc_to_photoshoot_days||0));
   const deliveryBuffer=Math.max(0,Number(GARAGE_SETTINGS.default_delivery_buffer_days||0));
-  const partsOrdered=addDays(depositDate,depositToParts);
+  const designConsulting=addDays(depositDate,depositToDesign);
+  const design3dCad=addDays(designConsulting,designToCad);
+  const partsOrdered=addDays(design3dCad,cadToParts);
   const partsArrived=addDays(partsOrdered,partsToArrived);
   const carIn=addDays(partsArrived,arrivedToGarage);
   const buildComplete=addDays(carIn,buildDays);
   const qcPass=addDays(buildComplete,qcDays);
-  const delivery=addDays(qcPass,deliveryBuffer);
+  const photoshoot=addDays(qcPass,qcToPhotoshoot);
+  const delivery=addDays(photoshoot,deliveryBuffer);
   const scheduledDates={
     deposit:depositDate,
-    design_consulting:depositDate,
-    design_3d_cad:depositDate,
+    design_consulting:designConsulting,
+    design_3d_cad:design3dCad,
     parts_ordered:partsOrdered,
     parts_arrived:partsArrived,
     car_in:carIn,
     build_complete:buildComplete,
     qc_pass:qcPass,
-    photoshoot:qcPass,
+    photoshoot,
     delivery
   };
   AP.projectMilestones=rows.map(row=>({
@@ -5630,11 +5646,14 @@ function renderSettings(){
 function renderGarageSettings(){
   const map={
     'gt-capacity':'garage_capacity',
+    'gt-deposit-design-days':'default_deposit_to_design_consulting_days',
+    'gt-design-cad-days':'default_design_consulting_to_3d_cad_days',
     'gt-deposit-parts-days':'default_deposit_to_parts_ordered_days',
     'gt-parts-arrived-days':'default_parts_ordered_to_arrived_days',
     'gt-arrived-garage-days':'default_parts_arrived_to_garage_days',
     'gt-build-days':'default_build_days',
     'gt-qc-days':'default_qc_days',
+    'gt-qc-photoshoot-days':'default_qc_to_photoshoot_days',
     'gt-delivery-buffer':'default_delivery_buffer_days'
   };
   Object.entries(map).forEach(([id,key])=>{
@@ -5646,11 +5665,14 @@ function renderGarageSettings(){
 async function saveGarageSettings(){
   const payload={
     garage_capacity:Math.max(1,Number(document.getElementById('gt-capacity')?.value||2)),
+    default_deposit_to_design_consulting_days:Math.max(0,Number(document.getElementById('gt-deposit-design-days')?.value||0)),
+    default_design_consulting_to_3d_cad_days:Math.max(0,Number(document.getElementById('gt-design-cad-days')?.value||0)),
     default_deposit_to_parts_ordered_days:Math.max(0,Number(document.getElementById('gt-deposit-parts-days')?.value||0)),
     default_parts_ordered_to_arrived_days:Math.max(0,Number(document.getElementById('gt-parts-arrived-days')?.value||7)),
     default_parts_arrived_to_garage_days:Math.max(0,Number(document.getElementById('gt-arrived-garage-days')?.value||0)),
     default_build_days:Math.max(0,Number(document.getElementById('gt-build-days')?.value||14)),
     default_qc_days:Math.max(0,Number(document.getElementById('gt-qc-days')?.value||2)),
+    default_qc_to_photoshoot_days:Math.max(0,Number(document.getElementById('gt-qc-photoshoot-days')?.value||0)),
     default_delivery_buffer_days:Math.max(0,Number(document.getElementById('gt-delivery-buffer')?.value||1))
   };
   try{

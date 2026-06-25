@@ -4,6 +4,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const axios = require('axios');
 const OpenAI = require('openai');
+const sharp = require('sharp');
 const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -3379,6 +3380,185 @@ async function sendTelegramMessage(chatId, reply) {
   }
 }
 
+
+function findVehicleForLayout(queryText) {
+  const q = text(queryText).replace(/^\/layout(?:@\w+)?/i, '').trim();
+  if (!q) return null;
+  const like = `%${q}%`;
+  return db.prepare(`
+    SELECT *
+    FROM design_ai_vehicle_records
+    WHERE vehicle_id LIKE ? OR model LIKE ? OR make LIKE ? OR brand LIKE ?
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+  `).get(like, like, like, like);
+}
+
+function vehicleLayoutSvg(vehicle) {
+  const vehicleName = [vehicle.make || vehicle.brand, vehicle.model || vehicle.vehicle_id].filter(Boolean).join(' ') || vehicle.vehicle_id || 'Vehicle';
+
+  const overallL = Number(vehicle.overall_length_mm || vehicle.interior_length_mm || 0);
+  const overallW = Number(vehicle.overall_width_mm || vehicle.interior_width_mm || 0);
+  const overallH = Number(vehicle.overall_height_mm || 0);
+  const interiorL = Number(vehicle.interior_length_mm || overallL * 0.5);
+  const interiorW = Number(vehicle.interior_width_mm || overallW * 0.85);
+  const interiorH = Number(vehicle.interior_height_mm || 0);
+  const wheelbase = Number(vehicle.wheelbase_mm || 0);
+  const sideDoorW = Number(vehicle.side_door_width_mm || 0);
+  const sideDoorH = Number(vehicle.side_door_height_mm || 0);
+  const payload = Number(vehicle.payload_kg || 0);
+  const fmt = v => v ? String(Math.round(v)) : '-';
+
+  const W = 1600;
+  const H = 950;
+
+  const tableX = 48;
+  const tableY = 145;
+  const tableW = 330;
+
+  const carX = 480;
+  const carY = 210;
+  const carMaxW = 950;
+  const carMaxH = 420;
+  const scale = Math.min(carMaxW / overallL, carMaxH / overallW);
+
+  const bodyW = overallL * scale;
+  const bodyH = overallW * scale;
+  const x = carX;
+  const y = carY + (carMaxH - bodyH) / 2;
+
+  const cabW = Math.max(180, bodyW * 0.25);
+  const cargoW = Math.min(interiorL * scale, bodyW * 0.68);
+  const cargoH = Math.min(interiorW * scale, bodyH * 0.78);
+  const cargoX = x + bodyW - cargoW - 72;
+  const cargoY = y + (bodyH - cargoH) / 2;
+
+  const rearAxleX = x + bodyW * 0.77;
+  const frontAxleX = wheelbase ? Math.max(x + bodyW * 0.20, rearAxleX - wheelbase * scale) : x + bodyW * 0.28;
+  const wheelW = Math.max(42, bodyW * 0.055);
+  const wheelH = Math.max(18, bodyH * 0.13);
+
+  const sideDoorLine = sideDoorW ? `
+    <line x1="${cargoX + cargoW * 0.30}" y1="${y + bodyH + 34}" x2="${cargoX + cargoW * 0.30 + Math.min(sideDoorW * scale, cargoW * 0.45)}" y2="${y + bodyH + 34}" stroke="#ca741f" stroke-width="4" stroke-dasharray="10 8"/>
+    <text x="${cargoX + cargoW * 0.30}" y="${y + bodyH + 66}" font-family="Arial, sans-serif" font-size="19" fill="#9a4f0f">side door width ${fmt(sideDoorW)}mm</text>` : '';
+
+  const wheelbaseLine = wheelbase ? `
+    <line x1="${frontAxleX}" y1="${y + bodyH + 96}" x2="${rearAxleX}" y2="${y + bodyH + 96}" stroke="#111110" stroke-width="3"/>
+    <text x="${(frontAxleX + rearAxleX) / 2}" y="${y + bodyH + 126}" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="#111110">${fmt(wheelbase)}mm wheelbase</text>` : '';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <text x="48" y="64" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="#111110">${escapeHtml(vehicleName).toUpperCase()}</text>
+  <text x="48" y="108" font-family="Arial, sans-serif" font-size="28" font-weight="800" fill="#555">2D BIRD'S-EYE BASE LAYOUT</text>
+
+  <rect x="${tableX}" y="${tableY}" width="${tableW}" height="360" rx="14" fill="#ffffff" stroke="#deded8" stroke-width="2"/>
+  <rect x="${tableX}" y="${tableY}" width="${tableW}" height="48" rx="14" fill="#111110"/>
+  <text x="${tableX + 22}" y="${tableY + 32}" font-family="Arial, sans-serif" font-size="20" font-weight="800" fill="#fff">DIMENSIONS (mm)</text>
+
+  <text x="${tableX + 22}" y="${tableY + 88}" font-family="Arial, sans-serif" font-size="18" fill="#555">Overall L / W / H</text>
+  <text x="${tableX + tableW - 22}" y="${tableY + 88}" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="800" fill="#111">${fmt(overallL)} / ${fmt(overallW)} / ${fmt(overallH)}</text>
+
+  <text x="${tableX + 22}" y="${tableY + 132}" font-family="Arial, sans-serif" font-size="18" fill="#555">Interior L / W / H</text>
+  <text x="${tableX + tableW - 22}" y="${tableY + 132}" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="800" fill="#111">${fmt(interiorL)} / ${fmt(interiorW)} / ${fmt(interiorH)}</text>
+
+  <text x="${tableX + 22}" y="${tableY + 176}" font-family="Arial, sans-serif" font-size="18" fill="#555">Wheelbase</text>
+  <text x="${tableX + tableW - 22}" y="${tableY + 176}" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="800" fill="#111">${fmt(wheelbase)}</text>
+
+  <text x="${tableX + 22}" y="${tableY + 220}" font-family="Arial, sans-serif" font-size="18" fill="#555">Side door W / H</text>
+  <text x="${tableX + tableW - 22}" y="${tableY + 220}" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="800" fill="#111">${fmt(sideDoorW)} / ${fmt(sideDoorH)}</text>
+
+  <text x="${tableX + 22}" y="${tableY + 264}" font-family="Arial, sans-serif" font-size="18" fill="#555">Payload</text>
+  <text x="${tableX + tableW - 22}" y="${tableY + 264}" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="800" fill="#111">${payload ? fmt(payload) + ' kg' : '-'}</text>
+
+  <text x="${tableX + 22}" y="${tableY + 318}" font-family="Arial, sans-serif" font-size="16" fill="#777">Vehicle ID: ${escapeHtml(vehicle.vehicle_id || '-')}</text>
+
+  <g id="vehicle-base">
+    <rect x="${x}" y="${y}" width="${bodyW}" height="${bodyH}" rx="46" fill="#fafaf7" stroke="#111110" stroke-width="4"/>
+    <rect x="${x + 26}" y="${y + 34}" width="${cabW}" height="${bodyH - 68}" rx="28" fill="#eeeeea" stroke="#d0d0c8" stroke-width="2"/>
+    <text x="${x + 64}" y="${y + bodyH / 2 + 8}" font-family="Arial, sans-serif" font-size="22" fill="#777">CAB</text>
+
+    <rect x="${cargoX}" y="${cargoY}" width="${cargoW}" height="${cargoH}" rx="24" fill="#ffffff" stroke="#2563eb" stroke-width="4" stroke-dasharray="14 10"/>
+    <text x="${cargoX + 28}" y="${cargoY + 42}" font-family="Arial, sans-serif" font-size="21" font-weight="800" fill="#1d4ed8">USABLE INTERIOR AREA</text>
+    <text x="${cargoX + 28}" y="${cargoY + 76}" font-family="Arial, sans-serif" font-size="20" fill="#1d4ed8">${fmt(interiorL)}mm × ${fmt(interiorW)}mm</text>
+
+    <rect x="${frontAxleX - wheelW / 2}" y="${y - wheelH / 2}" width="${wheelW}" height="${wheelH}" rx="9" fill="#111110"/>
+    <rect x="${frontAxleX - wheelW / 2}" y="${y + bodyH - wheelH / 2}" width="${wheelW}" height="${wheelH}" rx="9" fill="#111110"/>
+    <rect x="${rearAxleX - wheelW / 2}" y="${y - wheelH / 2}" width="${wheelW}" height="${wheelH}" rx="9" fill="#111110"/>
+    <rect x="${rearAxleX - wheelW / 2}" y="${y + bodyH - wheelH / 2}" width="${wheelW}" height="${wheelH}" rx="9" fill="#111110"/>
+  </g>
+
+  <line x1="${x}" y1="${y - 72}" x2="${x + bodyW}" y2="${y - 72}" stroke="#111110" stroke-width="3"/>
+  <text x="${x + bodyW / 2}" y="${y - 92}" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="900" fill="#111">${fmt(overallL)}mm overall length</text>
+
+  <line x1="${x + bodyW + 76}" y1="${y}" x2="${x + bodyW + 76}" y2="${y + bodyH}" stroke="#111110" stroke-width="3"/>
+  <text x="${x + bodyW + 108}" y="${y + bodyH / 2}" font-family="Arial, sans-serif" font-size="24" font-weight="900" fill="#111">${fmt(overallW)}mm</text>
+  <text x="${x + bodyW + 108}" y="${y + bodyH / 2 + 28}" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#555">overall width</text>
+
+  ${sideDoorLine}
+  ${wheelbaseLine}
+
+  <rect x="48" y="560" width="330" height="180" rx="14" fill="#ffffff" stroke="#deded8" stroke-width="2"/>
+  <text x="70" y="600" font-family="Arial, sans-serif" font-size="22" font-weight="900" fill="#111">LEGEND</text>
+  <line x1="72" y1="635" x2="135" y2="635" stroke="#2563eb" stroke-width="4" stroke-dasharray="12 8"/>
+  <text x="156" y="642" font-family="Arial, sans-serif" font-size="18" fill="#333">usable interior boundary</text>
+  <line x1="72" y1="682" x2="135" y2="682" stroke="#ca741f" stroke-width="4" stroke-dasharray="10 8"/>
+  <text x="156" y="689" font-family="Arial, sans-serif" font-size="18" fill="#333">side door opening</text>
+
+  <text x="48" y="890" font-family="Arial, sans-serif" font-size="18" fill="#777">Generated from CRDN stored dimensions. Clean base layout for product placement. Verify before fabrication.</text>
+</svg>`;
+}
+
+async function sendTelegramSvgPhoto(chatId, svg, filename, caption) {
+  const token = text(process.env.TELEGRAM_BOT_TOKEN);
+  const cleanChatId = text(chatId);
+  if (!token) throw Object.assign(new Error('Telegram bot token is not configured.'), { status: 500 });
+  if (!cleanChatId) throw Object.assign(new Error('Telegram chat ID is missing.'), { status: 400 });
+
+  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+  const pngFilename = filename.replace(/\.svg$/i, '.png');
+
+  const form = new FormData();
+  form.append('chat_id', cleanChatId);
+  form.append('caption', caption);
+  form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), pngFilename);
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    method: 'POST',
+    body: form
+  });
+
+  if (!response.ok) {
+    throw Object.assign(new Error(`Telegram sendPhoto failed: ${await response.text()}`), { status: 502 });
+  }
+
+  return response.json().catch(() => ({}));
+}
+
+async function telegramVehicleLayoutReply(chatId, queryText) {
+  const vehicle = findVehicleForLayout(queryText);
+
+  if (!vehicle) {
+    await sendTelegramMessage(chatId, 'Vehicle not found. Usage: /layout VEHICLE_NAME, for example /layout TownAce');
+    return true;
+  }
+
+  if (!Number(vehicle.overall_length_mm || vehicle.interior_length_mm) || !Number(vehicle.overall_width_mm || vehicle.interior_width_mm)) {
+    await sendTelegramMessage(
+      chatId,
+      `${vehicle.vehicle_id || vehicle.model} exists, but it does not yet have enough dimensions to generate a layout. Add overall/interior length and width first.`
+    );
+    return true;
+  }
+
+  const svg = vehicleLayoutSvg(vehicle);
+  const filename = `${slugify(vehicle.vehicle_id || vehicle.model || 'vehicle')}-layout.svg`;
+  const caption = `${vehicle.make || vehicle.brand || ''} ${vehicle.model || vehicle.vehicle_id} 2D birdseye layout`.trim();
+  await sendTelegramSvgPhoto(chatId, svg, filename, caption);
+  return true;
+}
+
 async function sendTelegramPhoto(chatId, filename, caption) {
   const token = text(process.env.TELEGRAM_BOT_TOKEN);
   const cleanChatId = text(chatId);
@@ -3872,6 +4052,7 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
         '/projects - list active projects',
         '/project PROJECT_ID_OR_NAME - project lookup',
         '/mockups - list latest mockup requests',
+        '/layout VEHICLE_NAME - send 2D vehicle birdseye layout',
         '/mockup DESCRIPTION - save mockup request with photo'
       ].join('\n');
     } else if (/^\/context(?:@\w+)?/i.test(text)) {
@@ -3882,6 +4063,9 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
       reply = telegramProjectLookupReply(text);
     } else if (/^\/mockups(?:@\w+)?/i.test(text)) {
       reply = telegramMockupsReply();
+    } else if (/^\/layout(?:@\w+)?/i.test(text)) {
+      await telegramVehicleLayoutReply(chatId, text);
+      return res.json({ ok: true });
     } else if (/^\/mockup(?:@\w+)?/i.test(text)) {
       const photos = message.photo || [];
       const largestPhoto = photos[photos.length - 1];

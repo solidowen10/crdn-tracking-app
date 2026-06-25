@@ -119,6 +119,31 @@ button{cursor:pointer}
 .pbar{height:4px;background:var(--g200);border-radius:2px;overflow:hidden;min-width:64px;flex:1}
 .pfill{height:100%;background:var(--brand);border-radius:2px;transition:.4s}
 .ppct{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.04em;color:var(--g500)}
+.dash-milestone-chip{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+  padding:4px 10px;
+  border-radius:99px;
+  font-size:var(--xxs);
+  font-weight:700;
+  line-height:1.25;
+  text-align:center;
+  white-space:normal;
+  min-width:0;
+}
+.dash-milestone-chip .sdot{width:8px;height:8px}
+.dash-milestone-chip.pending{background:var(--g100);color:var(--g500)}
+.dash-milestone-chip.ongoing{background:#eff6ff;color:#2563eb}
+.dash-milestone-chip.done{background:#f0fdf4;color:#15803d}
+.dash-milestone-chip.pending .sdot{background:var(--g400)}
+.dash-milestone-chip.ongoing .sdot{background:#3b82f6}
+.dash-milestone-chip.done .sdot{background:#16a34a}
+.dash-progress-wrap{min-width:0;width:100%}
+.dash-progress-wrap .prog{justify-content:stretch}
+.dash-milestone-meta{font-size:var(--xxxs);color:var(--g400);margin-top:4px;text-align:center;line-height:1.35;overflow-wrap:anywhere}
 .designer-pill{
   display:flex;
   justify-content:center;
@@ -759,7 +784,7 @@ button{cursor:pointer}
 }
 @media(max-width:700px){.tl-grid,.timeline-grid,.garage-timeline-grid{grid-template-columns:1fr!important}.tl-field,.timeline-field,.garage-timeline-field{min-width:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box}.tl-field input,.timeline-field input,.garage-timeline-field input,input[type="date"]{max-width:100%;box-sizing:border-box}}
 .garage-form-grid .mi{width:100%;max-width:100%;box-sizing:border-box}
-@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}@media(max-width:760px){.pt-schedule-row{justify-content:center!important;text-align:center}.pt-schedule-row>div{width:100%}.pt-schedule-row .btn{margin:0 auto}}.mcf-project-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:700;cursor:pointer}@media(max-width:760px){.parts-list .pcard,.part-card{overflow:hidden}.parts-list .pill,.parts-list .badge,.pst,.parts-status,.parts-status-pill{white-space:nowrap;flex-shrink:0;min-width:0}.parts-list .pcard>div:first-child,.part-card>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.parts-list .pcard strong,.part-card strong{min-width:0;overflow-wrap:anywhere}}.garage-today-line{position:absolute;top:0;bottom:0;width:1px;background:transparent;opacity:0;z-index:0;pointer-events:none}@media(max-width:760px){.pst{white-space:nowrap!important;flex-shrink:0!important}.parts-card strong,.part-card strong,.parts-list strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:72%}.parts-card,.part-card,.parts-list .fc{overflow:hidden}}@media(max-width:760px){.pst{white-space:nowrap!important;max-width:none!important;text-align:center!important;display:inline-flex!important;justify-content:center!important;flex-shrink:0!important}.parts-list strong,.part-card strong,.parts-card strong{max-width:52%!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;word-break:break-word!important}.parts-list .pcard>div:first-child,.part-card>div:first-child,.parts-card>div:first-child{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:10px!important}}@media(min-width:761px){.pc-b{display:grid!important;grid-template-columns:minmax(260px,32%) minmax(220px,1fr) minmax(90px,12%)!important;align-items:center!important;gap:18px!important}.pc-b .spill{justify-self:stretch!important;white-space:nowrap!important;min-width:0!important}.pc-b .prog{width:100%!important;max-width:none!important;min-width:0!important}.pc-b .designer-pill{justify-self:end!important;text-align:right!important;white-space:nowrap!important;margin-left:0!important;margin-right:18px!important}}.mcf-bottom-actions{display:flex;justify-content:center;align-items:center;gap:10px;margin:24px 0 8px;flex-wrap:wrap}.mcf-bottom-actions .btn{min-width:120px;justify-content:center}@media(max-width:760px){html,body{overflow-x:hidden!important}#v-settings,#v-settings .tb,#v-settings .ss{width:100%!important;max-width:100%!important;overflow-x:hidden!important;box-sizing:border-box}#v-settings input,#v-settings select,#v-settings textarea{max-width:100%!important;min-width:0!important;box-sizing:border-box}}@media(max-width:700px){#v-settings .cphd{display:block!important}#v-settings .cphd>div:first-child{width:100%!important;max-width:100%!important}#v-settings .cphd>div:last-child{margin-top:8px!important;justify-content:flex-start!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}#v-settings .cphd .iedit{width:100%!important;max-width:100%!important;white-space:normal!important}}@media(min-width:901px){#v-settings .tb{width:760px!important;max-width:760px!important;margin-left:auto!important;margin-right:auto!important}#v-settings .ss{width:100%!important;max-width:100%!important;box-sizing:border-box!important}.pkg-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media(max-width:700px){#users-settings .userrow{display:grid!important;grid-template-columns:40px minmax(0,1fr) 120px!important;gap:8px 10px!important;align-items:center!important;padding:13px 0!important}#users-settings .userrow>div:nth-child(2){min-width:0!important;overflow:hidden!important}#users-settings .userrow>div:nth-child(2) div{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}#users-settings .userrow .role-select,#users-settings .userrow .btn{grid-column:3!important;width:120px!important}#users-settings .userrow .role-select{margin-bottom:6px!important}}@media(max-width:700px){#users-settings .userrow{display:grid!important;grid-template-columns:44px minmax(0,1fr)!important;gap:10px!important;align-items:center!important;padding:13px 0!important}#users-settings .userrow>div:nth-child(2){min-width:0!important;overflow:hidden!important}#users-settings .userrow>div:nth-child(2) div{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}.user-actions{grid-column:2!important;display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:nowrap!important}.user-actions .role-select{width:110px!important;min-width:110px!important}.user-actions .btn{width:auto!important;min-width:74px!important;white-space:nowrap!important;justify-content:center!important}}</style>
+@media(max-width:760px){.qtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.qt{min-width:760px}}@media(max-width:760px){.pt-schedule-row{justify-content:center!important;text-align:center}.pt-schedule-row>div{width:100%}.pt-schedule-row .btn{margin:0 auto}}.mcf-project-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:700;cursor:pointer}@media(max-width:760px){.parts-list .pcard,.part-card{overflow:hidden}.parts-list .pill,.parts-list .badge,.pst,.parts-status,.parts-status-pill{white-space:nowrap;flex-shrink:0;min-width:0}.parts-list .pcard>div:first-child,.part-card>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.parts-list .pcard strong,.part-card strong{min-width:0;overflow-wrap:anywhere}}.garage-today-line{position:absolute;top:0;bottom:0;width:1px;background:transparent;opacity:0;z-index:0;pointer-events:none}@media(max-width:760px){.pst{white-space:nowrap!important;flex-shrink:0!important}.parts-card strong,.part-card strong,.parts-list strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:72%}.parts-card,.part-card,.parts-list .fc{overflow:hidden}}@media(max-width:760px){.pst{white-space:nowrap!important;max-width:none!important;text-align:center!important;display:inline-flex!important;justify-content:center!important;flex-shrink:0!important}.parts-list strong,.part-card strong,.parts-card strong{max-width:52%!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;word-break:break-word!important}.parts-list .pcard>div:first-child,.part-card>div:first-child,.parts-card>div:first-child{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:10px!important}}@media(min-width:761px){.pc-b{display:grid!important;grid-template-columns:minmax(260px,32%) minmax(220px,1fr) minmax(90px,12%)!important;align-items:center!important;gap:18px!important}.pc-b .spill,.pc-b .dash-milestone-chip{justify-self:stretch!important;min-width:0!important}.pc-b .spill{white-space:nowrap!important}.pc-b .prog{width:100%!important;max-width:none!important;min-width:0!important}.pc-b .designer-pill{justify-self:end!important;text-align:right!important;white-space:nowrap!important;margin-left:0!important;margin-right:18px!important}}.mcf-bottom-actions{display:flex;justify-content:center;align-items:center;gap:10px;margin:24px 0 8px;flex-wrap:wrap}.mcf-bottom-actions .btn{min-width:120px;justify-content:center}@media(max-width:760px){html,body{overflow-x:hidden!important}#v-settings,#v-settings .tb,#v-settings .ss{width:100%!important;max-width:100%!important;overflow-x:hidden!important;box-sizing:border-box}#v-settings input,#v-settings select,#v-settings textarea{max-width:100%!important;min-width:0!important;box-sizing:border-box}}@media(max-width:700px){#v-settings .cphd{display:block!important}#v-settings .cphd>div:first-child{width:100%!important;max-width:100%!important}#v-settings .cphd>div:last-child{margin-top:8px!important;justify-content:flex-start!important;display:flex!important;gap:6px!important;flex-wrap:wrap!important}#v-settings .cphd .iedit{width:100%!important;max-width:100%!important;white-space:normal!important}}@media(min-width:901px){#v-settings .tb{width:760px!important;max-width:760px!important;margin-left:auto!important;margin-right:auto!important}#v-settings .ss{width:100%!important;max-width:100%!important;box-sizing:border-box!important}.pkg-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media(max-width:700px){#users-settings .userrow{display:grid!important;grid-template-columns:40px minmax(0,1fr) 120px!important;gap:8px 10px!important;align-items:center!important;padding:13px 0!important}#users-settings .userrow>div:nth-child(2){min-width:0!important;overflow:hidden!important}#users-settings .userrow>div:nth-child(2) div{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}#users-settings .userrow .role-select,#users-settings .userrow .btn{grid-column:3!important;width:120px!important}#users-settings .userrow .role-select{margin-bottom:6px!important}}@media(max-width:700px){#users-settings .userrow{display:grid!important;grid-template-columns:44px minmax(0,1fr)!important;gap:10px!important;align-items:center!important;padding:13px 0!important}#users-settings .userrow>div:nth-child(2){min-width:0!important;overflow:hidden!important}#users-settings .userrow>div:nth-child(2) div{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}.user-actions{grid-column:2!important;display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:nowrap!important}.user-actions .role-select{width:110px!important;min-width:110px!important}.user-actions .btn{width:auto!important;min-width:74px!important;white-space:nowrap!important;justify-content:center!important}}</style>
 </head>
 <body>
 
@@ -1195,11 +1220,14 @@ const CASH_OUT_CATEGORIES=[
 const PROJECT_MILESTONE_DEFS=[
   {key:'consultation',label:'Consultation'},
   {key:'deposit',label:'Deposit Paid'},
+  {key:'design_consulting',label:'Design / Consulting'},
+  {key:'design_3d_cad',label:'Design / 3D CAD'},
   {key:'parts_ordered',label:'Parts Ordered'},
   {key:'parts_arrived',label:'Parts Arrived',timelineKey:'parts_arrived_date'},
   {key:'car_in',label:'Car In Garage',timelineKey:'intake_date'},
   {key:'build_complete',label:'Build Complete',timelineKey:'build_complete_date'},
   {key:'qc_pass',label:'QC Pass',timelineKey:'qc_date'},
+  {key:'photoshoot',label:'Photoshoot'},
   {key:'delivery',label:'Delivery',timelineKey:'delivery_date'}
 ];
 const PROJECT_MILESTONE_STATUSES=['Pending','Ongoing','Done'];
@@ -1791,6 +1819,23 @@ function projectTimelineCurrentStatus(project){
   return 'Pending';
 }
 
+function dashboardMilestoneProgress(project){
+  const milestones=ensureProjectMilestones(project);
+  const total=milestones.length||0;
+  const done=milestones.filter(projectMilestoneDone).length;
+  const percent=total?Math.round((done/total)*100):0;
+  const active=milestones.find(m=>m.status==='Ongoing')||milestones.find(m=>m.status==='Pending')||milestones[milestones.length-1]||null;
+  const status=total&&done===total?'Done':(active?.status||'Pending');
+  return {
+    total,
+    done,
+    percent,
+    label:active?.label||'Project Timeline',
+    status,
+    statusClass:String(status||'Pending').toLowerCase()
+  };
+}
+
 function projectDepositPaid(project=AP){
   const deposit=ensureProjectMilestones(project).find(row=>row.key==='deposit');
   return deposit?.status==='Done'||sIdx(project?.stage)>=sIdx('05 Deposit Paid');
@@ -2178,7 +2223,7 @@ function renderDash(filter='All'){
   const list=document.getElementById('plist');list.innerHTML='';
   if(!shown.length){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--g300)">No projects found</div>';return;}
   shown.forEach(p=>{
-    const pct=sPct(p.stage),col=sCol(p.stage),t=projectQuoteTotal(p);
+    const mp=dashboardMilestoneProgress(p),t=projectQuoteTotal(p);
     const delivery=timelineDeliveryDate(p);
     const d=document.createElement('div');d.className='pcard';
     d.innerHTML=`
@@ -2187,8 +2232,11 @@ function renderDash(filter='All'){
         <span class="pri pri-${p.priority}">${p.priority}</span>
       </div>
       <div class="pc-b">
-        <span class="spill" style="background:${col}18;color:${col}"><span class="sdot" style="background:${col}"></span>${p.stage}</span>
-        <div class="prog"><div class="pbar"><div class="pfill" style="width:${pct}%"></div></div><span class="ppct">${pct}%</span></div>
+        <span class="dash-milestone-chip ${mp.statusClass}"><span class="sdot"></span>${esc(mp.label)}</span>
+        <div class="dash-progress-wrap">
+          <div class="prog"><div class="pbar"><div class="pfill" style="width:${mp.percent}%"></div></div><span class="ppct">${mp.percent}%</span></div>
+          <div class="dash-milestone-meta">${commas(mp.done)} / ${commas(mp.total)} Done · ${esc(mp.status)}</div>
+        </div>
         <span class="designer-pill">👤 ${p.designer||'—'}</span>
         ${p.archived?'<span class="pc-status archived">Archived</span>':''}
       </div>
@@ -3814,11 +3862,14 @@ async function scheduleProjectTimeline(){
   const delivery=addDays(qcPass,deliveryBuffer);
   const scheduledDates={
     deposit:depositDate,
+    design_consulting:depositDate,
+    design_3d_cad:depositDate,
     parts_ordered:partsOrdered,
     parts_arrived:partsArrived,
     car_in:carIn,
     build_complete:buildComplete,
     qc_pass:qcPass,
+    photoshoot:qcPass,
     delivery
   };
   AP.projectMilestones=rows.map(row=>({

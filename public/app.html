@@ -971,12 +971,6 @@ button{cursor:pointer}
       <button class="btn btn-brand btn-sm" style="margin-top:9px" onclick="saveContractTerms()">Save Contract Terms</button>
     </div>
 
-    <!-- GOOGLE SHEETS -->
-    <div class="ss">
-      <div class="sst">Pipeline Stages</div>
-      <div id="pipeline-settings"></div>
-    </div>
-
     <!-- GARAGE TIMELINE SETTINGS -->
     <div class="ss">
       <div class="sst">Google Sheets Sync</div>
@@ -1792,7 +1786,7 @@ function projectTimelineGapText(rows,index){
 function renderProjectTimelineVisual(project){
   const milestones=ensureProjectMilestones(project);
   const doneCount=milestones.filter(projectMilestoneDone).length;
-  const fill=milestones.length?Math.round((doneCount/milestones.length)*100):0;
+  const fill=milestones.length>1&&doneCount>0?Math.round(((doneCount-1)/(milestones.length-1))*100):0;
   return `
     <div class="fc">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -1838,7 +1832,7 @@ function dashboardMilestoneProgress(project){
   const lastDone=[...milestones].reverse().find(projectMilestoneDone);
   const firstPending=milestones.find(m=>m.status==='Pending');
   const active=ongoing||lastDone||firstPending||milestones[0]||null;
-  const status=total&&done===total?'Done':(active?.status||'Pending');
+  const status=total&&done===total?'Done':(ongoing?'Ongoing':'Pending');
   return {
     total,
     done,

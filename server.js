@@ -4169,6 +4169,7 @@ function handleMcpToolCall(name, args = {}) {
   err.code = -32601;
   throw err;
 }
+app.get('/api/mcp', requireAgentRead, (req, res) => res.json({ ok: true, service: 'CRDN MCP read-only wrapper', transport: 'json-rpc-post', endpoint: '/api/mcp', protocolVersions: ['2024-11-05','2025-06-18'], tools: mcpToolDefinitions() }));
 app.post('/api/mcp', requireAgentRead, (req, res) => {
   const rpc = req.body || {};
   const id = rpc.id ?? null;
@@ -4181,7 +4182,7 @@ app.post('/api/mcp', requireAgentRead, (req, res) => {
         jsonrpc: '2.0',
         id,
         result: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: rpc.params?.protocolVersion || '2024-11-05',
           capabilities: {
             tools: {}
           },

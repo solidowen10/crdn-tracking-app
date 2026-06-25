@@ -1068,11 +1068,42 @@ function extractionTemplate(entityType, entityId) {
     depth_mm: null,
     height_mm: null,
     weight_kg: null,
+    dimension_confidence: '',
+    material: '',
+    color: '',
     mounting_type: '',
     compatible_vehicles: [],
     requires_drilling: null,
     install_minutes: null,
     price: null,
+    layout_component_type: '',
+    layout_width_mm: null,
+    layout_depth_mm: null,
+    layout_height_mm: null,
+    layout_modes_json: [],
+    shape_rule: '',
+    orientation_options_json: [],
+    allowed_zones_json: [],
+    clearance_notes: '',
+    is_configurable: null,
+    configurable_dimensions_json: {},
+    default_variant_json: {},
+    variants_json: [],
+    fitment_confidence: '',
+    fitment_reason: '',
+    confirmed_data_json: {},
+    estimated_data_json: {},
+    production_warning: '',
+    production_ready: null,
+    seat_mode_width_mm: null,
+    seat_mode_depth_mm: null,
+    bed_mode_width_mm: null,
+    bed_mode_depth_mm: null,
+    extended_bed_mode_width_mm: null,
+    extended_bed_mode_depth_mm: null,
+    seat_panel_depth_mm: null,
+    back_panel_depth_mm: null,
+    optional_extension_depth_mm: null,
     notes: '',
     field_confidence: {},
     source_evidence: []
@@ -1156,6 +1187,9 @@ function extractionSystemPrompt(entityType) {
   const vehicleGuidance = entityType === 'vehicle'
     ? 'For vehicle extraction, preserve manufacturer source field names in _field_sources when possible. Map cargo/load/luggage dimensions into interior fields, door opening measurements into side/rear door fields, and keep discovered-but-unmapped values in _unmapped_source_data. Confidence labels must be HIGH for exact field matches, MEDIUM for alias matches, LOW only for clearly inferred values. Do not invent wheel arch, rear window, or mounting point dimensions.'
     : '';
+  const productGuidance = entityType === 'product'
+    ? 'For product extraction, map confirmed physical dimensions separately from layout footprint dimensions when both are present. Use layout_component_type, shape_rule, orientation_options_json, allowed_zones_json, and layout_modes_json when evidence supports AI placement. Put uncertain or image-based estimates in estimated_data_json and mark confidence LOW or MEDIUM. Do not mark production_ready true unless source evidence explicitly confirms production fitment.'
+    : '';
   return [
     'You are CRDN internal Design AI extraction. Return concise valid JSON only.',
     'Extract structured dimensions and installation/product/vehicle facts from the provided evidence.',
@@ -1163,6 +1197,7 @@ function extractionSystemPrompt(entityType) {
     'Do not invent exact measurements from photos, PDFs, screenshots, scans, or 3D asset references when the content is not directly readable.',
     'For each populated field, add field_confidence[field] and list source_evidence entries naming the source file.',
     vehicleGuidance,
+    productGuidance,
     `Return this shape for ${entityType}: ${JSON.stringify(shape)}`
   ].filter(Boolean).join(' ');
 }

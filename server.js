@@ -498,11 +498,32 @@ function agentProductRecord(row) {
       height: record.height_mm
     },
     weight_kg: record.weight_kg,
+    dimension_confidence: record.dimension_confidence || '',
+    material: record.material || '',
+    color: record.color || '',
+    layout_component_type: record.layout_component_type || '',
+    layout_dimensions_mm: {
+      width: record.layout_width_mm,
+      depth: record.layout_depth_mm,
+      height: record.layout_height_mm
+    },
+    layout_modes: record.layout_modes || [],
+    shape_rule: record.shape_rule || '',
+    configurable_dimensions: record.configurable_dimensions || {},
+    orientation_options: record.orientation_options || [],
+    allowed_zones: record.allowed_zones || [],
     mounting_type: record.mounting_type || '',
     mounting_notes: record.mounting_notes || '',
     installation_notes: record.installation_notes || '',
+    clearance_notes: record.clearance_notes || '',
     compatible_vehicles: record.compatible_vehicles || [],
+    fitment_confidence: record.fitment_confidence || '',
+    fitment_reason: record.fitment_reason || '',
+    production_warning: record.production_warning || '',
+    production_ready: Boolean(record.production_ready),
+    status: record.status || 'draft',
     approved_status: record.status || 'draft',
+    source_notes: record.source_notes || '',
     reference_files: agentReferenceFileMetadata(record.reference_files_json),
     source_summary: agentSourceSummary(record.source_summary_json),
     updated_at: record.updated_at
@@ -670,8 +691,16 @@ const DESIGN_AI_VEHICLE_FIELDS = [
 const DESIGN_AI_PRODUCT_FIELDS = [
   'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
   'mounting_type', 'compatible_vehicles_json', 'requires_drilling', 'install_minutes', 'price',
-  'mounting_notes', 'installation_notes', 'reference_files_json', 'source_drive_folder_id',
-  'source_summary_json', 'status'
+  'mounting_notes', 'installation_notes', 'dimension_confidence', 'material', 'color',
+  'layout_component_type', 'layout_width_mm', 'layout_depth_mm', 'layout_height_mm',
+  'layout_modes_json', 'shape_rule', 'orientation_options_json', 'allowed_zones_json',
+  'clearance_notes', 'is_configurable', 'configurable_dimensions_json', 'default_variant_json',
+  'variants_json', 'fitment_confidence', 'fitment_reason', 'confirmed_data_json',
+  'estimated_data_json', 'production_warning', 'production_ready', 'source_notes',
+  'seat_mode_width_mm', 'seat_mode_depth_mm', 'bed_mode_width_mm', 'bed_mode_depth_mm',
+  'extended_bed_mode_width_mm', 'extended_bed_mode_depth_mm', 'seat_panel_depth_mm',
+  'back_panel_depth_mm', 'optional_extension_depth_mm', 'reference_files_json',
+  'source_drive_folder_id', 'source_summary_json', 'status'
 ];
 const DESIGN_AI_STYLE_FIELDS = [
   'name', 'description', 'colors_json', 'materials_json', 'reference_images_json',
@@ -688,13 +717,19 @@ const DESIGN_AI_NUMBER_FIELDS = new Set([
   'side_door_width_mm', 'side_door_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
   'rear_window_width_mm', 'rear_window_height_mm', 'wheel_arch_width_mm', 'wheel_arch_height_mm',
   'wheel_arch_position_x_mm', 'wheel_arch_position_y_mm', 'width_mm', 'depth_mm', 'height_mm',
-  'payload_kg', 'weight_kg', 'install_minutes', 'price'
+  'layout_width_mm', 'layout_depth_mm', 'layout_height_mm', 'seat_mode_width_mm',
+  'seat_mode_depth_mm', 'bed_mode_width_mm', 'bed_mode_depth_mm', 'extended_bed_mode_width_mm',
+  'extended_bed_mode_depth_mm', 'seat_panel_depth_mm', 'back_panel_depth_mm',
+  'optional_extension_depth_mm', 'payload_kg', 'weight_kg', 'install_minutes', 'price'
 ]);
 const DESIGN_AI_JSON_FIELDS = new Set([
   'compatible_vehicles_json', 'reference_files_json', 'source_summary_json', 'colors_json',
   'materials_json', 'reference_images_json', 'products_json', 'customer_photos_json',
-  'layout_json', 'mockup_files_json'
+  'layout_json', 'mockup_files_json', 'layout_modes_json', 'orientation_options_json',
+  'allowed_zones_json', 'configurable_dimensions_json', 'default_variant_json',
+  'variants_json', 'confirmed_data_json', 'estimated_data_json'
 ]);
+const DESIGN_AI_BOOLEAN_FIELDS = new Set(['requires_drilling', 'is_configurable', 'production_ready']);
 const DESIGN_AI_RECORD_STATUSES = new Set(['draft', 'approved', 'archived']);
 const DESIGN_AI_WORKSPACE_STATUSES = new Set(['draft', 'submitted', 'in_progress', 'review', 'approved', 'archived']);
 const DESIGN_AI_MOODBOARD_INPUT_KEYS = [
@@ -798,8 +833,19 @@ function designProductRecordFromRow(row) {
   if (!row) return null;
   return {
     ...row,
+    requires_drilling: Boolean(row.requires_drilling),
+    is_configurable: Boolean(row.is_configurable),
+    production_ready: Boolean(row.production_ready),
     compatible_vehicles: parseJson(row.compatible_vehicles_json, []),
     reference_files: parseJson(row.reference_files_json, []),
+    layout_modes: parseJson(row.layout_modes_json, []),
+    orientation_options: parseJson(row.orientation_options_json, []),
+    allowed_zones: parseJson(row.allowed_zones_json, []),
+    configurable_dimensions: parseJson(row.configurable_dimensions_json, {}),
+    default_variant: parseJson(row.default_variant_json, {}),
+    variants: parseJson(row.variants_json, []),
+    confirmed_data: parseJson(row.confirmed_data_json, {}),
+    estimated_data: parseJson(row.estimated_data_json, {}),
     source_summary: parseJson(row.source_summary_json, {})
   };
 }
@@ -915,7 +961,7 @@ function designRecordValue(value, field) {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
   if (DESIGN_AI_NUMBER_FIELDS.has(field)) return number(value, null);
-  if (field === 'requires_drilling') return value ? 1 : 0;
+  if (DESIGN_AI_BOOLEAN_FIELDS.has(field)) return bool(value) ? 1 : 0;
   if (field === 'status') return cleanRecordStatus(value);
   if (field === 'compatible_vehicles_json') return JSON.stringify(Array.isArray(value) ? value.map(text).filter(Boolean) : parseMustInclude(value));
   if (field === 'products_json') return JSON.stringify(parseWorkspaceProducts(value));
@@ -1009,8 +1055,54 @@ function upsertDesignVehicleRecord(vehicleId, payload, sourceSummary, options = 
   });
 }
 
+const DESIGN_AI_PRODUCT_MANUAL_VALUE_FIELDS = [
+  'width_mm', 'depth_mm', 'height_mm', 'weight_kg', 'price', 'material', 'color',
+  'layout_width_mm', 'layout_depth_mm', 'layout_height_mm', 'layout_component_type',
+  'shape_rule', 'clearance_notes', 'mounting_notes', 'installation_notes',
+  'seat_mode_width_mm', 'seat_mode_depth_mm', 'bed_mode_width_mm', 'bed_mode_depth_mm',
+  'extended_bed_mode_width_mm', 'extended_bed_mode_depth_mm', 'seat_panel_depth_mm',
+  'back_panel_depth_mm', 'optional_extension_depth_mm'
+];
+
+function hasDesignValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function isHighConfidence(confidence, field) {
+  return text(confidence?.[field]).toUpperCase() === 'HIGH';
+}
+
+function protectManualProductValues(productId, payload = {}, sourceSummary = {}) {
+  const existing = designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE product_id=?').get(productId));
+  if (!existing) return payload;
+  const confidence = sourceSummary?.confidence || payload.field_confidence || {};
+  const estimated = { ...(existing.estimated_data || {}) };
+  const next = { ...payload };
+  let changed = false;
+  DESIGN_AI_PRODUCT_MANUAL_VALUE_FIELDS.forEach(field => {
+    if (!Object.prototype.hasOwnProperty.call(next, field)) return;
+    const incoming = next[field];
+    const current = existing[field];
+    if (!hasDesignValue(incoming) || !hasDesignValue(current)) return;
+    if (String(incoming) === String(current)) return;
+    if (isHighConfidence(confidence, field)) return;
+    estimated[field] = {
+      value: incoming,
+      confidence: text(confidence[field] || 'LOW') || 'LOW',
+      source: 'design_ai_extraction',
+      saved_at: new Date().toISOString()
+    };
+    delete next[field];
+    changed = true;
+  });
+  if (changed) next.estimated_data_json = estimated;
+  return next;
+}
+
 function upsertDesignProductRecord(productId, payload, sourceSummary, options = {}) {
-  const incoming = { ...payload };
+  const incoming = options.preserveManualEstimates
+    ? protectManualProductValues(productId, payload, sourceSummary)
+    : { ...payload };
   if (incoming.compatible_vehicles && incoming.compatible_vehicles_json === undefined) incoming.compatible_vehicles_json = incoming.compatible_vehicles;
   return upsertDesignRecord({
     table: 'design_ai_product_records',
@@ -1208,8 +1300,8 @@ function layoutPreviewFromInput(body = {}) {
     const itemWarnings = [];
     if (!product) itemWarnings.push('Missing approved product dimensions.');
     else if (product.status !== 'approved') itemWarnings.push('Product is using draft/not approved record.');
-    const boxWidth = number(product?.width_mm, 0);
-    const boxHeight = number(product?.depth_mm || product?.height_mm, 0);
+    const boxWidth = number(product?.layout_width_mm ?? product?.width_mm, 0);
+    const boxHeight = number(product?.layout_depth_mm ?? product?.depth_mm ?? product?.height_mm, 0);
     if (!boxWidth || !boxHeight) itemWarnings.push('Product width/depth dimensions are missing.');
     const x = number(placement.x_mm, 0);
     const y = number(placement.y_mm, 0);
@@ -1271,7 +1363,7 @@ function approveExtractionDraft(id) {
       installation_notes: draft.extracted.installation_notes || '',
       source_drive_folder_id: draft.source_drive_folder_id,
       status: 'approved'
-    }, sourceSummary, { defaultStatus: 'approved', preserveExistingEmpty: true });
+    }, sourceSummary, { defaultStatus: 'approved', preserveExistingEmpty: true, preserveManualEstimates: true });
   }
   db.prepare('UPDATE design_ai_extraction_drafts SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('approved', draft.id);
   return { draft: designExtractionFromRow(db.prepare('SELECT * FROM design_ai_extraction_drafts WHERE id=?').get(draft.id)), record };
@@ -2023,7 +2115,7 @@ app.get('/api/design-ai/products/:productId', requireAuth, (req, res) => {
   res.json({ record });
 });
 
-app.post('/api/design-ai/products', requireAuth, (req, res) => {
+app.post('/api/design-ai/products', requireAdmin, (req, res) => {
   const productId = text(req.body.product_id);
   if (!productId) return res.status(400).json({ error: 'product_id is required.' });
   const record = upsertDesignProductRecord(productId, {
@@ -2037,7 +2129,7 @@ app.post('/api/design-ai/products', requireAuth, (req, res) => {
   res.status(201).json({ record });
 });
 
-app.patch('/api/design-ai/products/:productId', requireAuth, (req, res) => {
+app.patch('/api/design-ai/products/:productId', requireAdmin, (req, res) => {
   const productId = text(req.params.productId);
   if (!productId) return res.status(400).json({ error: 'product id is required.' });
   const nextId = text(req.body.product_id || productId);
@@ -2053,6 +2145,14 @@ app.patch('/api/design-ai/products/:productId', requireAuth, (req, res) => {
     edited_at: new Date().toISOString()
   });
   res.json({ record });
+});
+
+app.patch('/api/design-ai/products/:productId/archive', requireAdmin, (req, res) => {
+  const productId = text(req.params.productId);
+  const record = designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(productId));
+  if (!record) return res.status(404).json({ error: 'Product record not found.' });
+  db.prepare('UPDATE design_ai_product_records SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run('archived', record.id);
+  res.json({ record: designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(record.id)) });
 });
 
 app.get('/api/design-ai/styles', requireAuth, (req, res) => {

@@ -464,6 +464,38 @@ function migrate() {
       price REAL,
       mounting_notes TEXT,
       installation_notes TEXT,
+      dimension_confidence TEXT,
+      material TEXT,
+      color TEXT,
+      layout_component_type TEXT,
+      layout_width_mm REAL,
+      layout_depth_mm REAL,
+      layout_height_mm REAL,
+      layout_modes_json TEXT,
+      shape_rule TEXT,
+      orientation_options_json TEXT,
+      allowed_zones_json TEXT,
+      clearance_notes TEXT,
+      is_configurable INTEGER DEFAULT 0,
+      configurable_dimensions_json TEXT,
+      default_variant_json TEXT,
+      variants_json TEXT,
+      fitment_confidence TEXT,
+      fitment_reason TEXT,
+      confirmed_data_json TEXT,
+      estimated_data_json TEXT,
+      production_warning TEXT,
+      production_ready INTEGER DEFAULT 0,
+      source_notes TEXT,
+      seat_mode_width_mm REAL,
+      seat_mode_depth_mm REAL,
+      bed_mode_width_mm REAL,
+      bed_mode_depth_mm REAL,
+      extended_bed_mode_width_mm REAL,
+      extended_bed_mode_depth_mm REAL,
+      seat_panel_depth_mm REAL,
+      back_panel_depth_mm REAL,
+      optional_extension_depth_mm REAL,
       reference_files_json TEXT,
       source_drive_folder_id TEXT,
       source_summary_json TEXT,
@@ -591,6 +623,38 @@ function migrate() {
   addColumn('design_ai_product_records', 'mounting_notes', 'TEXT');
   addColumn('design_ai_product_records', 'installation_notes', 'TEXT');
   addColumn('design_ai_product_records', 'reference_files_json', 'TEXT');
+  addColumn('design_ai_product_records', 'dimension_confidence', 'TEXT');
+  addColumn('design_ai_product_records', 'material', 'TEXT');
+  addColumn('design_ai_product_records', 'color', 'TEXT');
+  addColumn('design_ai_product_records', 'layout_component_type', 'TEXT');
+  addColumn('design_ai_product_records', 'layout_width_mm', 'REAL');
+  addColumn('design_ai_product_records', 'layout_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'layout_height_mm', 'REAL');
+  addColumn('design_ai_product_records', 'layout_modes_json', 'TEXT');
+  addColumn('design_ai_product_records', 'shape_rule', 'TEXT');
+  addColumn('design_ai_product_records', 'orientation_options_json', 'TEXT');
+  addColumn('design_ai_product_records', 'allowed_zones_json', 'TEXT');
+  addColumn('design_ai_product_records', 'clearance_notes', 'TEXT');
+  addColumn('design_ai_product_records', 'is_configurable', 'INTEGER DEFAULT 0');
+  addColumn('design_ai_product_records', 'configurable_dimensions_json', 'TEXT');
+  addColumn('design_ai_product_records', 'default_variant_json', 'TEXT');
+  addColumn('design_ai_product_records', 'variants_json', 'TEXT');
+  addColumn('design_ai_product_records', 'fitment_confidence', 'TEXT');
+  addColumn('design_ai_product_records', 'fitment_reason', 'TEXT');
+  addColumn('design_ai_product_records', 'confirmed_data_json', 'TEXT');
+  addColumn('design_ai_product_records', 'estimated_data_json', 'TEXT');
+  addColumn('design_ai_product_records', 'production_warning', 'TEXT');
+  addColumn('design_ai_product_records', 'production_ready', 'INTEGER DEFAULT 0');
+  addColumn('design_ai_product_records', 'source_notes', 'TEXT');
+  addColumn('design_ai_product_records', 'seat_mode_width_mm', 'REAL');
+  addColumn('design_ai_product_records', 'seat_mode_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'bed_mode_width_mm', 'REAL');
+  addColumn('design_ai_product_records', 'bed_mode_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'extended_bed_mode_width_mm', 'REAL');
+  addColumn('design_ai_product_records', 'extended_bed_mode_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'seat_panel_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'back_panel_depth_mm', 'REAL');
+  addColumn('design_ai_product_records', 'optional_extension_depth_mm', 'REAL');
   addColumn('catalog_items', 'description', "TEXT NOT NULL DEFAULT ''");
   addColumn('catalog_items', 'active', 'INTEGER NOT NULL DEFAULT 1');
   addColumn('consultation_categories', 'icon', "TEXT NOT NULL DEFAULT ''");
@@ -652,6 +716,155 @@ function seedCatalog() {
       cat.items.forEach(([itemName, price], itemIndex) => {
         insertItem.run(result.lastInsertRowid, itemName, price, itemIndex + 1);
       });
+    });
+  });
+  tx();
+}
+
+const LAYOUT_READY_PRODUCTS = [
+  {
+    product_id: 'neu-rock-roll-bed-universal',
+    sku: '',
+    name: "Neu_Rock N' Roll Bed",
+    category: 'camper seating / convertible bed',
+    status: 'approved',
+    unit: 'mm',
+    width_mm: 1300,
+    depth_mm: 900,
+    layout_component_type: 'convertible_seat_bed',
+    shape_rule: 'convertible_mode_footprint',
+    layout_width_mm: 1300,
+    layout_depth_mm: 900,
+    dimension_confidence: 'MEDIUM',
+    seat_panel_depth_mm: 450,
+    back_panel_depth_mm: 450,
+    optional_extension_depth_mm: 210,
+    seat_mode_width_mm: 1300,
+    seat_mode_depth_mm: 450,
+    bed_mode_width_mm: 1300,
+    bed_mode_depth_mm: 900,
+    extended_bed_mode_width_mm: 1300,
+    extended_bed_mode_depth_mm: 1110,
+    layout_modes_json: JSON.stringify([
+      { mode: 'seat_mode', width_mm: 1300, depth_mm: 450 },
+      { mode: 'bed_mode', width_mm: 1300, depth_mm: 900 },
+      { mode: 'extended_bed_mode', width_mm: 1300, depth_mm: 1110 }
+    ]),
+    default_variant_json: JSON.stringify({ mode: 'bed_mode', width_mm: 1300, depth_mm: 900 }),
+    compatible_vehicles_json: JSON.stringify(['universal', 'TownAce concept reference']),
+    orientation_options_json: JSON.stringify(['longitudinal', 'rear_crosswise']),
+    allowed_zones_json: JSON.stringify(['floor']),
+    is_configurable: 0,
+    fitment_confidence: 'MEDIUM',
+    production_ready: 0,
+    production_warning: 'Concept-only until mounting, clearances, and safety details are verified.',
+    source_notes: 'Seeded CRDN layout-ready product. Confirm mounting and safety requirements before production use.'
+  },
+  {
+    product_id: 'crdn-rect-cabinet-system-970x380',
+    sku: 'CRDN-CAB-970-380',
+    name: 'CRDN Universal Rectangle Cabinet System - Deep',
+    category: 'modular cabinet / utility storage',
+    status: 'approved',
+    unit: 'mm',
+    width_mm: 970.21,
+    depth_mm: 380.04,
+    layout_component_type: 'rectangular_cabinet',
+    shape_rule: 'configurable_rectangle_footprint',
+    layout_width_mm: 970.21,
+    layout_depth_mm: 380.04,
+    dimension_confidence: 'MEDIUM',
+    is_configurable: 1,
+    configurable_dimensions_json: JSON.stringify({
+      width_mm: { default: 970.21, min: 700, max: 1300, step: 1 },
+      depth_mm: { default: 380.04, min: 250, max: 500, step: 1 },
+      height_mm: { default: null, min: null, max: null, step: 1 }
+    }),
+    default_variant_json: JSON.stringify({ width_mm: 970.21, depth_mm: 380.04, height_mm: null }),
+    compatible_vehicles_json: JSON.stringify(['universal', 'TownAce concept reference']),
+    orientation_options_json: JSON.stringify(['driver_side', 'passenger_side', 'rear_crosswise', 'longitudinal']),
+    allowed_zones_json: JSON.stringify(['floor', 'side_wall']),
+    fitment_confidence: 'MEDIUM',
+    production_ready: 0,
+    production_warning: 'Concept-only until mounting and fabrication details are verified.',
+    source_notes: 'Seeded CRDN configurable cabinet product for layout planning.'
+  },
+  {
+    product_id: 'crdn-rect-cabinet-system-970x252',
+    sku: 'CRDN-CAB-970-252',
+    name: 'CRDN Universal Rectangle Cabinet System - Slim',
+    category: 'modular cabinet / utility storage',
+    status: 'approved',
+    unit: 'mm',
+    width_mm: 970.21,
+    depth_mm: 252.26,
+    layout_component_type: 'rectangular_cabinet',
+    shape_rule: 'configurable_rectangle_footprint',
+    layout_width_mm: 970.21,
+    layout_depth_mm: 252.26,
+    dimension_confidence: 'MEDIUM',
+    is_configurable: 1,
+    configurable_dimensions_json: JSON.stringify({
+      width_mm: { default: 970.21, min: 700, max: 1300, step: 1 },
+      depth_mm: { default: 252.26, min: 200, max: 420, step: 1 },
+      height_mm: { default: null, min: null, max: null, step: 1 }
+    }),
+    default_variant_json: JSON.stringify({ width_mm: 970.21, depth_mm: 252.26, height_mm: null }),
+    compatible_vehicles_json: JSON.stringify(['universal', 'TownAce concept reference']),
+    orientation_options_json: JSON.stringify(['driver_side', 'passenger_side', 'rear_crosswise', 'longitudinal']),
+    allowed_zones_json: JSON.stringify(['floor', 'side_wall']),
+    fitment_confidence: 'MEDIUM',
+    production_ready: 0,
+    production_warning: 'Concept-only until mounting and fabrication details are verified.',
+    source_notes: 'Seeded CRDN configurable cabinet product for layout planning.'
+  }
+];
+
+function seedDesignAiProducts() {
+  const fields = [
+    'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
+    'compatible_vehicles_json', 'price', 'mounting_notes', 'installation_notes',
+    'dimension_confidence', 'material', 'color', 'layout_component_type', 'layout_width_mm',
+    'layout_depth_mm', 'layout_height_mm', 'layout_modes_json', 'shape_rule',
+    'orientation_options_json', 'allowed_zones_json', 'clearance_notes', 'is_configurable',
+    'configurable_dimensions_json', 'default_variant_json', 'variants_json', 'fitment_confidence',
+    'fitment_reason', 'confirmed_data_json', 'estimated_data_json', 'production_warning',
+    'production_ready', 'source_notes', 'seat_mode_width_mm', 'seat_mode_depth_mm',
+    'bed_mode_width_mm', 'bed_mode_depth_mm', 'extended_bed_mode_width_mm',
+    'extended_bed_mode_depth_mm', 'seat_panel_depth_mm', 'back_panel_depth_mm',
+    'optional_extension_depth_mm', 'status'
+  ];
+  const insert = db.prepare(`
+    INSERT INTO design_ai_product_records (product_id, ${fields.join(', ')}, version, updated_at)
+    VALUES (?, ${fields.map(() => '?').join(', ')}, 1, CURRENT_TIMESTAMP)
+  `);
+  const shouldFill = (field, existing, incoming, row) => {
+    if (incoming === undefined || incoming === null) return false;
+    if (field === 'is_configurable') return Number(incoming) === 1 && Number(existing || 0) !== 1 && !row.source_notes;
+    if (field === 'production_ready') return existing === undefined || existing === null;
+    if (field === 'status') return existing === undefined || existing === null || existing === '';
+    return existing === undefined || existing === null || existing === '';
+  };
+  const tx = db.transaction(() => {
+    LAYOUT_READY_PRODUCTS.forEach(product => {
+      const existing = db.prepare('SELECT * FROM design_ai_product_records WHERE product_id=?').get(product.product_id);
+      if (!existing) {
+        insert.run(product.product_id, ...fields.map(field => product[field] ?? null));
+        return;
+      }
+      const updates = [];
+      const values = [];
+      fields.forEach(field => {
+        if (!shouldFill(field, existing[field], product[field], existing)) return;
+        updates.push(`${field}=?`);
+        values.push(product[field]);
+      });
+      if (!updates.length) return;
+      db.prepare(`
+        UPDATE design_ai_product_records
+        SET ${updates.join(', ')}, updated_at=CURRENT_TIMESTAMP
+        WHERE product_id=?
+      `).run(...values, product.product_id);
     });
   });
   tx();
@@ -827,6 +1040,7 @@ function logVehicleHistory(vehicleId, userId, action, details = null) {
 function init() {
   migrate();
   seedCatalog();
+  seedDesignAiProducts();
   seedConsultationChecklist();
   seedServices();
   seedSettings();

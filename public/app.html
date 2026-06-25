@@ -2373,10 +2373,29 @@ const DESIGN_AI_VEHICLE_RECORD_FIELDS=[
   ['wheel_arch_position_y_mm','Wheel Arch Position Y mm'],['payload_kg','Payload kg'],['floor_plan_notes','Floor Plan Notes'],['reference_files_json','Reference Files'],['status','Status']
 ];
 const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
-  ['sku','SKU'],['name','Name'],['category','Category'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
-  ['weight_kg','Weight kg'],['mounting_type','Mounting Type'],['compatible_vehicles','Compatible Vehicles'],['requires_drilling','Requires Drilling'],
-  ['install_minutes','Install Minutes'],['price','Price'],['mounting_notes','Mounting Notes'],['installation_notes','Installation Notes'],
-  ['reference_files_json','Reference Files'],['status','Status']
+  ['sku','SKU'],['name','Name'],['category','Category'],['status','Status'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
+  ['weight_kg','Weight kg'],['material','Material'],['color','Color'],['price','Price'],['dimension_confidence','Dimension Confidence'],
+  ['layout_component_type','Layout Component Type'],['shape_rule','Shape Rule'],['layout_width_mm','Layout Width mm'],['layout_depth_mm','Layout Depth mm'],
+  ['layout_height_mm','Layout Height mm'],['allowed_zones_json','Allowed Zones'],['orientation_options_json','Orientation Options'],['layout_modes_json','Layout Modes'],
+  ['clearance_notes','Clearance Notes'],['mounting_type','Mounting Type'],['mounting_notes','Mounting Notes'],['installation_notes','Installation Notes'],
+  ['compatible_vehicles','Compatible Vehicles'],['requires_drilling','Requires Drilling'],['install_minutes','Install Minutes'],['is_configurable','Configurable Product'],
+  ['configurable_dimensions_json','Configurable Dimensions'],['default_variant_json','Default Variant'],['variants_json','Variants'],
+  ['fitment_confidence','Fitment Confidence'],['fitment_reason','Fitment Reason'],['confirmed_data_json','Confirmed Data'],['estimated_data_json','Estimated Data'],
+  ['production_warning','Production Warning'],['production_ready','Production Ready'],['source_drive_folder_id','Source Folder ID'],
+  ['reference_files_json','Reference Files'],['source_summary_json','Source Summary'],['source_notes','Source Notes'],
+  ['seat_mode_width_mm','Seat Mode Width mm'],['seat_mode_depth_mm','Seat Mode Depth mm'],['bed_mode_width_mm','Bed Mode Width mm'],
+  ['bed_mode_depth_mm','Bed Mode Depth mm'],['extended_bed_mode_width_mm','Extended Bed Mode Width mm'],
+  ['extended_bed_mode_depth_mm','Extended Bed Mode Depth mm'],['seat_panel_depth_mm','Seat Panel Depth mm'],
+  ['back_panel_depth_mm','Back Panel Depth mm'],['optional_extension_depth_mm','Optional Extension Depth mm']
+];
+const DESIGN_AI_PRODUCT_FIELD_SECTIONS=[
+  ['Basic Info',[['product_id','Product ID'],['sku','SKU'],['name','Name'],['category','Category'],['status','Status']]],
+  ['Physical Dimensions',[['width_mm','Width'],['depth_mm','Depth'],['height_mm','Height'],['weight_kg','Weight'],['material','Material'],['color','Color'],['price','Price'],['dimension_confidence','Dimension Confidence']]],
+  ['Layout / AI Placement',[['layout_component_type','Layout Component Type'],['shape_rule','Shape Rule'],['layout_width_mm','Layout Width'],['layout_depth_mm','Layout Depth'],['layout_height_mm','Layout Height'],['allowed_zones_json','Allowed Zones'],['orientation_options_json','Orientation Options'],['layout_modes_json','Layout Modes'],['clearance_notes','Clearance Notes'],['mounting_notes','Mounting Notes'],['installation_notes','Installation Notes']]],
+  ['Configurable Dimensions',[['is_configurable','Configurable Product'],['configurable_dimensions_json','Default / Min / Max / Step'],['default_variant_json','Default Variant JSON'],['variants_json','Variants JSON']]],
+  ['Convertible Modes',[['seat_mode_width_mm','Seat Mode Width'],['seat_mode_depth_mm','Seat Mode Depth'],['bed_mode_width_mm','Bed Mode Width'],['bed_mode_depth_mm','Bed Mode Depth'],['extended_bed_mode_width_mm','Extended Bed Mode Width'],['extended_bed_mode_depth_mm','Extended Bed Mode Depth'],['seat_panel_depth_mm','Seat Panel Depth'],['back_panel_depth_mm','Back Panel Depth'],['optional_extension_depth_mm','Optional Extension Depth']]],
+  ['Fitment / Production Confidence',[['compatible_vehicles','Compatible Vehicles'],['fitment_confidence','Fitment Confidence'],['fitment_reason','Fitment Reason'],['confirmed_data_json','Confirmed Data'],['estimated_data_json','Estimated Data'],['production_warning','Production Warning'],['production_ready','Production Ready']]],
+  ['Google Drive / Source Evidence',[['source_drive_folder_id','Source Folder ID'],['reference_files_json','Reference Files'],['source_summary_json','Source Summary'],['source_notes','Source Notes']]]
 ];
 const DESIGN_AI_STYLE_RECORD_FIELDS=[
   ['name','Name'],['description','Description'],['colors_json','Colors'],['materials_json','Materials'],
@@ -2384,7 +2403,10 @@ const DESIGN_AI_STYLE_RECORD_FIELDS=[
 ];
 const DESIGN_AI_RECORD_STATUSES=['draft','approved','archived'];
 const DESIGN_AI_WORKSPACE_STATUSES=['draft','submitted','in_progress','review','approved'];
-const DESIGN_AI_LONG_FIELDS=new Set(['floor_plan_notes','mounting_notes','installation_notes','reference_files_json','description','colors_json','materials_json','reference_images_json','moodboard_notes','customer_notes','layout_notes','moodboard_text','brochure_copy','mockup_files_json']);
+const DESIGN_AI_LONG_FIELDS=new Set(['floor_plan_notes','mounting_notes','installation_notes','clearance_notes','fitment_reason','production_warning','source_notes','reference_files_json','source_summary_json','layout_modes_json','orientation_options_json','allowed_zones_json','configurable_dimensions_json','default_variant_json','variants_json','confirmed_data_json','estimated_data_json','description','colors_json','materials_json','reference_images_json','moodboard_notes','customer_notes','layout_notes','moodboard_text','brochure_copy','mockup_files_json']);
+const DESIGN_AI_BOOLEAN_FIELDS=new Set(['requires_drilling','is_configurable','production_ready']);
+const DESIGN_AI_CONFIDENCE_FIELDS=new Set(['dimension_confidence','fitment_confidence']);
+const DESIGN_AI_OBJECT_JSON_FIELDS=new Set(['source_summary_json','configurable_dimensions_json','default_variant_json','confirmed_data_json','estimated_data_json']);
 function designAiBody(){return document.getElementById('design-ai-body');}
 function designAiRoute(){
   const parts=location.pathname.split('/').filter(Boolean);
@@ -2677,6 +2699,14 @@ function designAiFieldInput(prefix,field,label,value,confidence){
   if(field==='status'){
     return `<div class="dai-field"><label>${esc(label)}${esc(conf)}</label><select id="${esc(id)}">${DESIGN_AI_RECORD_STATUSES.map(s=>`<option value="${s}" ${String(value||'draft')===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   }
+  if(DESIGN_AI_CONFIDENCE_FIELDS.has(field)){
+    const current=String(value||'').toUpperCase();
+    return `<div class="dai-field"><label>${esc(label)}${esc(conf)}</label><select id="${esc(id)}"><option value=""></option>${['HIGH','MEDIUM','LOW'].map(s=>`<option value="${s}" ${current===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
+  }
+  if(DESIGN_AI_BOOLEAN_FIELDS.has(field)){
+    const checked=value===true||value===1||String(value).toLowerCase()==='true'||String(value)==='1';
+    return `<div class="dai-field"><label>${esc(label)}${esc(conf)}</label><label style="display:flex;align-items:center;gap:8px;height:44px;font-weight:800"><input id="${esc(id)}" type="checkbox" ${checked?'checked':''}> Enabled</label></div>`;
+  }
   if(DESIGN_AI_LONG_FIELDS.has(field)){
     return `<div class="dai-field wide"><label>${esc(label)}${esc(conf)}</label><textarea id="${esc(id)}">${esc(designAiFieldValue(value))}</textarea></div>`;
   }
@@ -2688,12 +2718,21 @@ function designAiListValue(raw){
   try{return JSON.parse(value);}catch(e){}
   return value.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
 }
+function designAiJsonValue(field,raw){
+  const value=String(raw||'').trim();
+  if(!value)return DESIGN_AI_OBJECT_JSON_FIELDS.has(field)?{}:[];
+  try{return JSON.parse(value);}catch(e){}
+  return value.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
+}
 function designAiCollectFields(prefix,fields){
   const out={};
   fields.forEach(([field])=>{
-    const raw=document.getElementById(`${prefix}${field}`)?.value??'';
+    const el=document.getElementById(`${prefix}${field}`);
+    if(!el)return;
+    if(DESIGN_AI_BOOLEAN_FIELDS.has(field)){out[field]=Boolean(el.checked);return;}
+    const raw=el.value??'';
     if(field==='compatible_vehicles')out[field]=raw.split(',').map(x=>x.trim()).filter(Boolean);
-    else if(/_json$/.test(field))out[field]=designAiListValue(raw);
+    else if(/_json$/.test(field))out[field]=designAiJsonValue(field,raw);
     else if(field==='requires_drilling')out[field]=['1','true','yes','y'].includes(raw.trim().toLowerCase());
     else if(/(_mm|_kg|minutes|price)$/.test(field))out[field]=raw.trim()===''?null:Number(raw);
     else out[field]=raw;
@@ -2850,6 +2889,31 @@ async function renderDesignAiRecords(kind='products'){
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
+function designAiProductFieldValue(record,field){
+  if(field==='compatible_vehicles')return record.compatible_vehicles||[];
+  return record[field];
+}
+function designAiProductEditorSection(prefix,title,fields,record){
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">${esc(title)}</div>
+    <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,designAiProductFieldValue(record,field),{})).join('')}</div>
+  </div>`;
+}
+function designAiProductEditorHtml(record,isNew){
+  const prefix='dai-rec-';
+  const meta=[
+    `Version ${esc(record.version||1)}`,
+    record.updated_at?`Updated ${esc(new Date(record.updated_at).toLocaleString('zh-TW'))}`:'Not saved yet'
+  ].join(' · ');
+  return `<div class="dai-warning">CRDN approved product database values are the source of truth for future layout generation. Google Drive evidence can support these records, but manually confirmed dimensions should stay authoritative.</div>
+    <div class="pc-s" style="margin-bottom:12px">${meta}</div>
+    ${DESIGN_AI_PRODUCT_FIELD_SECTIONS.map(([title,fields])=>designAiProductEditorSection(prefix,title,fields,record)).join('')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord()">Save Product</button>
+      <button class="btn btn-out btn-sm" onclick="openDesignAI('products')">Back to Product Database</button>
+      ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
+    </div>`;
+}
 async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
   const cfg=designAiRecordConfig(kind);
   const isNew=recordKey==='new';
@@ -2859,6 +2923,11 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     DESIGN_AI.record={kind,recordKey:record[cfg.idKey]||recordKey,isNew};
     const prefix='dai-rec-';
     const helper=kind==='vehicles'?'Approved vehicle dimensions are used by layout generation.':kind==='products'?'Approved product dimensions are used by layout generation.':'Approved style records are used by moodboards and proposals.';
+    if(kind==='products'){
+      designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="openDesignAI('products')">← Product Database</button>`)+
+        designAiProductEditorHtml(record,isNew);
+      return;
+    }
     designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="openDesignAI('${kind}')">← ${cfg.title}</button>`)+
       `<div class="dai-warning">${helper}<br>Google Drive stores evidence files. CRDN approved database stores the values used for layout and proposals.</div>
       <div class="dai-panel">
@@ -2886,6 +2955,17 @@ async function saveDesignAiRecord(){
     toast('Design AI record saved ✓');
     openDesignAI(cfg.route,{id});
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
+}
+async function archiveDesignAiProduct(){
+  const ctx=DESIGN_AI.record||{};
+  if(ctx.kind!=='products'||ctx.isNew)return;
+  if(!confirm('Archive this product record?'))return;
+  try{
+    await PATCH(`/api/design-ai/products/${encodeURIComponent(ctx.recordKey)}/archive`,{});
+    DESIGN_AI.choices=null;
+    toast('Product archived ✓');
+    openDesignAI('products');
+  }catch(e){toast(`Archive failed: ${errMsg(e)}`,6500);}
 }
 function designAiWorkspaceProductLines(products=[]){
   return (products||[]).map(item=>`${item.product_id||''}, ${item.x_mm||0}, ${item.y_mm||0}, ${item.rotation||0}`).join('\n');

@@ -619,6 +619,7 @@ function migrate() {
   addColumn('design_ai_vehicle_records', 'wheel_arch_position_x_mm', 'REAL');
   addColumn('design_ai_vehicle_records', 'wheel_arch_position_y_mm', 'REAL');
   addColumn('design_ai_vehicle_records', 'floor_plan_notes', 'TEXT');
+  addColumn('design_ai_vehicle_records', 'layout_constraints_json', "TEXT DEFAULT '{}'");
   addColumn('design_ai_vehicle_records', 'reference_files_json', 'TEXT');
   addColumn('design_ai_product_records', 'mounting_notes', 'TEXT');
   addColumn('design_ai_product_records', 'installation_notes', 'TEXT');

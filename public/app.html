@@ -2714,6 +2714,10 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
     ]
   ],
   [
+    '🗺️ Floor Plan Preview',
+    []
+  ],
+  [
     '🟩 Build Area',
     []
   ],
@@ -2793,7 +2797,41 @@ function designAiVehicleBuildAreaValue(prefix){
   };
 }
 
+
+function designAiVehicleFloorPlanHtml(record){
+  const length=Number(record?.interior_length_mm||record?.overall_length_mm||0);
+  const width=Number(record?.interior_width_mm||record?.overall_width_mm||0);
+  const c=designAiVehicleLayoutConstraints(record);
+  const bx=Number(c.build_origin_x_mm||0);
+  const by=Number(c.build_origin_y_mm||0);
+  const bl=Number(c.build_length_mm||0);
+  const bw=Number(c.build_width_mm||0);
+  if(!length||!width){
+    return `<div class="dai-panel"><div class="dai-panel-title">🗺️ Floor Plan Preview</div><div class="dai-empty">Add interior length and width to preview the vehicle floor plan.</div></div>`;
+  }
+  const wheel=record?.wheel_arch_width_mm&&record?.wheel_arch_height_mm
+    ? `<rect x="${Number(record.wheel_arch_position_x_mm||0)}" y="${Number(record.wheel_arch_position_y_mm||0)}" width="${Number(record.wheel_arch_width_mm||0)}" height="${Number(record.wheel_arch_height_mm||0)}" rx="18" fill="#eee" stroke="#6b6b68" stroke-dasharray="20 12" stroke-width="8"></rect>`
+    : '';
+  const build=(bl&&bw)
+    ? `<rect x="${bx}" y="${by}" width="${bl}" height="${bw}" rx="22" fill="rgba(76, 175, 80, .16)" stroke="#2e7d32" stroke-width="10"></rect>
+       <text x="${bx+28}" y="${by+48}" font-size="46" fill="#2e7d32" font-weight="700">Build Area</text>`
+    : '';
+  return `
+    <div class="dai-panel">
+      <div class="dai-panel-title">🗺️ Floor Plan Preview</div>
+      <div class="dai-warning">Preview uses approved vehicle dimensions and Build Area fields. This is a simple reference view, not CAD yet.</div>
+      <svg viewBox="-80 -80 ${length+160} ${width+160}" style="width:100%;max-height:420px;border:1px solid var(--g200);border-radius:18px;background:#fafaf7">
+        <rect x="0" y="0" width="${length}" height="${width}" rx="42" fill="#fff" stroke="#111" stroke-width="12"></rect>
+        ${build}
+        ${wheel}
+        <text x="0" y="${width+60}" font-size="42" fill="#6b6b68">${esc(record.vehicle_id||'Vehicle')} · ${Math.round(length)} × ${Math.round(width)} mm</text>
+      </svg>
+    </div>
+  `;
+}
+
 function designAiVehicleEditorSection(prefix,title,fields,record){
+  if(String(title).includes('Floor Plan'))return designAiVehicleFloorPlanHtml(record);
   if(String(title).includes('Build Area'))return designAiVehicleBuildAreaHtml(prefix,record);
   return `
     <div class="dai-panel">

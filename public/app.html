@@ -2722,6 +2722,10 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
     []
   ],
   [
+    '🚫 Restricted Zones',
+    []
+  ],
+  [
     '📂 References',
     [
       ['floor_plan_notes','Floor Plan Notes'],
@@ -2793,10 +2797,67 @@ function designAiVehicleBuildAreaValue(prefix){
     minimum_walkway_mm:num('minimum_walkway_mm'),
     derived_from:str('derived_from'),
     notes:str('layout_notes'),
+    restricted_zones:designAiVehicleRestrictedZoneValue(prefix),
     updated_at:new Date().toISOString()
   };
 }
 
+
+
+function designAiVehicleRestrictedZones(record){
+  const c=designAiVehicleLayoutConstraints(record);
+  return Array.isArray(c.restricted_zones)?c.restricted_zones:[];
+}
+function designAiVehicleRestrictedZoneHtml(prefix,record){
+  const zones=designAiVehicleRestrictedZones(record);
+  const rows=[0,1,2].map(i=>{
+    const z=zones[i]||{};
+    return `
+      <div class="dai-form-grid" style="border:1px solid var(--g200);border-radius:16px;padding:12px;margin-bottom:10px">
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_name','Zone Name',z.name||'',i===0?'e.g. Left wheel arch':'')}
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_type','Type',z.type||'restricted','restricted / door / wheel_arch / seat_clearance')}
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_x_mm','X (mm)',z.x_mm,'')}
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_y_mm','Y (mm)',z.y_mm,'')}
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_length_mm','Length (mm)',z.length_mm,'')}
+        ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_width_mm','Width (mm)',z.width_mm,'')}
+        <div class="dai-field wide"><label>Notes</label><textarea id="${esc(prefix+'rz_'+i+'_notes')}" placeholder="Why this area should stay clear">${esc(z.notes||'')}</textarea></div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="dai-panel">
+      <div class="dai-panel-title">🚫 Restricted Zones</div>
+      <div class="dai-warning">Areas where AI should not place products. Start simple: wheel arches, rear hatch clearance, sliding door clearance, seat travel.</div>
+      ${rows}
+    </div>
+  `;
+}
+function designAiVehicleRestrictedZoneValue(prefix){
+  const num=id=>{
+    const el=document.getElementById(prefix+id);
+    if(!el)return null;
+    const raw=String(el.value||'').trim();
+    return raw===''?null:Number(raw);
+  };
+  const str=id=>{
+    const el=document.getElementById(prefix+id);
+    return el?String(el.value||'').trim():'';
+  };
+  const zones=[];
+  [0,1,2].forEach(i=>{
+    const name=str('rz_'+i+'_name');
+    const x=num('rz_'+i+'_x_mm');
+    const y=num('rz_'+i+'_y_mm');
+    const length=num('rz_'+i+'_length_mm');
+    const width=num('rz_'+i+'_width_mm');
+    const notes=str('rz_'+i+'_notes');
+    const type=str('rz_'+i+'_type')||'restricted';
+    if(name||x!==null||y!==null||length!==null||width!==null||notes){
+      zones.push({name,type,x_mm:x,y_mm:y,length_mm:length,width_mm:width,notes});
+    }
+  });
+  return zones;
+}
 
 function designAiVehicleFloorPlanHtml(record){
   const length=Number(record?.interior_length_mm||record?.overall_length_mm||0);
@@ -2816,6 +2877,12 @@ function designAiVehicleFloorPlanHtml(record){
     ? `<rect x="${bx}" y="${by}" width="${bl}" height="${bw}" rx="22" fill="rgba(76, 175, 80, .16)" stroke="#2e7d32" stroke-width="10"></rect>
        <text x="${bx+28}" y="${by+48}" font-size="46" fill="#2e7d32" font-weight="700">Build Area</text>`
     : '';
+  const restricted=designAiVehicleRestrictedZones(record).map(z=>{
+    const x=Number(z.x_mm||0), y=Number(z.y_mm||0), l=Number(z.length_mm||0), w=Number(z.width_mm||0);
+    if(!l||!w)return '';
+    return `<rect x="${x}" y="${y}" width="${l}" height="${w}" rx="18" fill="rgba(198,40,40,.18)" stroke="#c62828" stroke-width="9"></rect>
+      <text x="${x+20}" y="${y+42}" font-size="38" fill="#c62828" font-weight="700">${esc(z.name||'Restricted')}</text>`;
+  }).join('');
   return `
     <div class="dai-panel">
       <div class="dai-panel-title">🗺️ Floor Plan Preview</div>
@@ -2823,6 +2890,7 @@ function designAiVehicleFloorPlanHtml(record){
       <svg viewBox="-80 -80 ${length+160} ${width+160}" style="width:100%;max-height:420px;border:1px solid var(--g200);border-radius:18px;background:#fafaf7">
         <rect x="0" y="0" width="${length}" height="${width}" rx="42" fill="#fff" stroke="#111" stroke-width="12"></rect>
         ${build}
+        ${restricted}
         ${wheel}
         <text x="0" y="${width+60}" font-size="42" fill="#6b6b68">${esc(record.vehicle_id||'Vehicle')} · ${Math.round(length)} × ${Math.round(width)} mm</text>
       </svg>
@@ -2833,6 +2901,7 @@ function designAiVehicleFloorPlanHtml(record){
 function designAiVehicleEditorSection(prefix,title,fields,record){
   if(String(title).includes('Floor Plan'))return designAiVehicleFloorPlanHtml(record);
   if(String(title).includes('Build Area'))return designAiVehicleBuildAreaHtml(prefix,record);
+  if(String(title).includes('Restricted Zones'))return designAiVehicleRestrictedZoneHtml(prefix,record);
   return `
     <div class="dai-panel">
       <div class="dai-panel-title">${esc(title)}</div>

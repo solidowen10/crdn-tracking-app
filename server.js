@@ -687,7 +687,7 @@ const DESIGN_AI_VEHICLE_FIELDS = [
   'side_door_width_mm', 'side_door_height_mm',
   'rear_window_width_mm', 'rear_window_height_mm', 'rear_door_width_mm', 'rear_door_height_mm',
   'wheel_arch_width_mm', 'wheel_arch_height_mm', 'wheel_arch_position_x_mm', 'wheel_arch_position_y_mm',
-  'payload_kg', 'floor_plan_notes', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
+  'payload_kg', 'floor_plan_notes', 'layout_constraints_json', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
 ];
 const DESIGN_AI_PRODUCT_FIELDS = [
   'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
@@ -728,7 +728,7 @@ const DESIGN_AI_JSON_FIELDS = new Set([
   'materials_json', 'reference_images_json', 'products_json', 'customer_photos_json',
   'layout_json', 'mockup_files_json', 'layout_modes_json', 'orientation_options_json',
   'allowed_zones_json', 'configurable_dimensions_json', 'default_variant_json',
-  'variants_json', 'confirmed_data_json', 'estimated_data_json'
+  'variants_json', 'confirmed_data_json', 'estimated_data_json', 'layout_constraints_json'
 ]);
 const DESIGN_AI_BOOLEAN_FIELDS = new Set(['requires_drilling', 'is_configurable', 'production_ready']);
 const DESIGN_AI_RECORD_STATUSES = new Set(['draft', 'approved', 'archived']);

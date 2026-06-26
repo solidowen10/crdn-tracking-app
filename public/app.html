@@ -2726,23 +2726,83 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
   ]
 ];
 
+
+function designAiVehicleLayoutConstraints(record){
+  const raw=record?.layout_constraints_json||record?.layout_constraints||{};
+  if(raw&&typeof raw==='object')return raw;
+  try{return JSON.parse(String(raw||'{}'));}catch(e){return {};}
+}
+function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
+  return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(value===undefined||value===null?'':value)}" placeholder="${esc(placeholder)}"></div>`;
+}
+function designAiVehicleBuildAreaHtml(prefix,record){
+  const c=designAiVehicleLayoutConstraints(record);
+  return `
+    <div class="dai-panel">
+      <div class="dai-panel-title">🟩 Build Area</div>
+      <div class="dai-warning">
+        Define where CRDN is allowed to build inside this vehicle. This is human-approved data for future AI layout planning.
+      </div>
+      <div class="dai-form-grid">
+        ${designAiVehicleBuildAreaInput(prefix+'layout_status','Approval Status',c.status||'draft','draft / ai_suggested / approved')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_origin_x_mm','Build Origin X (mm)',c.build_origin_x_mm,'e.g. 0')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_origin_y_mm','Build Origin Y (mm)',c.build_origin_y_mm,'e.g. 0')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_length_mm','Buildable Length (mm)',c.build_length_mm,'e.g. 1960')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_width_mm','Buildable Width (mm)',c.build_width_mm,'e.g. 1430')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_height_mm','Buildable Height (mm)',c.build_height_mm,'optional')}
+        ${designAiVehicleBuildAreaInput(prefix+'front_clearance_mm','Front Seat Clearance (mm)',c.front_clearance_mm,'e.g. 50')}
+        ${designAiVehicleBuildAreaInput(prefix+'rear_clearance_mm','Rear Door Clearance (mm)',c.rear_clearance_mm,'e.g. 50')}
+        ${designAiVehicleBuildAreaInput(prefix+'left_clearance_mm','Left Wall Clearance (mm)',c.left_clearance_mm,'e.g. 30')}
+        ${designAiVehicleBuildAreaInput(prefix+'right_clearance_mm','Right Wall Clearance (mm)',c.right_clearance_mm,'e.g. 30')}
+        ${designAiVehicleBuildAreaInput(prefix+'minimum_walkway_mm','Minimum Walkway (mm)',c.minimum_walkway_mm,'e.g. 450')}
+        ${designAiVehicleBuildAreaInput(prefix+'derived_from','Derived From',c.derived_from,'e.g. floorplan.svg')}
+        <div class="dai-field wide">
+          <label>Layout Notes</label>
+          <textarea id="${esc(prefix+'layout_notes')}" placeholder="Example: Build starts behind front seats. Keep rear hatch access clear. Avoid wheel arches.">${esc(c.notes||'')}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+}
+function designAiVehicleBuildAreaValue(prefix){
+  const num=id=>{
+    const el=document.getElementById(prefix+id);
+    if(!el)return null;
+    const raw=String(el.value||'').trim();
+    return raw===''?null:Number(raw);
+  };
+  const str=id=>{
+    const el=document.getElementById(prefix+id);
+    return el?String(el.value||'').trim():'';
+  };
+  return {
+    status:str('layout_status')||'draft',
+    build_origin_x_mm:num('build_origin_x_mm'),
+    build_origin_y_mm:num('build_origin_y_mm'),
+    build_length_mm:num('build_length_mm'),
+    build_width_mm:num('build_width_mm'),
+    build_height_mm:num('build_height_mm'),
+    front_clearance_mm:num('front_clearance_mm'),
+    rear_clearance_mm:num('rear_clearance_mm'),
+    left_clearance_mm:num('left_clearance_mm'),
+    right_clearance_mm:num('right_clearance_mm'),
+    minimum_walkway_mm:num('minimum_walkway_mm'),
+    derived_from:str('derived_from'),
+    notes:str('layout_notes'),
+    updated_at:new Date().toISOString()
+  };
+}
+
 function designAiVehicleEditorSection(prefix,title,fields,record){
+  if(String(title).includes('Build Area'))return designAiVehicleBuildAreaHtml(prefix,record);
   return `
     <div class="dai-panel">
       <div class="dai-panel-title">${esc(title)}</div>
-
-      ${
-        fields.length
-        ? `<div class="dai-form-grid">
-            ${fields.map(([field,label]) =>
-              designAiFieldInput(prefix,field,label,record[field],{})
-            ).join('')}
-          </div>`
-        : `<div class="dai-empty">
-             AI Build Zone editor will be added here in the next update.
-           </div>`
-      }
-
+      <div class="dai-form-grid">
+        ${fields.map(([field,label]) =>
+          designAiFieldInput(prefix,field,label,record[field],{})
+        ).join('')}
+      </div>
     </div>
   `;
 }
@@ -3053,6 +3113,7 @@ async function saveDesignAiRecord(){
   const cfg=designAiRecordConfig(ctx.kind||'products');
   const prefix='dai-rec-';
   const payload=designAiCollectFields(prefix,cfg.fields);
+  if((ctx.kind||'products')==='vehicles')payload.layout_constraints_json=designAiVehicleBuildAreaValue(prefix);
   const id=payload[cfg.idKey]||ctx.recordKey;
   if(!id){toast(`${cfg.single} ID is required`);return;}
   try{

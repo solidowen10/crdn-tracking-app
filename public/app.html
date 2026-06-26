@@ -2737,8 +2737,43 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
 
 function designAiVehicleLayoutConstraints(record){
   const raw=record?.layout_constraints_json||record?.layout_constraints||{};
-  if(raw&&typeof raw==='object')return raw;
-  try{return JSON.parse(String(raw||'{}'));}catch(e){return {};}
+  let c={};
+  if(raw&&typeof raw==='object')c=raw;
+  else{try{c=JSON.parse(String(raw||'{}'));}catch(e){c={};}}
+
+  // Backward compatible normalization from older flat keys.
+  const build_area=c.build_area||{
+    x_mm:c.build_origin_x_mm??null,
+    y_mm:c.build_origin_y_mm??null,
+    length_mm:c.build_length_mm??null,
+    width_mm:c.build_width_mm??null,
+    height_mm:c.build_height_mm??null
+  };
+
+  const clearance=c.clearance||{
+    front_mm:c.clearance?.front_mm??null,
+    rear_mm:c.clearance?.rear_mm??null,
+    left_mm:c.clearance?.left_mm??null,
+    right_mm:c.clearance?.right_mm??null,
+    minimum_walkway_mm:c.clearance?.minimum_walkway_mm??null
+  };
+
+  const metadata=c.metadata||{
+    status:c.metadata?.status||c.status||'draft',
+    derived_from:c.metadata?.derived_from||'',
+    notes:c.metadata?.notes||'',
+    updated_at:c.updated_at||''
+  };
+
+  return {
+    schema_version:Number(c.schema_version||1),
+    status:metadata.status||c.metadata?.status||c.status||'draft',
+    build_area,
+    clearance,
+    restricted_zones:Array.isArray(c.restricted_zones)?c.restricted_zones:[],
+    mounting_points:Array.isArray(c.mounting_points)?c.mounting_points:[],
+    metadata
+  };
 }
 function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
   return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(value===undefined||value===null?'':value)}" placeholder="${esc(placeholder)}"></div>`;
@@ -2752,21 +2787,21 @@ function designAiVehicleBuildAreaHtml(prefix,record){
         Define where CRDN is allowed to build inside this vehicle. This is human-approved data for future AI layout planning.
       </div>
       <div class="dai-form-grid">
-        ${designAiVehicleBuildAreaInput(prefix+'layout_status','Approval Status',c.status||'draft','draft / ai_suggested / approved')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_origin_x_mm','Build Origin X (mm)',c.build_origin_x_mm,'e.g. 0')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_origin_y_mm','Build Origin Y (mm)',c.build_origin_y_mm,'e.g. 0')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_length_mm','Buildable Length (mm)',c.build_length_mm,'e.g. 1960')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_width_mm','Buildable Width (mm)',c.build_width_mm,'e.g. 1430')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_height_mm','Buildable Height (mm)',c.build_height_mm,'optional')}
-        ${designAiVehicleBuildAreaInput(prefix+'front_clearance_mm','Front Seat Clearance (mm)',c.front_clearance_mm,'e.g. 50')}
-        ${designAiVehicleBuildAreaInput(prefix+'rear_clearance_mm','Rear Door Clearance (mm)',c.rear_clearance_mm,'e.g. 50')}
-        ${designAiVehicleBuildAreaInput(prefix+'left_clearance_mm','Left Wall Clearance (mm)',c.left_clearance_mm,'e.g. 30')}
-        ${designAiVehicleBuildAreaInput(prefix+'right_clearance_mm','Right Wall Clearance (mm)',c.right_clearance_mm,'e.g. 30')}
-        ${designAiVehicleBuildAreaInput(prefix+'minimum_walkway_mm','Minimum Walkway (mm)',c.minimum_walkway_mm,'e.g. 450')}
-        ${designAiVehicleBuildAreaInput(prefix+'derived_from','Derived From',c.derived_from,'e.g. floorplan.svg')}
+        ${designAiVehicleBuildAreaInput(prefix+'layout_status','Approval Status',c.metadata?.status||c.status||'draft','draft / ai_suggested / approved')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_origin_x_mm','Build Origin X (mm)',c.build_area?.x_mm,'e.g. 0')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_origin_y_mm','Build Origin Y (mm)',c.build_area?.y_mm,'e.g. 0')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_length_mm','Buildable Length (mm)',c.build_area?.length_mm,'e.g. 1960')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_width_mm','Buildable Width (mm)',c.build_area?.width_mm,'e.g. 1430')}
+        ${designAiVehicleBuildAreaInput(prefix+'build_height_mm','Buildable Height (mm)',c.build_area?.height_mm,'optional')}
+        ${designAiVehicleBuildAreaInput(prefix+'front_clearance_mm','Front Seat Clearance (mm)',c.clearance?.front_mm,'e.g. 50')}
+        ${designAiVehicleBuildAreaInput(prefix+'rear_clearance_mm','Rear Door Clearance (mm)',c.clearance?.rear_mm,'e.g. 50')}
+        ${designAiVehicleBuildAreaInput(prefix+'left_clearance_mm','Left Wall Clearance (mm)',c.clearance?.left_mm,'e.g. 30')}
+        ${designAiVehicleBuildAreaInput(prefix+'right_clearance_mm','Right Wall Clearance (mm)',c.clearance?.right_mm,'e.g. 30')}
+        ${designAiVehicleBuildAreaInput(prefix+'minimum_walkway_mm','Minimum Walkway (mm)',c.clearance?.minimum_walkway_mm,'e.g. 450')}
+        ${designAiVehicleBuildAreaInput(prefix+'derived_from','Derived From',c.metadata?.derived_from,'e.g. floorplan.svg')}
         <div class="dai-field wide">
           <label>Layout Notes</label>
-          <textarea id="${esc(prefix+'layout_notes')}" placeholder="Example: Build starts behind front seats. Keep rear hatch access clear. Avoid wheel arches.">${esc(c.notes||'')}</textarea>
+          <textarea id="${esc(prefix+'layout_notes')}" placeholder="Example: Build starts behind front seats. Keep rear hatch access clear. Avoid wheel arches.">${esc(c.metadata?.notes||'')}</textarea>
         </div>
       </div>
     </div>
@@ -2784,21 +2819,29 @@ function designAiVehicleBuildAreaValue(prefix){
     return el?String(el.value||'').trim():'';
   };
   return {
-    status:str('layout_status')||'draft',
-    build_origin_x_mm:num('build_origin_x_mm'),
-    build_origin_y_mm:num('build_origin_y_mm'),
-    build_length_mm:num('build_length_mm'),
-    build_width_mm:num('build_width_mm'),
-    build_height_mm:num('build_height_mm'),
-    front_clearance_mm:num('front_clearance_mm'),
-    rear_clearance_mm:num('rear_clearance_mm'),
-    left_clearance_mm:num('left_clearance_mm'),
-    right_clearance_mm:num('right_clearance_mm'),
-    minimum_walkway_mm:num('minimum_walkway_mm'),
-    derived_from:str('derived_from'),
-    notes:str('layout_notes'),
+    schema_version:1,
+    build_area:{
+      x_mm:num('build_origin_x_mm'),
+      y_mm:num('build_origin_y_mm'),
+      length_mm:num('build_length_mm'),
+      width_mm:num('build_width_mm'),
+      height_mm:num('build_height_mm')
+    },
+    clearance:{
+      front_mm:num('front_clearance_mm'),
+      rear_mm:num('rear_clearance_mm'),
+      left_mm:num('left_clearance_mm'),
+      right_mm:num('right_clearance_mm'),
+      minimum_walkway_mm:num('minimum_walkway_mm')
+    },
     restricted_zones:designAiVehicleRestrictedZoneValue(prefix),
-    updated_at:new Date().toISOString()
+    mounting_points:[],
+    metadata:{
+      status:str('layout_status')||'draft',
+      derived_from:str('derived_from'),
+      notes:str('layout_notes'),
+      updated_at:new Date().toISOString()
+    }
   };
 }
 
@@ -2863,10 +2906,10 @@ function designAiVehicleFloorPlanHtml(record){
   const length=Number(record?.interior_length_mm||record?.overall_length_mm||0);
   const width=Number(record?.interior_width_mm||record?.overall_width_mm||0);
   const c=designAiVehicleLayoutConstraints(record);
-  const bx=Number(c.build_origin_x_mm||0);
-  const by=Number(c.build_origin_y_mm||0);
-  const bl=Number(c.build_length_mm||0);
-  const bw=Number(c.build_width_mm||0);
+  const bx=Number(c.build_area?.x_mm||0);
+  const by=Number(c.build_area?.y_mm||0);
+  const bl=Number(c.build_area?.length_mm||0);
+  const bw=Number(c.build_area?.width_mm||0);
   if(!length||!width){
     return `<div class="dai-panel"><div class="dai-panel-title">🗺️ Floor Plan Preview</div><div class="dai-empty">Add interior length and width to preview the vehicle floor plan.</div></div>`;
   }

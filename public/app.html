@@ -2665,6 +2665,87 @@ function designAiEntityFields(entityType){
   if(entityType==='style')return [['style_id','Style ID'],...DESIGN_AI_STYLE_RECORD_FIELDS];
   return [['product_id','Product ID'],...DESIGN_AI_PRODUCT_RECORD_FIELDS];
 }
+const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
+  [
+    '🚐 Vehicle Information',
+    [
+      ['vehicle_id','Vehicle ID'],
+      ['brand','Brand'],
+      ['make','Make'],
+      ['model','Model'],
+      ['generation','Generation'],
+      ['year_range','Year Range'],
+      ['market','Market'],
+      ['body_type','Body Type'],
+      ['status','Status']
+    ]
+  ],
+  [
+    '📏 Dimensions',
+    [
+      ['overall_length_mm','Overall Length (mm)'],
+      ['overall_width_mm','Overall Width (mm)'],
+      ['overall_height_mm','Overall Height (mm)'],
+      ['wheelbase_mm','Wheelbase (mm)'],
+      ['interior_length_mm','Interior Length (mm)'],
+      ['interior_width_mm','Interior Width (mm)'],
+      ['interior_height_mm','Interior Height (mm)']
+    ]
+  ],
+  [
+    '🚪 Doors & Openings',
+    [
+      ['side_door_width_mm','Side Door Width (mm)'],
+      ['side_door_height_mm','Side Door Height (mm)'],
+      ['rear_door_width_mm','Rear Door Width (mm)'],
+      ['rear_door_height_mm','Rear Door Height (mm)'],
+      ['rear_window_width_mm','Rear Window Width (mm)'],
+      ['rear_window_height_mm','Rear Window Height (mm)']
+    ]
+  ],
+  [
+    '🛞 Obstacles',
+    [
+      ['wheel_arch_width_mm','Wheel Arch Width (mm)'],
+      ['wheel_arch_height_mm','Wheel Arch Height (mm)'],
+      ['wheel_arch_position_x_mm','Wheel Arch X'],
+      ['wheel_arch_position_y_mm','Wheel Arch Y'],
+      ['payload_kg','Payload (kg)']
+    ]
+  ],
+  [
+    '🟩 Build Area',
+    []
+  ],
+  [
+    '📂 References',
+    [
+      ['floor_plan_notes','Floor Plan Notes'],
+      ['reference_files_json','Reference Files']
+    ]
+  ]
+];
+
+function designAiVehicleEditorSection(prefix,title,fields,record){
+  return `
+    <div class="dai-panel">
+      <div class="dai-panel-title">${esc(title)}</div>
+
+      ${
+        fields.length
+        ? `<div class="dai-form-grid">
+            ${fields.map(([field,label]) =>
+              designAiFieldInput(prefix,field,label,record[field],{})
+            ).join('')}
+          </div>`
+        : `<div class="dai-empty">
+             AI Build Zone editor will be added here in the next update.
+           </div>`
+      }
+
+    </div>
+  `;
+}
 function designAiRecordConfig(kind='products'){
   if(kind==='vehicles')return {kind,idKey:'vehicle_id',entityType:'vehicle',title:'Vehicle Database',single:'Vehicle',route:'vehicle',library:'vehicles',fields:designAiEntityFields('vehicle'),columns:['Vehicle ID','Brand','Model','Status','Version','Updated']};
   if(kind==='styles')return {kind,idKey:'style_id',entityType:'style',title:'Style Database',single:'Style',route:'style',library:'styles',fields:designAiEntityFields('style'),columns:['Style ID','Name','Status','Version','Updated']};
@@ -2928,6 +3009,32 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
         designAiProductEditorHtml(record,isNew);
       return;
     }
+    if(kind==='vehicles'){
+  designAiBody().innerHTML =
+    designAiHeader(
+      `${isNew?'New ':''}${cfg.single}`,
+      `${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}`,
+      `<button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">← Vehicle Database</button>`
+    ) +
+
+    DESIGN_AI_VEHICLE_FIELD_SECTIONS.map(([title,fields]) =>
+      designAiVehicleEditorSection(prefix,title,fields,record)
+    ).join('') +
+
+    `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord()">
+        Save Vehicle
+      </button>
+
+      <button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">
+        Back to Vehicle Database
+      </button>
+    </div>
+    `;
+
+  return;
+}
     designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="openDesignAI('${kind}')">← ${cfg.title}</button>`)+
       `<div class="dai-warning">${helper}<br>Google Drive stores evidence files. CRDN approved database stores the values used for layout and proposals.</div>
       <div class="dai-panel">

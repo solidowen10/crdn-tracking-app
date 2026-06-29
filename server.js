@@ -36,6 +36,10 @@ const {
   REQUIRED_MISSING_DATA
 } = require('./designAiServices');
 
+const {
+  analyzeVehicleGeometry
+} = require('./designAiGeometry');
+
 init();
 
 const app = express();
@@ -2081,6 +2085,43 @@ app.post('/api/design-ai/vehicles', requireAuth, (req, res) => {
     created_at: new Date().toISOString()
   });
   res.status(201).json({ record });
+});
+
+app.post('/api/design-ai/vehicles/:vehicleId/analyze-geometry', requireAuth, async (req, res) => {
+  try {
+    const vehicleId = text(req.params.vehicleId);
+
+    const vehicle = designVehicleRecordFromRow(
+      db.prepare(
+        'SELECT * FROM design_ai_vehicle_records WHERE lower(vehicle_id)=lower(?)'
+      ).get(vehicleId)
+    );
+
+    if (!vehicle) {
+      return res.status(404).json({ error: 'Vehicle record not found.' });
+    }
+
+    const files = designEntityFolderFiles(
+      'vehicle',
+      vehicle.source_drive_folder_id || vehicle.vehicle_id,
+      vehicle.vehicle_id
+    );
+
+    const result = await analyzeVehicleGeometry({
+      vehicle,
+      files,
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+    });
+
+    res.json(result);
+
+  } catch (err) {
+    console.error(err);
+    res.status(err.status || 500).json({
+      error: err.message || 'Vehicle geometry analysis failed.'
+    });
+  }
 });
 
 app.patch('/api/design-ai/vehicles/:vehicleId', requireAuth, (req, res) => {

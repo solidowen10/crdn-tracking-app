@@ -2937,6 +2937,31 @@ function designAiVehicleFloorPlanHtml(record){
         ${wheel}
         <text x="0" y="${width+60}" font-size="42" fill="#6b6b68">${esc(record.vehicle_id||'Vehicle')} · ${Math.round(length)} × ${Math.round(width)} mm</text>
       </svg>
+      <div class="dai-panel" style="margin-top:16px">
+  <div class="dai-panel-title">📝 ChatGPT Geometry Assistant</div>
+
+  <div class="dai-warning">
+    Generate a prompt for ChatGPT to analyze this vehicle. The returned
+    <code>layout_constraints_json</code> can be pasted back into CRDN for approval.
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-brand btn-sm"
+            onclick="generateGeometryPrompt()">
+      📝 Generate Prompt
+    </button>
+
+    <button class="btn btn-out btn-sm"
+            onclick="copyGeometryPrompt()">
+      📋 Copy
+    </button>
+  </div>
+
+  <textarea
+      id="geometry-prompt"
+      style="min-height:220px;font-family:monospace"
+      placeholder="Prompt will appear here..."></textarea>
+</div>
     </div>
   `;
 }
@@ -3237,6 +3262,11 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
         Save Vehicle
       </button>
 
+      <button class="btn btn-brand btn-sm"
+              onclick="analyzeVehicleGeometry()">
+         🤖 Analyze Vehicle Floor Plan
+      </button>
+
       <button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">
         Back to Vehicle Database
       </button>
@@ -3257,6 +3287,108 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     designAiBody().innerHTML=designAiHeader(cfg.single,'','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
+}
+async function analyzeVehicleGeometry(){
+
+  const ctx = DESIGN_AI.record || {};
+
+  if(ctx.kind !== 'vehicles') return;
+
+  try{
+
+    toast('Analyzing vehicle floor plan...');
+
+    const result = await POST(
+      `/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/analyze-geometry`,
+      {}
+    );
+
+    const s = result.suggestion || {};
+
+if(s.build_area){
+
+  document.getElementById('dai-rec-build_origin_x_mm').value =
+    s.build_area.x_mm ?? '';
+
+  document.getElementById('dai-rec-build_origin_y_mm').value =
+    s.build_area.y_mm ?? '';
+
+  document.getElementById('dai-rec-build_length_mm').value =
+    s.build_area.length_mm ?? '';
+
+  document.getElementById('dai-rec-build_width_mm').value =
+    s.build_area.width_mm ?? '';
+
+  document.getElementById('dai-rec-build_height_mm').value =
+    s.build_area.height_mm ?? '';
+
+}
+
+    toast('AI suggestion received ✓');
+
+  }catch(e){
+
+    toast(errMsg(e),6000);
+
+  }
+
+}
+function generateGeometryPrompt(){
+
+  const ctx = DESIGN_AI.record || {};
+  const record = DESIGN_AI.currentRecord || {};
+
+  const prompt = `
+You are CRDN Vehicle Geometry AI.
+
+Analyze the following vehicle and determine the usable camper build area.
+
+Vehicle ID:
+${record.vehicle_id || ''}
+
+Brand:
+${record.brand || ''}
+
+Model:
+${record.model || ''}
+
+Interior Dimensions (mm):
+Length: ${record.interior_length_mm || ''}
+Width: ${record.interior_width_mm || ''}
+Height: ${record.interior_height_mm || ''}
+
+Known Notes:
+${record.floor_plan_notes || ''}
+
+Return ONLY valid JSON using the CRDN layout_constraints_json schema.
+
+Do NOT explain your reasoning outside the JSON.
+
+Status must be:
+ai_suggested
+`.trim();
+
+  const el = document.getElementById('geometry-prompt');
+  if(el){
+    el.value = prompt;
+  }
+
+  toast('Geometry prompt generated ✓');
+}
+
+function copyGeometryPrompt(){
+
+  const el = document.getElementById('geometry-prompt');
+
+  if(!el || !el.value){
+    toast('Generate a prompt first.');
+    return;
+  }
+
+  navigator.clipboard.writeText(el.value);
+
+  toast('Prompt copied ✓');
+
 }
 async function saveDesignAiRecord(){
   const ctx=DESIGN_AI.record||{};

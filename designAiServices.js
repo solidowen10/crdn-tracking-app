@@ -15,7 +15,7 @@ const MAX_TEXT_FILE_BYTES = Number(process.env.DESIGN_AI_FILE_CONTENT_MAX_BYTES 
 const MAX_PROMPT_CONTENT_BYTES = Number(process.env.DESIGN_AI_PROMPT_CONTENT_MAX_BYTES || 180 * 1024);
 const MAX_PROMPT_CONTENT_FILES = 14;
 const VEHICLE_REQUIRED_FILES = ['vehicle.json', 'dimensions.csv', 'floorplan.svg'];
-const VEHICLE_OPTIONAL_FILES = ['mounting_points.csv', 'restricted_zones.csv', 'scan.glb', 'photos/'];
+const VEHICLE_OPTIONAL_FILES = ['mounting_points.csv', 'restricted_zones.csv', 'layout_constraints.json', 'buildability_report.md', 'scan.glb', 'photos/'];
 const PRODUCT_REQUIRED_FILES = ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json'];
 const REQUIRED_MISSING_DATA = [
   'vehicle.json',
@@ -671,6 +671,16 @@ async function readDriveTextFile(drive, file, remainingBytes) {
     content_bytes: truncated.bytes,
     truncated: truncated.truncated
   };
+}
+
+async function readDesignLibraryTextFile(file, maxBytes = MAX_TEXT_FILE_BYTES) {
+  if (!isTextReadableFile(file)) {
+    const err = new Error('File is not a readable text library file.');
+    err.status = 400;
+    throw err;
+  }
+  const drive = requireDriveClient();
+  return readDriveTextFile(drive, file, maxBytes);
 }
 
 async function buildLibraryPromptContext(request, files) {
@@ -1724,6 +1734,7 @@ module.exports = {
   driveStatus,
   syncDriveFolders,
   designLibraryReadiness,
+  readDesignLibraryTextFile,
   extractDesignEntity,
   generateMoodboardConcept,
   fallbackDesignResponse,

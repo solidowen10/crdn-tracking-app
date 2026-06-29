@@ -30,15 +30,12 @@ const {
   driveStatus,
   syncDriveFolders,
   designLibraryReadiness,
+  readDesignLibraryTextFile,
   extractDesignEntity,
   generateMoodboardConcept,
   generateDesignResponse,
   REQUIRED_MISSING_DATA
 } = require('./designAiServices');
-
-const {
-  analyzeVehicleGeometry
-} = require('./designAiGeometry');
 
 init();
 
@@ -774,6 +771,106 @@ function designEntityFolderFiles(entityType, folderPath, entityId) {
       )
     ORDER BY is_folder DESC, path COLLATE NOCASE, modified_time DESC
   `).all(folderType, folder, `${folder}/%`, folder);
+}
+
+function layoutSuggestionPathRank(file, prefixes = []) {
+  const pathValue = text(file.path).toLowerCase();
+  const nameValue = text(file.name).toLowerCase();
+  if (nameValue !== 'layout_constraints.json' && !pathValue.endsWith('/layout_constraints.json')) return 999;
+  const normalizedPrefixes = prefixes.map(prefix => text(prefix).toLowerCase()).filter(Boolean);
+  for (let i = 0; i < normalizedPrefixes.length; i += 1) {
+    const prefix = normalizedPrefixes[i];
+    if (pathValue === `${prefix}/extracted/layout_constraints.json`) return i * 10;
+    if (pathValue.startsWith(`${prefix}/extracted/`)) return i * 10 + 1;
+    if (pathValue.startsWith(`${prefix}/`)) return i * 10 + 2;
+  }
+  return normalizedPrefixes.length ? 999 : 100;
+}
+
+function vehicleGeometrySuggestionFile(vehicle) {
+  const prefixes = [
+    vehicle?.vehicle_id,
+    latestExtractionDraft('vehicle', vehicle?.vehicle_id)?.folder_path
+  ].map(text).filter(Boolean);
+  const rows = db.prepare(`
+    SELECT *
+    FROM design_library_files
+    WHERE folder_type='vehicles'
+      AND is_folder=0
+      AND (lower(name)=lower(?) OR lower(path) LIKE ?)
+    ORDER BY modified_time DESC, path COLLATE NOCASE
+  `).all('layout_constraints.json', '%/layout_constraints.json');
+  return rows
+    .map(file => ({ file, rank: layoutSuggestionPathRank(file, prefixes) }))
+    .filter(item => item.rank < 999)
+    .sort((a, b) => a.rank - b.rank || text(b.file.modified_time).localeCompare(text(a.file.modified_time)))
+    .map(item => item.file)[0] || null;
+}
+
+function normalizeWarnings(value) {
+  if (Array.isArray(value)) return value.map(text).filter(Boolean);
+  const warning = text(value);
+  return warning ? [warning] : [];
+}
+
+function nullableNumber(value) {
+  if (value === undefined || value === null || value === '') return null;
+  return number(value, null);
+}
+
+function normalizeLayoutZone(zone = {}) {
+  return {
+    name: text(zone.name || zone.zone || zone.id || 'Restricted Zone'),
+    type: text(zone.type || 'restricted'),
+    x_mm: nullableNumber(zone.x_mm ?? zone.x ?? zone.left_mm),
+    y_mm: nullableNumber(zone.y_mm ?? zone.y ?? zone.top_mm),
+    length_mm: nullableNumber(zone.length_mm ?? zone.width_mm ?? zone.length ?? zone.width),
+    width_mm: nullableNumber(zone.width_mm ?? zone.depth_mm ?? zone.height ?? zone.depth),
+    notes: text(zone.notes || zone.reason || zone.description)
+  };
+}
+
+function normalizeVehicleLayoutSuggestion(raw, file) {
+  const input = raw?.layout_constraints_json || raw?.layout_constraints || raw || {};
+  const metadata = input.metadata || {};
+  const generatedAt = text(
+    metadata.generated_at ||
+    metadata.generated_date ||
+    metadata.created_at ||
+    metadata.updated_at ||
+    file?.modified_time
+  );
+  return {
+    schema_version: input.schema_version || 1,
+    build_area: {
+      x_mm: nullableNumber(input.build_area?.x_mm ?? input.build_area?.x ?? input.build_origin_x_mm),
+      y_mm: nullableNumber(input.build_area?.y_mm ?? input.build_area?.y ?? input.build_origin_y_mm),
+      length_mm: nullableNumber(input.build_area?.length_mm ?? input.build_area?.length ?? input.build_length_mm),
+      width_mm: nullableNumber(input.build_area?.width_mm ?? input.build_area?.width ?? input.build_width_mm),
+      height_mm: nullableNumber(input.build_area?.height_mm ?? input.build_area?.height ?? input.build_height_mm)
+    },
+    clearance: {
+      front_mm: nullableNumber(input.clearance?.front_mm),
+      rear_mm: nullableNumber(input.clearance?.rear_mm),
+      left_mm: nullableNumber(input.clearance?.left_mm),
+      right_mm: nullableNumber(input.clearance?.right_mm),
+      minimum_walkway_mm: nullableNumber(input.clearance?.minimum_walkway_mm)
+    },
+    restricted_zones: Array.isArray(input.restricted_zones)
+      ? input.restricted_zones.map(normalizeLayoutZone)
+      : [],
+    mounting_points: Array.isArray(input.mounting_points) ? input.mounting_points : [],
+    metadata: {
+      ...metadata,
+      status: text(metadata.status || input.status || 'ai_suggested'),
+      confidence: text(metadata.confidence || input.confidence || raw.confidence || 'MEDIUM').toUpperCase() || 'MEDIUM',
+      source_file: text(metadata.source_file || file?.name || 'layout_constraints.json'),
+      source_path: text(metadata.source_path || file?.path || ''),
+      generated_at: generatedAt,
+      notes: text(metadata.notes || input.notes || raw.notes),
+      warnings: normalizeWarnings(metadata.warnings || input.warnings || raw.warnings)
+    }
+  };
 }
 
 function latestExtractionDraft(entityType, entityId) {
@@ -1922,7 +2019,7 @@ app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
     readiness: designLibraryReadiness(files, designExtractionStatusLookup()),
     required_checklist: {
       vehicle_required: ['vehicle.json', 'dimensions.csv', 'floorplan.svg'],
-      vehicle_optional: ['mounting_points.csv', 'restricted_zones.csv', 'scan.glb', 'photos/'],
+      vehicle_optional: ['mounting_points.csv', 'restricted_zones.csv', 'layout_constraints.json', 'buildability_report.md', 'scan.glb', 'photos/'],
       product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
@@ -2087,10 +2184,9 @@ app.post('/api/design-ai/vehicles', requireAuth, (req, res) => {
   res.status(201).json({ record });
 });
 
-app.post('/api/design-ai/vehicles/:vehicleId/analyze-geometry', requireAuth, async (req, res) => {
+app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, async (req, res) => {
   try {
     const vehicleId = text(req.params.vehicleId);
-
     const vehicle = designVehicleRecordFromRow(
       db.prepare(
         'SELECT * FROM design_ai_vehicle_records WHERE lower(vehicle_id)=lower(?)'
@@ -2101,25 +2197,69 @@ app.post('/api/design-ai/vehicles/:vehicleId/analyze-geometry', requireAuth, asy
       return res.status(404).json({ error: 'Vehicle record not found.' });
     }
 
-    const files = designEntityFolderFiles(
-      'vehicle',
-      vehicle.source_drive_folder_id || vehicle.vehicle_id,
-      vehicle.vehicle_id
-    );
+    const file = vehicleGeometrySuggestionFile(vehicle);
+    if (!file) {
+      return res.json({
+        status: 'missing',
+        summary: {
+          status: 'No suggestion found',
+          confidence: '',
+          source_file: '',
+          generated_at: '',
+          notes: 'Sync Google Drive after the Vehicle Research Agent uploads extracted/layout_constraints.json.',
+          warnings: []
+        },
+        suggestion: null
+      });
+    }
 
-    const result = await analyzeVehicleGeometry({
-      vehicle,
-      files,
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+    const readable = await readDesignLibraryTextFile(file);
+    let parsed;
+    try {
+      parsed = JSON.parse(readable.content || '{}');
+    } catch (err) {
+      return res.status(422).json({
+        status: 'invalid',
+        summary: {
+          status: 'Invalid suggestion file',
+          confidence: '',
+          source_file: file.name || 'layout_constraints.json',
+          generated_at: file.modified_time || '',
+          notes: 'layout_constraints.json could not be parsed as JSON.',
+          warnings: [err.message]
+        },
+        file: {
+          name: file.name,
+          path: file.path,
+          web_view_link: file.web_view_link || ''
+        },
+        suggestion: null
+      });
+    }
+
+    const suggestion = normalizeVehicleLayoutSuggestion(parsed, file);
+    res.json({
+      status: 'ai_suggested',
+      summary: {
+        status: 'AI Suggested',
+        confidence: suggestion.metadata.confidence || 'MEDIUM',
+        source_file: suggestion.metadata.source_file || file.name || 'layout_constraints.json',
+        generated_at: suggestion.metadata.generated_at || file.modified_time || '',
+        notes: suggestion.metadata.notes || '',
+        warnings: suggestion.metadata.warnings || []
+      },
+      file: {
+        name: file.name,
+        path: file.path,
+        web_view_link: file.web_view_link || '',
+        modified_time: file.modified_time || ''
+      },
+      suggestion
     });
-
-    res.json(result);
-
   } catch (err) {
     console.error(err);
     res.status(err.status || 500).json({
-      error: err.message || 'Vehicle geometry analysis failed.'
+      error: err.message || 'Vehicle geometry suggestion failed.'
     });
   }
 });

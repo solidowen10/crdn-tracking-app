@@ -2714,6 +2714,10 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
     ]
   ],
   [
+    'AI Geometry Suggestion',
+    []
+  ],
+  [
     '🗺️ Floor Plan Preview',
     []
   ],
@@ -2761,7 +2765,11 @@ function designAiVehicleLayoutConstraints(record){
   const metadata=c.metadata||{
     status:c.metadata?.status||c.status||'draft',
     derived_from:c.metadata?.derived_from||'',
+    confidence:c.metadata?.confidence||'',
+    source_file:c.metadata?.source_file||'',
+    generated_at:c.metadata?.generated_at||'',
     notes:c.metadata?.notes||'',
+    warnings:Array.isArray(c.metadata?.warnings)?c.metadata.warnings:[],
     updated_at:c.updated_at||''
   };
 
@@ -2777,6 +2785,42 @@ function designAiVehicleLayoutConstraints(record){
 }
 function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
   return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(value===undefined||value===null?'':value)}" placeholder="${esc(placeholder)}"></div>`;
+}
+function designAiVehicleSuggestionPanelHtml(){
+  return `
+    <div class="dai-panel">
+      <div class="dai-panel-title">AI Geometry Suggestion</div>
+      <div id="dai-geometry-suggestion-panel" class="dai-empty">
+        Checking Google Drive for extracted/layout_constraints.json...
+      </div>
+    </div>
+  `;
+}
+function designAiGeometryDate(value){
+  const raw=String(value||'').trim();
+  if(!raw)return '—';
+  const d=new Date(raw);
+  if(Number.isNaN(d.getTime()))return raw.slice(0,10)||raw;
+  return d.toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'});
+}
+function designAiGeometrySuggestionHtml(data){
+  const summary=data?.summary||{};
+  const warnings=Array.isArray(summary.warnings)?summary.warnings:[];
+  const hasSuggestion=Boolean(data?.suggestion);
+  return `
+    <div class="dai-list">
+      <div class="dai-review-row"><div><strong>Suggestion Status</strong><div class="pc-s">${esc(summary.status||'No suggestion found')}</div></div><div><span class="dai-pill ${data?.status==='ai_suggested'?'work':'error'}">${esc(summary.status||'Missing')}</span></div></div>
+      <div class="dai-review-row"><div><strong>Confidence</strong><div class="pc-s">${esc(summary.confidence||'—')}</div></div><div>${designAiConfidencePill(summary.confidence||'')}</div></div>
+      <div class="dai-review-row"><div><strong>Source File</strong><div class="pc-s">${esc(summary.source_file||'—')}</div></div><div>${data?.file?.web_view_link?`<a href="${esc(data.file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div></div>
+      <div class="dai-review-row"><div><strong>Generated</strong><div class="pc-s">${esc(designAiGeometryDate(summary.generated_at))}</div></div><div>—</div></div>
+      <div class="dai-review-row"><div><strong>Notes</strong><div class="pc-s">${esc(summary.notes||'—')}</div></div><div>—</div></div>
+      ${warnings.length?`<div class="dai-warning"><strong>Warnings:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion()" ${hasSuggestion?'':'disabled'}>Load Suggestion</button>
+      <button class="btn btn-out btn-sm" onclick="refreshDesignAiGeometrySuggestion()">Refresh</button>
+    </div>
+  `;
 }
 function designAiVehicleBuildAreaHtml(prefix,record){
   const c=designAiVehicleLayoutConstraints(record);
@@ -2818,6 +2862,7 @@ function designAiVehicleBuildAreaValue(prefix){
     const el=document.getElementById(prefix+id);
     return el?String(el.value||'').trim():'';
   };
+  const existing=designAiVehicleLayoutConstraints(DESIGN_AI.currentRecord||{}).metadata||{};
   return {
     schema_version:1,
     build_area:{
@@ -2835,10 +2880,16 @@ function designAiVehicleBuildAreaValue(prefix){
       minimum_walkway_mm:num('minimum_walkway_mm')
     },
     restricted_zones:designAiVehicleRestrictedZoneValue(prefix),
-    mounting_points:[],
+    mounting_points:designAiVehicleLayoutConstraints(DESIGN_AI.currentRecord||{}).mounting_points||[],
     metadata:{
+      ...existing,
       status:str('layout_status')||'draft',
       derived_from:str('derived_from'),
+      source_file:existing.source_file||str('derived_from'),
+      source_path:existing.source_path||'',
+      confidence:existing.confidence||'',
+      generated_at:existing.generated_at||'',
+      warnings:Array.isArray(existing.warnings)?existing.warnings:[],
       notes:str('layout_notes'),
       updated_at:new Date().toISOString()
     }
@@ -2853,7 +2904,8 @@ function designAiVehicleRestrictedZones(record){
 }
 function designAiVehicleRestrictedZoneHtml(prefix,record){
   const zones=designAiVehicleRestrictedZones(record);
-  const rows=[0,1,2].map(i=>{
+  const count=Math.max(12,Number(DESIGN_AI.vehicleGeometryZoneCount||0),zones.length);
+  const rows=Array.from({length:count},(_,i)=>{
     const z=zones[i]||{};
     return `
       <div class="dai-form-grid" style="border:1px solid var(--g200);border-radius:16px;padding:12px;margin-bottom:10px">
@@ -2887,7 +2939,8 @@ function designAiVehicleRestrictedZoneValue(prefix){
     return el?String(el.value||'').trim():'';
   };
   const zones=[];
-  [0,1,2].forEach(i=>{
+  const count=Math.max(12,Number(DESIGN_AI.vehicleGeometryZoneCount||0));
+  Array.from({length:count},(_,i)=>i).forEach(i=>{
     const name=str('rz_'+i+'_name');
     const x=num('rz_'+i+'_x_mm');
     const y=num('rz_'+i+'_y_mm');
@@ -2902,7 +2955,7 @@ function designAiVehicleRestrictedZoneValue(prefix){
   return zones;
 }
 
-function designAiVehicleFloorPlanHtml(record){
+function designAiVehicleFloorPlanPreviewHtml(record){
   const length=Number(record?.interior_length_mm||record?.overall_length_mm||0);
   const width=Number(record?.interior_width_mm||record?.overall_width_mm||0);
   const c=designAiVehicleLayoutConstraints(record);
@@ -2911,7 +2964,7 @@ function designAiVehicleFloorPlanHtml(record){
   const bl=Number(c.build_area?.length_mm||0);
   const bw=Number(c.build_area?.width_mm||0);
   if(!length||!width){
-    return `<div class="dai-panel"><div class="dai-panel-title">🗺️ Floor Plan Preview</div><div class="dai-empty">Add interior length and width to preview the vehicle floor plan.</div></div>`;
+    return `<div class="dai-empty">Add interior length and width to preview the vehicle floor plan.</div>`;
   }
   const wheel=record?.wheel_arch_width_mm&&record?.wheel_arch_height_mm
     ? `<rect x="${Number(record.wheel_arch_position_x_mm||0)}" y="${Number(record.wheel_arch_position_y_mm||0)}" width="${Number(record.wheel_arch_width_mm||0)}" height="${Number(record.wheel_arch_height_mm||0)}" rx="18" fill="#eee" stroke="#6b6b68" stroke-dasharray="20 12" stroke-width="8"></rect>`
@@ -2927,46 +2980,116 @@ function designAiVehicleFloorPlanHtml(record){
       <text x="${x+20}" y="${y+42}" font-size="38" fill="#c62828" font-weight="700">${esc(z.name||'Restricted')}</text>`;
   }).join('');
   return `
+    <svg viewBox="-80 -80 ${length+160} ${width+160}" style="width:100%;max-height:420px;border:1px solid var(--g200);border-radius:18px;background:#fafaf7">
+      <rect x="0" y="0" width="${length}" height="${width}" rx="42" fill="#fff" stroke="#111" stroke-width="12"></rect>
+      ${build}
+      ${restricted}
+      ${wheel}
+      <text x="0" y="${width+60}" font-size="42" fill="#6b6b68">${esc(record.vehicle_id||'Vehicle')} · ${Math.round(length)} × ${Math.round(width)} mm</text>
+    </svg>
+  `;
+}
+function designAiVehicleFloorPlanHtml(record){
+  return `
     <div class="dai-panel">
       <div class="dai-panel-title">🗺️ Floor Plan Preview</div>
-      <div class="dai-warning">Preview uses approved vehicle dimensions and Build Area fields. This is a simple reference view, not CAD yet.</div>
-      <svg viewBox="-80 -80 ${length+160} ${width+160}" style="width:100%;max-height:420px;border:1px solid var(--g200);border-radius:18px;background:#fafaf7">
-        <rect x="0" y="0" width="${length}" height="${width}" rx="42" fill="#fff" stroke="#111" stroke-width="12"></rect>
-        ${build}
-        ${restricted}
-        ${wheel}
-        <text x="0" y="${width+60}" font-size="42" fill="#6b6b68">${esc(record.vehicle_id||'Vehicle')} · ${Math.round(length)} × ${Math.round(width)} mm</text>
-      </svg>
-      <div class="dai-panel" style="margin-top:16px">
-  <div class="dai-panel-title">📝 ChatGPT Geometry Assistant</div>
-
-  <div class="dai-warning">
-    Generate a prompt for ChatGPT to analyze this vehicle. The returned
-    <code>layout_constraints_json</code> can be pasted back into CRDN for approval.
-  </div>
-
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-    <button class="btn btn-brand btn-sm"
-            onclick="generateGeometryPrompt()">
-      📝 Generate Prompt
-    </button>
-
-    <button class="btn btn-out btn-sm"
-            onclick="copyGeometryPrompt()">
-      📋 Copy
-    </button>
-  </div>
-
-  <textarea
-      id="geometry-prompt"
-      style="min-height:220px;font-family:monospace"
-      placeholder="Prompt will appear here..."></textarea>
-</div>
+      <div class="dai-warning">SVG preview updates from the current editor values. It is a visual reference only, not CAD.</div>
+      <div id="dai-vehicle-floor-plan-preview">${designAiVehicleFloorPlanPreviewHtml(record)}</div>
     </div>
   `;
 }
+function designAiVehicleEditorSnapshot(prefix='dai-rec-'){
+  const record={...(DESIGN_AI.currentRecord||{})};
+  DESIGN_AI_VEHICLE_FIELD_SECTIONS.forEach(([,fields])=>{
+    (fields||[]).forEach(([field])=>{
+      const el=document.getElementById(prefix+field);
+      if(!el)return;
+      const raw=String(el.value||'').trim();
+      record[field]=/(_mm|_kg)$/.test(field)?(raw===''?null:Number(raw)):raw;
+    });
+  });
+  record.layout_constraints_json=designAiVehicleBuildAreaValue(prefix);
+  return record;
+}
+function designAiVehicleUpdateFloorPlanPreview(){
+  const target=document.getElementById('dai-vehicle-floor-plan-preview');
+  if(!target)return;
+  target.innerHTML=designAiVehicleFloorPlanPreviewHtml(designAiVehicleEditorSnapshot());
+}
+function designAiVehicleBindGeometryEditor(prefix='dai-rec-'){
+  const body=designAiBody();
+  if(!body)return;
+  body.querySelectorAll('input, textarea, select').forEach(el=>{
+    el.addEventListener('input',designAiVehicleUpdateFloorPlanPreview);
+    el.addEventListener('change',designAiVehicleUpdateFloorPlanPreview);
+  });
+  designAiVehicleUpdateFloorPlanPreview();
+}
+async function refreshDesignAiGeometrySuggestion(){
+  const ctx=DESIGN_AI.record||{};
+  const panel=document.getElementById('dai-geometry-suggestion-panel');
+  if(!panel||ctx.kind!=='vehicles'||ctx.isNew){
+    if(panel)panel.innerHTML='Save the vehicle before loading a Google Drive geometry suggestion.';
+    return;
+  }
+  panel.innerHTML='Checking Google Drive for extracted/layout_constraints.json...';
+  try{
+    const data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
+    DESIGN_AI.geometrySuggestion=data;
+    panel.className='';
+    panel.innerHTML=designAiGeometrySuggestionHtml(data);
+  }catch(e){
+    DESIGN_AI.geometrySuggestion=null;
+    panel.className='dai-empty';
+    panel.innerHTML=esc(errMsg(e));
+  }
+}
+function designAiGeometrySetField(id,value){
+  const el=document.getElementById(id);
+  if(el)el.value=value===undefined||value===null?'':value;
+}
+async function loadDesignAiGeometrySuggestion(){
+  const ctx=DESIGN_AI.record||{};
+  let data=DESIGN_AI.geometrySuggestion;
+  if(!data?.suggestion){
+    data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
+    DESIGN_AI.geometrySuggestion=data;
+  }
+  const s=data?.suggestion;
+  if(!s){toast('No geometry suggestion found. Sync Google Drive after the Agent uploads layout_constraints.json.');return;}
+  DESIGN_AI.vehicleGeometryZoneCount=Math.max(12,(s.restricted_zones||[]).length);
+  DESIGN_AI.currentRecord={...(DESIGN_AI.currentRecord||{}),layout_constraints_json:s};
+  const p='dai-rec-';
+  designAiGeometrySetField(p+'layout_status',s.metadata?.status||'ai_suggested');
+  designAiGeometrySetField(p+'build_origin_x_mm',s.build_area?.x_mm);
+  designAiGeometrySetField(p+'build_origin_y_mm',s.build_area?.y_mm);
+  designAiGeometrySetField(p+'build_length_mm',s.build_area?.length_mm);
+  designAiGeometrySetField(p+'build_width_mm',s.build_area?.width_mm);
+  designAiGeometrySetField(p+'build_height_mm',s.build_area?.height_mm);
+  designAiGeometrySetField(p+'front_clearance_mm',s.clearance?.front_mm);
+  designAiGeometrySetField(p+'rear_clearance_mm',s.clearance?.rear_mm);
+  designAiGeometrySetField(p+'left_clearance_mm',s.clearance?.left_mm);
+  designAiGeometrySetField(p+'right_clearance_mm',s.clearance?.right_mm);
+  designAiGeometrySetField(p+'minimum_walkway_mm',s.clearance?.minimum_walkway_mm);
+  designAiGeometrySetField(p+'derived_from',s.metadata?.source_file||data.file?.name||'layout_constraints.json');
+  designAiGeometrySetField(p+'layout_notes',s.metadata?.notes||'');
+  const count=Math.max(12,(s.restricted_zones||[]).length);
+  for(let i=0;i<count;i+=1){
+    const z=(s.restricted_zones||[])[i]||{};
+    designAiGeometrySetField(p+'rz_'+i+'_name',z.name||'');
+    designAiGeometrySetField(p+'rz_'+i+'_type',z.type||'restricted');
+    designAiGeometrySetField(p+'rz_'+i+'_x_mm',z.x_mm);
+    designAiGeometrySetField(p+'rz_'+i+'_y_mm',z.y_mm);
+    designAiGeometrySetField(p+'rz_'+i+'_length_mm',z.length_mm);
+    designAiGeometrySetField(p+'rz_'+i+'_width_mm',z.width_mm);
+    designAiGeometrySetField(p+'rz_'+i+'_notes',z.notes||'');
+  }
+  designAiVehicleUpdateFloorPlanPreview();
+  toast('Geometry suggestion loaded for review. Save Vehicle to approve it.');
+}
 
 function designAiVehicleEditorSection(prefix,title,fields,record){
+  if(String(title).includes('AI Geometry Suggestion'))return designAiVehicleSuggestionPanelHtml();
   if(String(title).includes('Floor Plan'))return designAiVehicleFloorPlanHtml(record);
   if(String(title).includes('Build Area'))return designAiVehicleBuildAreaHtml(prefix,record);
   if(String(title).includes('Restricted Zones'))return designAiVehicleRestrictedZoneHtml(prefix,record);
@@ -3237,6 +3360,9 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
   try{
     const record=isNew?{[cfg.idKey]:'',status:'draft',version:1}:((await GET(`/api/design-ai/${kind}/${encodeURIComponent(recordKey)}`)).record||{});
     DESIGN_AI.record={kind,recordKey:record[cfg.idKey]||recordKey,isNew};
+    DESIGN_AI.currentRecord=record;
+    DESIGN_AI.vehicleGeometryZoneCount=0;
+    DESIGN_AI.geometrySuggestion=null;
     const prefix='dai-rec-';
     const helper=kind==='vehicles'?'Approved vehicle dimensions are used by layout generation.':kind==='products'?'Approved product dimensions are used by layout generation.':'Approved style records are used by moodboards and proposals.';
     if(kind==='products'){
@@ -3262,17 +3388,16 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
         Save Vehicle
       </button>
 
-      <button class="btn btn-brand btn-sm"
-              onclick="analyzeVehicleGeometry()">
-         🤖 Analyze Vehicle Floor Plan
-      </button>
-
       <button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">
         Back to Vehicle Database
       </button>
     </div>
     `;
 
+  setTimeout(()=>{
+    designAiVehicleBindGeometryEditor(prefix);
+    refreshDesignAiGeometrySuggestion();
+  },0);
   return;
 }
     designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="openDesignAI('${kind}')">← ${cfg.title}</button>`)+
@@ -3287,108 +3412,6 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     designAiBody().innerHTML=designAiHeader(cfg.single,'','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
-}
-async function analyzeVehicleGeometry(){
-
-  const ctx = DESIGN_AI.record || {};
-
-  if(ctx.kind !== 'vehicles') return;
-
-  try{
-
-    toast('Analyzing vehicle floor plan...');
-
-    const result = await POST(
-      `/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/analyze-geometry`,
-      {}
-    );
-
-    const s = result.suggestion || {};
-
-if(s.build_area){
-
-  document.getElementById('dai-rec-build_origin_x_mm').value =
-    s.build_area.x_mm ?? '';
-
-  document.getElementById('dai-rec-build_origin_y_mm').value =
-    s.build_area.y_mm ?? '';
-
-  document.getElementById('dai-rec-build_length_mm').value =
-    s.build_area.length_mm ?? '';
-
-  document.getElementById('dai-rec-build_width_mm').value =
-    s.build_area.width_mm ?? '';
-
-  document.getElementById('dai-rec-build_height_mm').value =
-    s.build_area.height_mm ?? '';
-
-}
-
-    toast('AI suggestion received ✓');
-
-  }catch(e){
-
-    toast(errMsg(e),6000);
-
-  }
-
-}
-function generateGeometryPrompt(){
-
-  const ctx = DESIGN_AI.record || {};
-  const record = DESIGN_AI.currentRecord || {};
-
-  const prompt = `
-You are CRDN Vehicle Geometry AI.
-
-Analyze the following vehicle and determine the usable camper build area.
-
-Vehicle ID:
-${record.vehicle_id || ''}
-
-Brand:
-${record.brand || ''}
-
-Model:
-${record.model || ''}
-
-Interior Dimensions (mm):
-Length: ${record.interior_length_mm || ''}
-Width: ${record.interior_width_mm || ''}
-Height: ${record.interior_height_mm || ''}
-
-Known Notes:
-${record.floor_plan_notes || ''}
-
-Return ONLY valid JSON using the CRDN layout_constraints_json schema.
-
-Do NOT explain your reasoning outside the JSON.
-
-Status must be:
-ai_suggested
-`.trim();
-
-  const el = document.getElementById('geometry-prompt');
-  if(el){
-    el.value = prompt;
-  }
-
-  toast('Geometry prompt generated ✓');
-}
-
-function copyGeometryPrompt(){
-
-  const el = document.getElementById('geometry-prompt');
-
-  if(!el || !el.value){
-    toast('Generate a prompt first.');
-    return;
-  }
-
-  navigator.clipboard.writeText(el.value);
-
-  toast('Prompt copied ✓');
-
 }
 async function saveDesignAiRecord(){
   const ctx=DESIGN_AI.record||{};

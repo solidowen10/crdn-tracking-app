@@ -807,6 +807,32 @@ function vehicleResearchFilesForRecord(vehicle) {
   return uniqueDesignLibraryFiles(rows);
 }
 
+function vehicleResearchStatusesWithFloorplan(research, files = []) {
+  const statuses = Array.isArray(research?.statuses) ? [...research.statuses] : [];
+  const floorplan = files
+    .filter(file => Number(file.is_folder) !== 1)
+    .find(file => {
+      const name = text(file.name || file.path).toLowerCase();
+      const pathValue = text(file.path).toLowerCase();
+      return name === 'floorplan.svg' || pathValue.endsWith('/floorplan.svg') || (name.endsWith('.svg') && name.includes('floorplan'));
+    });
+  statuses.push({
+    key: 'floorplan',
+    label: 'Floorplan',
+    found: Boolean(floorplan),
+    detected_type: floorplan ? 'floorplan_svg' : 'floorplan_svg',
+    original_filename: floorplan?.name || '',
+    path: floorplan?.path || '',
+    match_type: floorplan ? 'exact_filename' : '',
+    match_label: floorplan ? 'exact filename' : '',
+    modified_time: floorplan?.modified_time || '',
+    web_view_link: floorplan?.web_view_link || '',
+    candidate_count: floorplan ? 1 : 0,
+    same_priority_count: floorplan ? 1 : 0
+  });
+  return statuses;
+}
+
 function normalizeWarnings(value) {
   if (Array.isArray(value)) return value.map(text).filter(Boolean);
   const warning = text(value);
@@ -2199,6 +2225,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
 
     const files = vehicleResearchFilesForRecord(vehicle);
     const research = await normalizeVehicleResearchFileCandidates(files, vehicle.vehicle_id);
+    const researchStatuses = vehicleResearchStatusesWithFloorplan(research, files);
     const layoutCandidate = research.items.layout_constraints;
     const file = layoutCandidate?.file || null;
     if (!file) {
@@ -2213,7 +2240,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
           warnings: research.warnings || []
         },
         research_files: {
-          statuses: research.statuses || [],
+          statuses: researchStatuses,
           warnings: research.warnings || []
         },
         suggestion: null
@@ -2245,7 +2272,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
           match_label: layoutCandidate?.match_label || ''
         },
         research_files: {
-          statuses: research.statuses || [],
+          statuses: researchStatuses,
           warnings: research.warnings || []
         },
         suggestion: null
@@ -2276,7 +2303,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
         match_label: layoutCandidate?.match_label || ''
       },
       research_files: {
-        statuses: research.statuses || [],
+        statuses: researchStatuses,
         warnings: research.warnings || []
       },
       suggestion

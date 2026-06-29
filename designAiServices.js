@@ -536,7 +536,7 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
     selected.same_priority_count = samePriority;
     items[key] = selected;
     if (samePriority > 1) {
-      warnings.push(`${type.label}: multiple ${selected.match_label} candidates found; using most recently modified file (${selected.path}).`);
+      warnings.push(`${type.label}: multiple ${selected.match_label} candidates found; using most recently modified file (${selected.path}). Consider archiving old research files to avoid confusion.`);
     }
     return sanitizeVehicleResearchStatus(selected);
   });

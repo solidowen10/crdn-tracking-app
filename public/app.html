@@ -177,30 +177,47 @@ button{cursor:pointer}
 .dai-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;scrollbar-width:none}.dai-tabs::-webkit-scrollbar{display:none}
 .dai-tab{border:1px solid var(--g200);background:var(--w);color:var(--g500);border-radius:99px;padding:6px 12px;font-size:var(--xxs);font-weight:800;white-space:nowrap}
 .dai-tab.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.dai-table-wrap{overflow-x:auto;border:1px solid var(--g200);border-radius:var(--r);background:var(--w)}
+.dai-table-wrap,.dai-table-scroll{overflow-x:auto;border:1px solid var(--g200);border-radius:var(--r);background:var(--w);-webkit-overflow-scrolling:touch}
 .dai-table{width:100%;border-collapse:collapse;min-width:760px}
 .dai-table th{padding:9px 11px;text-align:left;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:var(--g400);background:var(--g50);border-bottom:1px solid var(--g100)}
-.dai-table td{padding:10px 11px;border-bottom:1px solid var(--g100);font-size:var(--sm);vertical-align:top;overflow-wrap:anywhere}
+.dai-table td{padding:10px 11px;border-bottom:1px solid var(--g100);font-size:var(--sm);vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
 .dai-table tr:last-child td{border-bottom:none}.dai-table a{color:var(--brand);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.dai-text-wrap,.dai-path,.dai-file-name{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.dai-path{font-size:var(--xxs);color:var(--g500);line-height:1.45}
+.dai-file-name{font-weight:900;line-height:1.25}
 .dai-empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:22px;text-align:center;color:var(--g500);line-height:1.65}
 .dai-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .dai-checklist ul{margin:8px 0 0;padding-left:18px;color:var(--g500);font-size:var(--sm);line-height:1.7}
+.dai-mini-checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:8px}
+.dai-mini-check{display:flex;align-items:center;gap:7px;min-width:0;font-size:var(--xxs);color:var(--g500);line-height:1.25}
+.dai-mini-check b{color:var(--ink);font-weight:800}
+.dai-mini-check .mark{width:17px;height:17px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;font-size:10px;font-weight:900;background:#f0fdf4;color:#15803d}
+.dai-mini-check.missing .mark{background:#fef2f2;color:#dc2626}
 .dai-list{display:flex;flex-direction:column;gap:10px}
 .dai-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) 130px 130px;gap:12px;align-items:center}
+.dai-row.dai-readiness-row{grid-template-columns:minmax(0,1fr) 130px minmax(130px,.8fr) auto}
 .dai-row:hover{border-color:var(--brand);background:var(--brand-f)}
-.dai-source-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:start}
+.dai-source-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:start;min-width:0}
 .dai-source-card strong,.dai-review-row strong{line-height:1.2}
 .dai-source-path{font-size:var(--xxs);color:var(--g500);line-height:1.45;overflow-wrap:anywhere;word-break:break-word;margin-top:5px}
 .dai-source-meta{font-size:var(--xxs);color:var(--g500);white-space:nowrap}
 .dai-source-action{font-size:var(--xxs);text-align:right;white-space:nowrap}
-.dai-review-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,.8fr);gap:12px;align-items:center}
+.dai-review-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,.8fr);gap:12px;align-items:center;min-width:0}
 .dai-review-row .pc-s{overflow-wrap:anywhere}
 .dai-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em;background:var(--g100);color:var(--g500)}
 .dai-pill.done{background:#f0fdf4;color:#15803d}.dai-pill.error{background:#fef2f2;color:#dc2626}.dai-pill.work{background:#eff6ff;color:#2563eb}
 .dai-result-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:14px}
 .dai-pre{background:#111110;color:#f8f8f5;border-radius:var(--r);padding:13px;overflow:auto;font-size:12px;line-height:1.5;max-height:420px}
 .dai-warning{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:var(--r);padding:12px 14px;font-size:var(--sm);line-height:1.55;margin-bottom:13px}
-@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid{grid-template-columns:1fr}.dai-row,.dai-source-card,.dai-review-row{grid-template-columns:1fr}.dai-source-action{text-align:left}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
+.dai-progress{border:1px solid var(--g200);border-radius:var(--r);background:var(--g50);padding:12px 14px;margin-bottom:12px}
+.dai-progress strong{display:block;font-size:var(--sm);margin-bottom:8px}
+.dai-progress-step{display:flex;gap:8px;align-items:center;font-size:var(--xxs);color:var(--g500);line-height:1.45;margin-top:4px}
+.dai-progress-step .mark{width:17px;height:17px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;background:var(--g100);color:var(--g500);font-size:10px;font-weight:900}
+.dai-progress-step.done .mark{background:#f0fdf4;color:#15803d}.dai-progress-step.now .mark{background:#eff6ff;color:#2563eb}
+.dai-details{border:1px solid var(--g200);border-radius:var(--r);background:var(--w);margin-bottom:14px;overflow:hidden}
+.dai-details summary{cursor:pointer;padding:12px 14px;font-size:var(--xxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);background:var(--g50)}
+.dai-details-body{padding:14px}
+@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid,.dai-mini-checklist{grid-template-columns:1fr}.dai-row,.dai-row.dai-readiness-row,.dai-source-card,.dai-review-row{grid-template-columns:1fr}.dai-source-action{text-align:left}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
 .job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:left}
 .pc-status{font-size:var(--xxxs);padding:2px 8px;border-radius:99px;width:max-content}
 .pc-status.unsaved{background:#fff7ed;color:#f97316}
@@ -2588,7 +2605,7 @@ async function setDesignAiFolder(folder){
 }
 function designAiChecklistHtml(){
   const vehicleRequired=['vehicle.json','dimensions.csv','floorplan.svg'];
-  const vehicleOptional=['mounting_points.csv','restricted_zones.csv','scan.glb','photos/'];
+  const vehicleOptional=['mounting_points.csv','restricted_zones.csv','layout_constraints.json','buildability_report.md','manifest.json','vehicle_knowledge_sheet.pdf','scan.glb','photos/'];
   const productRequired=['product.json','dimensions.csv','footprint.svg','installation_rules.json'];
   return `<div class="dai-panel">
     <div class="dai-panel-title">Required Library Checklist</div>
@@ -2601,6 +2618,42 @@ function designAiChecklistHtml(){
 function designAiReadinessPill(status='Reference Only'){
   const cls=status==='Approved'?'done':status==='Missing Evidence'?'error':'work';
   return `<span class="dai-pill ${cls}">${esc(status)}</span>`;
+}
+function designAiDetectionLabel(value=''){
+  const raw=String(value||'').trim();
+  if(raw==='exact_preferred')return 'exact preferred';
+  if(raw==='exact_filename')return 'exact filename';
+  if(raw==='fallback_pattern')return 'fallback filename';
+  if(raw==='content')return 'content match';
+  return raw.replace(/_/g,' ')||'matched';
+}
+function designAiResearchRows(items=[]){
+  return Array.isArray(items)?items:[];
+}
+function designAiResearchItem(items,key,label,foundFallback=false){
+  const item=designAiResearchRows(items).find(row=>row.key===key);
+  if(item)return item;
+  return {key,label,found:Boolean(foundFallback),match_type:foundFallback?'exact_filename':'',original_filename:'',path:'',candidate_count:0,same_priority_count:0};
+}
+function designAiResearchChecklistHtml(group){
+  if(group.folder_type!=='vehicles')return '';
+  const items=designAiResearchRows(group.vehicle_research_files);
+  const present=new Set([...(group.required_present||[]),...(group.optional_present||[])]);
+  const checks=[
+    designAiResearchItem(items,'vehicle_record','Vehicle Record',present.has('vehicle.json')),
+    designAiResearchItem(items,'dimensions_csv','Dimensions',present.has('dimensions.csv')),
+    {key:'floorplan',label:'Floorplan',found:present.has('floorplan.svg')},
+    designAiResearchItem(items,'knowledge_sheet','Knowledge Sheet',present.has('vehicle_knowledge_sheet.pdf')),
+    designAiResearchItem(items,'layout_constraints','Layout Constraints',present.has('layout_constraints.json')),
+    designAiResearchItem(items,'buildability_report','Buildability Report',present.has('buildability_report.md')),
+    designAiResearchItem(items,'manifest','Manifest',present.has('manifest.json'))
+  ];
+  return `<div class="dai-mini-checklist">${checks.map(item=>`
+    <div class="dai-mini-check ${item.found?'':'missing'}">
+      <span class="mark">${item.found?'✓':'×'}</span>
+      <span class="dai-text-wrap"><b>${esc(item.label||item.key)}</b>${item.found&&item.match_type?` · ${esc(designAiDetectionLabel(item.match_type))}`:''}</span>
+    </div>
+  `).join('')}</div>`;
 }
 function designAiJsArg(value=''){
   return String(value||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
@@ -2615,24 +2668,63 @@ function designAiReadinessHtml(readiness){
     const missing=group.missing_evidence?'Missing evidence':(group.has_dimension_evidence?'Dimension evidence found':'Evidence found');
     const canExtract=['vehicles','products'].includes(group.folder_type||'');
     const entityType=group.folder_type==='vehicles'?'vehicle':'product';
-    return `<div class="dai-row">
-      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div></div>
+    const warnings=Array.isArray(group.vehicle_research_warnings)?group.vehicle_research_warnings:[];
+    return `<div class="dai-row dai-readiness-row">
+      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div>${designAiResearchChecklistHtml(group)}${warnings.length?`<div class="dai-warning" style="margin-top:10px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}</div>
       <div>${designAiReadinessPill(group.status)}<div class="pc-s">${esc(group.extraction_status||'No extraction yet')}</div></div>
-      <div style="font-size:var(--xxs);color:var(--g500)">${esc(missing)}${evidence?`<br>${esc(evidence)}`:''}</div>
-      <div>${canExtract?`<button class="btn btn-out btn-sm" onclick="extractDesignAiFolder('${entityType}','${designAiJsArg(group.entity)}')">Extract Data</button>`:''}</div>
+      <div class="dai-path">${esc(missing)}${evidence?`<br>${esc(evidence)}`:''}</div>
+      <div>${canExtract?`<button class="btn btn-out btn-sm" onclick="extractDesignAiFolder('${entityType}','${designAiJsArg(group.entity)}',this)">Extract Data</button>`:''}</div>
     </div>`;
   }).join('');
   return `<div class="dai-panel"><div class="dai-panel-title">Library Readiness</div><div class="dai-list">${rows}</div></div>`;
 }
-async function extractDesignAiFolder(entityType,folderPath){
+function designAiExtractionProgressHtml(folderPath,step=0,state='running',message=''){
+  const stages=['Reading Google Drive files','Detecting vehicle research files','Reading JSON / CSV evidence','Building extraction draft'];
+  const title=state==='success'?'Extraction draft saved':state==='error'?'Extraction failed':`Extracting ${folderPath}...`;
+  return `<div id="dai-extract-progress" class="dai-progress">
+    <strong>${esc(title)}</strong>
+    ${message?`<div class="${state==='error'?'dai-warning':'pc-s'}" style="margin-bottom:8px">${esc(message)}</div>`:''}
+    ${stages.map((label,index)=>{
+      const cls=state==='success'||index<step?'done':index===step&&state==='running'?'now':'';
+      const mark=state==='success'||index<step?'✓':index===step&&state==='running'?'…':'';
+      return `<div class="dai-progress-step ${cls}"><span class="mark">${esc(mark)}</span><span>${esc(label)}</span></div>`;
+    }).join('')}
+  </div>`;
+}
+function designAiSetExtractionProgress(folderPath,step=0,state='running',message=''){
+  let panel=document.getElementById('dai-extract-progress');
+  if(!panel){
+    const head=designAiBody()?.querySelector('.dai-head');
+    if(head)head.insertAdjacentHTML('afterend',designAiExtractionProgressHtml(folderPath,step,state,message));
+  }else{
+    panel.outerHTML=designAiExtractionProgressHtml(folderPath,step,state,message);
+  }
+}
+async function extractDesignAiFolder(entityType,folderPath,button){
+  const btn=button||null;
+  const original=btn?btn.innerHTML:'';
+  let timer=null;
   try{
-    toast('Extracting Design AI data…');
+    if(btn){btn.disabled=true;btn.innerHTML='Extracting…';}
+    toast(`Extracting ${folderPath}…`);
+    let step=0;
+    designAiSetExtractionProgress(folderPath,step,'running');
+    timer=setInterval(()=>{
+      step=Math.min(step+1,3);
+      designAiSetExtractionProgress(folderPath,step,'running');
+    },900);
     const res=await POST('/api/design-ai/extract',{entity_type:entityType,entity_id:folderPath,folder_path:folderPath});
+    if(timer){clearInterval(timer);timer=null;}
+    designAiSetExtractionProgress(folderPath,4,'success','Extraction review is ready.');
     const id=res.draft?.id;
-    if(id)openDesignAI('extraction',{id});
     toast('Extraction draft saved ✓');
+    if(id)setTimeout(()=>openDesignAI('extraction',{id}),450);
   }catch(e){
-    toast(`Extraction failed: ${errMsg(e)}`,6500);
+    if(timer)clearInterval(timer);
+    const msg=errMsg(e);
+    designAiSetExtractionProgress(folderPath,0,'error',msg);
+    toast(`Extraction failed: ${msg}`,6500);
+    if(btn){btn.disabled=false;btn.innerHTML=original||'Extract Data';}
   }
 }
 async function renderDesignAiLibrary(folder='all'){
@@ -2643,9 +2735,9 @@ async function renderDesignAiLibrary(folder='all'){
     DESIGN_AI.status=data.status||{};
     const rows=DESIGN_AI.files.map(file=>`
       <tr>
-        <td><strong>${esc(file.name||'Untitled')}</strong><div class="pc-s">${esc(file.path||file.name||'')}</div></td>
-        <td>${esc(file.folder_type||'')}</td>
-        <td>${esc(file.mime_type||'')}</td>
+        <td><div class="dai-file-name">${esc(file.name||'Untitled')}</div><div class="dai-path">${esc(file.path||file.name||'')}</div></td>
+        <td class="dai-text-wrap">${esc(file.folder_type||'')}</td>
+        <td class="dai-path">${esc(file.mime_type||'')}</td>
         <td>${file.modified_time?esc(new Date(file.modified_time).toLocaleString('zh-TW')):'—'}</td>
         <td>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</td>
       </tr>`).join('');
@@ -2805,6 +2897,7 @@ function designAiGeometryDate(value){
 }
 function designAiVehicleResearchFilesHtml(data){
   const rows=Array.isArray(data?.research_files?.statuses)?data.research_files.statuses:[];
+  const warnings=Array.isArray(data?.research_files?.warnings)?data.research_files.warnings:[];
   if(!rows.length)return `
     <div class="dai-panel" style="margin-top:12px">
       <div class="dai-panel-title">Vehicle Research Files Found</div>
@@ -2817,19 +2910,21 @@ function designAiVehicleResearchFilesHtml(data){
       <div class="dai-list">
         ${rows.map(item=>{
           const found=Boolean(item.found);
-          const match=String(item.match_label||item.match_type||'').trim();
+          const match=designAiDetectionLabel(item.match_type||item.match_label||'');
           return `
             <div class="dai-review-row">
               <div>
-                <strong>${esc(item.label||item.key)}: ${found?'found':'missing'}</strong>
-                <div class="pc-s">${found?`${esc(item.detected_type||'detected file')} · ${esc(item.original_filename||'')}`:'No matching indexed file'}</div>
-                ${found?`<div class="pc-s">${esc(item.path||'')}</div>`:''}
+                <strong>${esc(item.label||item.key)}</strong>
+                <div class="dai-file-name">${found?esc(item.original_filename||'Detected file'):'No matching indexed file'}</div>
+                ${found?`<div class="dai-path">${esc(item.path||'')}</div><div class="pc-s">${esc(match)}</div>`:''}
               </div>
-              <div>${found?`<span class="dai-pill ${item.match_type==='content'?'work':'done'}">${esc(match||'matched')}</span>`:'<span class="dai-pill error">Missing</span>'}</div>
+              <div>${found?'<span class="dai-pill done">Found</span>':'<span class="dai-pill error">Missing</span>'}</div>
+              <div class="dai-path">${found?esc(item.detected_type||'detected file'):'Expected from Drive sync'}</div>
             </div>
           `;
         }).join('')}
       </div>
+      ${warnings.length?`<div class="dai-warning" style="margin-top:12px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}
     </div>
   `;
 }
@@ -2837,11 +2932,22 @@ function designAiGeometrySuggestionHtml(data){
   const summary=data?.summary||{};
   const warnings=Array.isArray(summary.warnings)?summary.warnings:[];
   const hasSuggestion=Boolean(data?.suggestion);
+  const missingMessage=!hasSuggestion?`
+    <div class="dai-empty" style="text-align:left;margin-bottom:12px">
+      <strong>No geometry suggestion found.</strong><br>
+      Vehicle research files were checked, but no layout constraints file was found yet.<br><br>
+      Expected:<br>
+      - layout_constraints.json<br>
+      - or fallback file containing build_area / restricted_zones<br><br>
+      Ask the Vehicle Research Agent to generate layout_constraints.json and buildability_report.md.
+    </div>
+  `:'';
   return `
+    ${missingMessage}
     <div class="dai-list">
       <div class="dai-review-row"><div><strong>Suggestion Status</strong><div class="pc-s">${esc(summary.status||'No suggestion found')}</div></div><div><span class="dai-pill ${data?.status==='ai_suggested'?'work':'error'}">${esc(summary.status||'Missing')}</span></div></div>
       <div class="dai-review-row"><div><strong>Confidence</strong><div class="pc-s">${esc(summary.confidence||'—')}</div></div><div>${designAiConfidencePill(summary.confidence||'')}</div></div>
-      <div class="dai-review-row"><div><strong>Source File</strong><div class="pc-s">${esc(summary.source_file||'—')}</div><div class="pc-s">${esc(data?.file?.match_label||data?.file?.match_type||'')}</div></div><div>${data?.file?.web_view_link?`<a href="${esc(data.file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div></div>
+      <div class="dai-review-row"><div><strong>Source File</strong><div class="dai-file-name">${esc(summary.source_file||'—')}</div><div class="dai-path">${esc(data?.file?.path||'')}</div><div class="pc-s">${esc(designAiDetectionLabel(data?.file?.match_type||data?.file?.match_label||''))}</div></div><div>${data?.file?.web_view_link?`<a href="${esc(data.file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div><div class="dai-path">${esc(data?.file?.detected_type||'')}</div></div>
       <div class="dai-review-row"><div><strong>Generated</strong><div class="pc-s">${esc(designAiGeometryDate(summary.generated_at))}</div></div><div>—</div></div>
       <div class="dai-review-row"><div><strong>Notes</strong><div class="pc-s">${esc(summary.notes||'—')}</div></div><div>—</div></div>
       ${warnings.length?`<div class="dai-warning"><strong>Warnings:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
@@ -3072,7 +3178,11 @@ async function refreshDesignAiGeometrySuggestion(){
   }catch(e){
     DESIGN_AI.geometrySuggestion=null;
     panel.className='dai-empty';
-    panel.innerHTML=esc(errMsg(e));
+    const msg=errMsg(e);
+    const network=/failed to fetch|network|load failed/i.test(msg);
+    panel.innerHTML=network
+      ? '<strong>Could not load geometry suggestion.</strong><br>Please refresh or sync Google Drive again.'
+      : `<strong>No geometry suggestion found.</strong><br>Vehicle research files were checked, but no layout constraints file was found yet.<br><br>Expected:<br>- layout_constraints.json<br>- or fallback file containing build_area / restricted_zones<br><br>Ask the Vehicle Research Agent to generate layout_constraints.json and buildability_report.md.`;
   }
 }
 function designAiGeometrySetField(id,value){
@@ -3209,15 +3319,50 @@ function designAiCollectFields(prefix,fields){
   });
   return out;
 }
+function designAiSourceGroupLabel(file={}){
+  const type=String(file.vehicle_research_type||'').trim();
+  if(type==='vehicle_record_json')return 'Vehicle Record';
+  if(type==='dimensions_csv')return 'Dimensions CSV';
+  if(type==='layout_constraints_json')return 'Layout Constraints';
+  if(type==='buildability_report')return 'Buildability Report';
+  if(type==='manifest_json')return 'Manifest';
+  if(type==='vehicle_knowledge_sheet')return 'Knowledge Sheet';
+  const name=String(file.name||file.path||'').toLowerCase();
+  if(name.endsWith('floorplan.svg')||name.includes('/floorplan/'))return 'Floorplan';
+  if(file.evidence_type==='binary_reference')return 'Image / PDF Evidence';
+  if(file.direct_content_available)return 'Other Readable Evidence';
+  return 'Other Evidence';
+}
+function designAiSourceGroupRank(label){
+  return ['Vehicle Record','Dimensions CSV','Layout Constraints','Buildability Report','Manifest','Knowledge Sheet','Floorplan','Image / PDF Evidence','Other Readable Evidence','Other Evidence'].indexOf(label);
+}
 function designAiSourceFilesHtml(files=[]){
   if(!files.length)return '<div class="dai-empty">No source files saved for this draft.</div>';
-  return `<div class="dai-list">${files.map(file=>`<div class="dai-source-card">
-    <div><strong>${esc(file.name||file.path||'Source file')}</strong><div class="dai-source-path">${esc(file.path||'')}${file.evidence_type||file.mime_type?`<br>${esc(file.evidence_type||file.mime_type||'')}`:''}</div></div>
+  const groups={};
+  files.forEach(file=>{
+    const label=designAiSourceGroupLabel(file);
+    if(!groups[label])groups[label]=[];
+    groups[label].push(file);
+  });
+  const labels=Object.keys(groups).sort((a,b)=>{
+    const ar=designAiSourceGroupRank(a), br=designAiSourceGroupRank(b);
+    return (ar<0?99:ar)-(br<0?99:br)||a.localeCompare(b);
+  });
+  return `<div class="dai-list">${labels.map(label=>`
     <div>
-      <div class="dai-source-meta">${file.direct_content_available?'Readable':'Metadata only'}</div>
-      <div class="dai-source-action">${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+      <div class="dai-panel-title" style="margin:4px 0 8px">${esc(label)}</div>
+      <div class="dai-list">${groups[label].map(file=>`<div class="dai-source-card">
+        <div>
+          <div class="dai-file-name">${esc(file.name||file.path||'Source file')}</div>
+          <div class="dai-source-path">${esc(file.path||'')}${file.evidence_type||file.mime_type?`<br>${esc(file.evidence_type||file.mime_type||'')}`:''}${file.vehicle_research_match_type?`<br>${esc(designAiDetectionLabel(file.vehicle_research_match_type))}`:''}</div>
+        </div>
+        <div>
+          <div class="dai-source-meta">${file.direct_content_available?'Readable':'Metadata only'}</div>
+          <div class="dai-source-action">${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+        </div>
+      </div>`).join('')}</div>
     </div>
-  </div>`).join('')}</div>`;
+  `).join('')}</div>`;
 }
 function designAiSourceTraceHtml(fields,extracted={},confidence={}){
   const sources=extracted._field_sources||{};
@@ -3230,10 +3375,10 @@ function designAiSourceTraceHtml(fields,extracted={},confidence={}){
       const conf=source.confidence||designAiConfidenceValue(confidence,field);
       return `<tr>
         <td><strong>${esc(label)}</strong><div class="pc-s">${esc(field)}</div></td>
-        <td>${esc(display)}</td>
+        <td class="dai-text-wrap">${esc(display)}</td>
         <td>${designAiConfidencePill(conf)}</td>
-        <td>${esc(source.source_file||'—')}</td>
-        <td>${esc(source.original_source_field||'—')}</td>
+        <td class="dai-path">${esc(source.source_file||'—')}</td>
+        <td class="dai-text-wrap">${esc(source.original_source_field||'—')}</td>
       </tr>`;
     }).join('');
   return `<div class="dai-table-wrap"><table class="dai-table" style="min-width:760px">
@@ -3244,9 +3389,9 @@ function designAiSourceTraceHtml(fields,extracted={},confidence={}){
 function designAiUnmappedSourceHtml(items=[]){
   if(!items.length)return '<div class="dai-empty" style="padding:12px">No unmapped source values found.</div>';
   const rows=items.slice(0,80).map(item=>`<tr>
-    <td>${esc(item.source_field||'—')}</td>
-    <td>${esc(designAiFieldValue(item.value))}</td>
-    <td>${esc(item.source_file||'—')}</td>
+    <td class="dai-text-wrap">${esc(item.source_field||'—')}</td>
+    <td class="dai-text-wrap">${esc(designAiFieldValue(item.value))}</td>
+    <td class="dai-path">${esc(item.source_file||'—')}</td>
   </tr>`).join('');
   return `<div class="dai-table-wrap"><table class="dai-table" style="min-width:560px">
     <thead><tr><th>Source Field</th><th>Value</th><th>Source File</th></tr></thead><tbody>${rows}</tbody>
@@ -3270,6 +3415,10 @@ async function renderDesignAiExtraction(id){
     const fields=designAiEntityFields(draft.entity_type);
     const prefix='dai-ext-';
     const warnings=extracted._content_warnings||[];
+    const unmapped=extracted._unmapped_source_data||[];
+    const unmappedPanel=unmapped.length>12
+      ? `<details class="dai-details"><summary>Unmapped Source Data (${commas(unmapped.length)} fields)</summary><div class="dai-details-body">${designAiUnmappedSourceHtml(unmapped)}</div></details>`
+      : `<div class="dai-panel"><div class="dai-panel-title">Unmapped Source Data</div>${designAiUnmappedSourceHtml(unmapped)}</div>`;
     designAiBody().innerHTML=designAiHeader('Extraction Review',`${esc(draft.entity_type||'entity')} · ${esc(draft.entity_id||'')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
       `${warnings.length?`<div class="dai-warning"><strong>Partial extraction:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
       <div class="dai-result-grid">
@@ -3287,11 +3436,11 @@ async function renderDesignAiExtraction(id){
         <div>
           <div class="dai-panel"><div class="dai-panel-title">Source Files Used</div>${designAiSourceFilesHtml(draft.source_files||[])}</div>
           <div class="dai-panel"><div class="dai-panel-title">Physical Measurement Required</div>${designAiMeasurementRequiredHtml(extracted._measurement_required||[])}</div>
-          <div class="dai-panel"><div class="dai-panel-title">Unmapped Source Data</div>${designAiUnmappedSourceHtml(extracted._unmapped_source_data||[])}</div>
-          <button class="btn btn-out btn-sm" onclick="toggleDesignAiRaw()">Raw JSON</button>
+          ${unmappedPanel}
+          <details class="dai-details" ${DESIGN_AI.rawOpen?'open':''}><summary>Raw JSON</summary><div class="dai-details-body"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div></details>
         </div>
       </div>
-      <div id="dai-raw" style="display:${DESIGN_AI.rawOpen?'block':'none'};margin-top:14px"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div>`;
+      <div id="dai-raw" style="display:none"></div>`;
   }catch(e){
     designAiBody().innerHTML=designAiHeader('Extraction Review','','<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;

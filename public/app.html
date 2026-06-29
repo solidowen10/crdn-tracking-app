@@ -2791,7 +2791,7 @@ function designAiVehicleSuggestionPanelHtml(){
     <div class="dai-panel">
       <div class="dai-panel-title">AI Geometry Suggestion</div>
       <div id="dai-geometry-suggestion-panel" class="dai-empty">
-        Checking Google Drive for extracted/layout_constraints.json...
+        Checking Google Drive for vehicle research files...
       </div>
     </div>
   `;
@@ -2803,6 +2803,36 @@ function designAiGeometryDate(value){
   if(Number.isNaN(d.getTime()))return raw.slice(0,10)||raw;
   return d.toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'});
 }
+function designAiVehicleResearchFilesHtml(data){
+  const rows=Array.isArray(data?.research_files?.statuses)?data.research_files.statuses:[];
+  if(!rows.length)return `
+    <div class="dai-panel" style="margin-top:12px">
+      <div class="dai-panel-title">Vehicle Research Files Found</div>
+      <div class="dai-empty">No indexed vehicle research files found yet. Sync Google Drive Library after the Agent uploads files.</div>
+    </div>
+  `;
+  return `
+    <div class="dai-panel" style="margin-top:12px">
+      <div class="dai-panel-title">Vehicle Research Files Found</div>
+      <div class="dai-list">
+        ${rows.map(item=>{
+          const found=Boolean(item.found);
+          const match=String(item.match_label||item.match_type||'').trim();
+          return `
+            <div class="dai-review-row">
+              <div>
+                <strong>${esc(item.label||item.key)}: ${found?'found':'missing'}</strong>
+                <div class="pc-s">${found?`${esc(item.detected_type||'detected file')} · ${esc(item.original_filename||'')}`:'No matching indexed file'}</div>
+                ${found?`<div class="pc-s">${esc(item.path||'')}</div>`:''}
+              </div>
+              <div>${found?`<span class="dai-pill ${item.match_type==='content'?'work':'done'}">${esc(match||'matched')}</span>`:'<span class="dai-pill error">Missing</span>'}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
 function designAiGeometrySuggestionHtml(data){
   const summary=data?.summary||{};
   const warnings=Array.isArray(summary.warnings)?summary.warnings:[];
@@ -2811,11 +2841,12 @@ function designAiGeometrySuggestionHtml(data){
     <div class="dai-list">
       <div class="dai-review-row"><div><strong>Suggestion Status</strong><div class="pc-s">${esc(summary.status||'No suggestion found')}</div></div><div><span class="dai-pill ${data?.status==='ai_suggested'?'work':'error'}">${esc(summary.status||'Missing')}</span></div></div>
       <div class="dai-review-row"><div><strong>Confidence</strong><div class="pc-s">${esc(summary.confidence||'—')}</div></div><div>${designAiConfidencePill(summary.confidence||'')}</div></div>
-      <div class="dai-review-row"><div><strong>Source File</strong><div class="pc-s">${esc(summary.source_file||'—')}</div></div><div>${data?.file?.web_view_link?`<a href="${esc(data.file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div></div>
+      <div class="dai-review-row"><div><strong>Source File</strong><div class="pc-s">${esc(summary.source_file||'—')}</div><div class="pc-s">${esc(data?.file?.match_label||data?.file?.match_type||'')}</div></div><div>${data?.file?.web_view_link?`<a href="${esc(data.file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div></div>
       <div class="dai-review-row"><div><strong>Generated</strong><div class="pc-s">${esc(designAiGeometryDate(summary.generated_at))}</div></div><div>—</div></div>
       <div class="dai-review-row"><div><strong>Notes</strong><div class="pc-s">${esc(summary.notes||'—')}</div></div><div>—</div></div>
       ${warnings.length?`<div class="dai-warning"><strong>Warnings:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
     </div>
+    ${designAiVehicleResearchFilesHtml(data)}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
       <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion()" ${hasSuggestion?'':'disabled'}>Load Suggestion</button>
       <button class="btn btn-out btn-sm" onclick="refreshDesignAiGeometrySuggestion()">Refresh</button>
@@ -3032,7 +3063,7 @@ async function refreshDesignAiGeometrySuggestion(){
     if(panel)panel.innerHTML='Save the vehicle before loading a Google Drive geometry suggestion.';
     return;
   }
-  panel.innerHTML='Checking Google Drive for extracted/layout_constraints.json...';
+  panel.innerHTML='Checking Google Drive for vehicle research files...';
   try{
     const data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
     DESIGN_AI.geometrySuggestion=data;
@@ -3056,7 +3087,7 @@ async function loadDesignAiGeometrySuggestion(){
     DESIGN_AI.geometrySuggestion=data;
   }
   const s=data?.suggestion;
-  if(!s){toast('No geometry suggestion found. Sync Google Drive after the Agent uploads layout_constraints.json.');return;}
+  if(!s){toast('No geometry suggestion found. Sync Google Drive after the Agent uploads layout constraints data.');return;}
   DESIGN_AI.vehicleGeometryZoneCount=Math.max(12,(s.restricted_zones||[]).length);
   DESIGN_AI.currentRecord={...(DESIGN_AI.currentRecord||{}),layout_constraints_json:s};
   const p='dai-rec-';

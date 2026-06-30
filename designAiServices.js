@@ -290,15 +290,29 @@ function fileSimpleName(file) {
   return name.replace(/[^a-z0-9]+/g, '');
 }
 
+function designLibraryFileStatus(file) {
+  return clean(file.file_status || 'active');
+}
+
+function isActiveDesignLibraryFile(file) {
+  return !['ignored', 'archived', 'reset_pending'].includes(designLibraryFileStatus(file));
+}
+
 function vehicleResearchCandidate(file, key, matchType, extra = {}) {
   const type = VEHICLE_RESEARCH_TYPES[key];
+  const role = clean(file.extraction_role || '');
+  const baseRank = VEHICLE_RESEARCH_MATCH_RANK[matchType] || 999;
   return {
+    id: file.id || null,
     key,
     label: type.label,
     detected_type: extra.detected_type || type.detected_type,
     match_type: matchType,
     match_label: matchType.replace(/_/g, ' '),
-    rank: VEHICLE_RESEARCH_MATCH_RANK[matchType] || 999,
+    rank: role === 'primary' ? 1 : baseRank,
+    current_role: role === 'primary' ? 'primary' : '',
+    file_status: designLibraryFileStatus(file),
+    extraction_role: role,
     name: clean(file.name),
     path: filePath(file),
     drive_file_id: clean(file.drive_file_id),
@@ -479,6 +493,7 @@ function compareVehicleResearchCandidates(a, b) {
 function sanitizeVehicleResearchStatus(candidate) {
   if (!candidate) return null;
   return {
+    id: candidate.id || null,
     key: candidate.key,
     label: candidate.label,
     found: true,
@@ -487,6 +502,9 @@ function sanitizeVehicleResearchStatus(candidate) {
     path: candidate.path,
     match_type: candidate.match_type,
     match_label: candidate.match_label,
+    current_role: candidate.current_role || 'primary',
+    file_status: candidate.file_status || 'active',
+    extraction_role: candidate.extraction_role || '',
     modified_time: candidate.modified_time,
     web_view_link: candidate.web_view_link,
     candidate_count: candidate.candidate_count || 1,
@@ -499,7 +517,7 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
   VEHICLE_RESEARCH_ORDER.forEach(key => {
     candidatesByType[key] = [];
   });
-  files.filter(file => clean(file.folder_type || 'vehicles').toLowerCase() === 'vehicles' && !isDriveFolder(file)).forEach(file => {
+  files.filter(file => clean(file.folder_type || 'vehicles').toLowerCase() === 'vehicles' && !isDriveFolder(file) && isActiveDesignLibraryFile(file)).forEach(file => {
     const candidates = [
       ...vehicleResearchFilenameCandidates(file),
       ...vehicleResearchContentCandidates(file, contentMapValue(contentByFile, file))
@@ -511,6 +529,7 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
 
   const items = {};
   const warnings = [];
+  const duplicates = [];
   const statuses = VEHICLE_RESEARCH_ORDER.map(key => {
     const type = VEHICLE_RESEARCH_TYPES[key];
     const candidates = (candidatesByType[key] || []).sort(compareVehicleResearchCandidates);
@@ -538,6 +557,23 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
     if (samePriority > 1) {
       warnings.push(`${type.label}: multiple ${selected.match_label} candidates found; using most recently modified file (${selected.path}). Consider archiving old research files to avoid confusion.`);
     }
+    if (candidates.length > 1) {
+      duplicates.push({
+        key,
+        label: type.label,
+        message: `Multiple ${type.label.toLowerCase()} files found. Choose the primary file or ignore old files.`,
+        files: candidates.map(candidate => ({
+          id: candidate.id || null,
+          name: candidate.name,
+          path: candidate.path,
+          modified_time: candidate.modified_time,
+          current_role: candidate.path === selected.path ? 'primary' : 'duplicate',
+          file_status: candidate.file_status || 'active',
+          match_type: candidate.match_type,
+          web_view_link: candidate.web_view_link
+        }))
+      });
+    }
     return sanitizeVehicleResearchStatus(selected);
   });
 
@@ -545,6 +581,7 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
     vehicle_id: clean(vehicleId),
     items,
     statuses,
+    duplicates,
     warnings
   };
 }
@@ -553,6 +590,7 @@ async function normalizeVehicleResearchFileCandidates(files = [], vehicleId = ''
   const readable = files
     .filter(file => clean(file.folder_type || 'vehicles').toLowerCase() === 'vehicles')
     .filter(file => !isDriveFolder(file))
+    .filter(isActiveDesignLibraryFile)
     .filter(file => ['.json', '.csv'].includes(fileExtension(file.name || file.path)))
     .sort((a, b) => clean(b.modified_time).localeCompare(clean(a.modified_time)))
     .slice(0, 40);
@@ -947,6 +985,8 @@ async function syncDriveFolders(settings) {
 
 function promptFileMetadata(file) {
   return {
+    id: file.id || null,
+    drive_file_id: file.drive_file_id || '',
     folder_type: file.folder_type,
     entity: entityNameForFile(file),
     name: file.name,
@@ -954,7 +994,9 @@ function promptFileMetadata(file) {
     mime_type: file.mime_type,
     modified_time: file.modified_time,
     size: file.size,
-    is_folder: Boolean(Number(file.is_folder))
+    is_folder: Boolean(Number(file.is_folder)),
+    file_status: clean(file.file_status || 'active'),
+    extraction_role: clean(file.extraction_role || '')
   };
 }
 

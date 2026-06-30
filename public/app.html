@@ -202,6 +202,8 @@ button{cursor:pointer}
 .dai-source-path{font-size:var(--xxs);color:var(--g500);line-height:1.45;overflow-wrap:anywhere;word-break:break-word;margin-top:5px}
 .dai-source-meta{font-size:var(--xxs);color:var(--g500);white-space:nowrap}
 .dai-source-action{font-size:var(--xxs);text-align:right;white-space:nowrap}
+.dai-source-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px}
+.dai-source-actions .btn{padding:5px 8px;font-size:11px}
 .dai-review-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,.8fr);gap:12px;align-items:center;min-width:0}
 .dai-review-row .pc-s{overflow-wrap:anywhere}
 .dai-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 9px;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.06em;background:var(--g100);color:var(--g500)}
@@ -217,7 +219,7 @@ button{cursor:pointer}
 .dai-details{border:1px solid var(--g200);border-radius:var(--r);background:var(--w);margin-bottom:14px;overflow:hidden}
 .dai-details summary{cursor:pointer;padding:12px 14px;font-size:var(--xxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);background:var(--g50)}
 .dai-details-body{padding:14px}
-@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid,.dai-mini-checklist{grid-template-columns:1fr}.dai-row,.dai-row.dai-readiness-row,.dai-source-card,.dai-review-row{grid-template-columns:1fr}.dai-source-action{text-align:left}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
+@media(max-width:900px){.dai-grid,.dai-kpis,.dai-checklist,.dai-result-grid,.dai-mini-checklist{grid-template-columns:1fr}.dai-row,.dai-row.dai-readiness-row,.dai-source-card,.dai-review-row{grid-template-columns:1fr}.dai-source-action{text-align:left}.dai-source-actions{justify-content:flex-start}.dai-actions{justify-content:flex-start}.dai-form-grid{grid-template-columns:1fr}.dai-page{padding:14px 12px 90px}}
 .job-pill{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--brand);letter-spacing:.04em;white-space:nowrap;text-align:left}
 .pc-status{font-size:var(--xxxs);padding:2px 8px;border-radius:99px;width:max-content}
 .pc-status.unsaved{background:#fff7ed;color:#f97316}
@@ -2564,7 +2566,7 @@ async function renderDesignAiSettings(){
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
           <button class="btn btn-brand btn-sm" onclick="saveDesignAiSettings()">Save Settings</button>
-          <button class="btn btn-out btn-sm" onclick="syncDesignAiDrive()">Sync Google Drive Library</button>
+          <button class="btn btn-out btn-sm" onclick="syncDesignAiDrive(this)">Sync Google Drive Library</button>
         </div>
       </div>
       <div class="dai-empty">Share each Google Drive folder with the service account email shown above. This MVP stores metadata only and does not parse GLB, OBJ, FBX, STEP, PLY, LAS, or E57 files.</div>`;
@@ -2584,12 +2586,65 @@ async function saveDesignAiSettings(){
     toast(`Settings save failed: ${errMsg(e)}`,4500);
   }
 }
-async function syncDesignAiDrive(){
+async function designAiRunButton(button, loadingText, action){
+  const btn=button||null;
+  const original=btn?btn.innerHTML:'';
+  if(btn){btn.disabled=true;btn.innerHTML=loadingText||'Working...';}
   try{
+    return await action();
+  }finally{
+    if(btn){btn.disabled=false;btn.innerHTML=original;}
+  }
+}
+function designAiIsAdmin(){
+  return currentUser&&currentUser.role==='admin';
+}
+function designAiActionMessage(id,message='',state=''){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.className=state==='error'?'dai-warning':'pc-s';
+  el.textContent=message;
+}
+function designAiFileStatusPill(file={}){
+  const status=String(file.file_status||'active').toLowerCase();
+  if(status==='ignored'||status==='archived')return `<span class="dai-pill error">${esc(status)}</span>`;
+  if(status==='reset_pending')return '<span class="dai-pill work">reset pending</span>';
+  if(file.current_role==='primary'||file.extraction_role==='primary')return '<span class="dai-pill done">primary</span>';
+  return '<span class="dai-pill">active</span>';
+}
+function designAiFileActionsHtml(file={},opts={}){
+  const id=Number(file.id||0);
+  const open=file.web_view_link||file.webViewLink||'';
+  const actions=[];
+  if(open)actions.push(`<a class="btn btn-out btn-sm" href="${esc(open)}" target="_blank" rel="noopener">Open source file</a>`);
+  if(designAiIsAdmin()&&id){
+    actions.push(`<button class="btn btn-out btn-sm" onclick="designAiFileAction(${id},'primary',this)">Use this file as primary</button>`);
+    actions.push(`<button class="btn btn-out btn-sm" onclick="designAiFileAction(${id},'ignore',this)">Ignore for extraction</button>`);
+    actions.push(`<button class="btn btn-out btn-sm" onclick="designAiFileAction(${id},'archive',this)">Mark old / archived</button>`);
+    if(opts.allowRestore)actions.push(`<button class="btn btn-out btn-sm" onclick="designAiFileAction(${id},'restore',this)">Restore</button>`);
+  }
+  return actions.length?`<div class="dai-source-actions">${actions.join('')}</div>`:'';
+}
+async function designAiFileAction(fileId,action,button){
+  try{
+    await designAiRunButton(button,'Working...',async()=>{
+      await PATCH(`/api/design-ai/library-files/${Number(fileId)}`,{action});
+    });
+    toast('File preference saved ✓');
+    if(DESIGN_AI.geometrySuggestion)await refreshDesignAiGeometrySuggestion();
+    if(DESIGN_AI.extractionDraft?.id)await renderDesignAiExtraction(DESIGN_AI.extractionDraft.id);
+  }catch(e){
+    toast(`File action failed: ${errMsg(e)}`,6500);
+  }
+}
+async function syncDesignAiDrive(button){
+  try{
+    await designAiRunButton(button,'Syncing...',async()=>{
     toast('Syncing Drive library…');
     const res=await POST('/api/design-ai/sync-drive',{});
     DESIGN_AI.status=res.status||DESIGN_AI.status;
     toast(`Drive sync complete: ${commas(res.indexed_count||0)} file${res.indexed_count===1?'':'s'} indexed`);
+    });
     renderDesignAiSettings();
   }catch(e){
     toast(`Drive sync failed: ${errMsg(e)}`,6500);
@@ -2806,7 +2861,7 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
     ]
   ],
   [
-    'AI Geometry Suggestion',
+    'Suggested Build Area',
     []
   ],
   [
@@ -2837,30 +2892,32 @@ function designAiVehicleLayoutConstraints(record){
   if(raw&&typeof raw==='object')c=raw;
   else{try{c=JSON.parse(String(raw||'{}'));}catch(e){c={};}}
 
-  // Backward compatible normalization from older flat keys.
-  const build_area=c.build_area||{
-    x_mm:c.build_origin_x_mm??null,
-    y_mm:c.build_origin_y_mm??null,
-    length_mm:c.build_length_mm??null,
-    width_mm:c.build_width_mm??null,
-    height_mm:c.build_height_mm??null
+  // Backward compatible normalization from older flat keys and Agent aliases.
+  const sourceBuild=c.build_area||c.buildArea||c.buildable_area||c.buildableArea||{};
+  const build_area={
+    x_mm:sourceBuild.x_mm??sourceBuild.x??sourceBuild.origin_x_mm??c.build_origin_x_mm??c.origin_x_mm??null,
+    y_mm:sourceBuild.y_mm??sourceBuild.y??sourceBuild.origin_y_mm??c.build_origin_y_mm??c.origin_y_mm??null,
+    length_mm:sourceBuild.length_mm??sourceBuild.buildable_length_mm??sourceBuild.length??c.buildable_length_mm??c.build_length_mm??null,
+    width_mm:sourceBuild.width_mm??sourceBuild.buildable_width_mm??sourceBuild.width??c.buildable_width_mm??c.build_width_mm??null,
+    height_mm:sourceBuild.height_mm??sourceBuild.buildable_height_mm??sourceBuild.height??c.buildable_height_mm??c.build_height_mm??null
   };
 
-  const clearance=c.clearance||{
-    front_mm:c.clearance?.front_mm??null,
-    rear_mm:c.clearance?.rear_mm??null,
-    left_mm:c.clearance?.left_mm??null,
-    right_mm:c.clearance?.right_mm??null,
-    minimum_walkway_mm:c.clearance?.minimum_walkway_mm??null
+  const sourceClearance=c.clearance||c.clearances||{};
+  const clearance={
+    front_mm:sourceClearance.front_mm??sourceClearance.front_seat_clearance_mm??sourceClearance.front_seat_mm??c.front_seat_clearance_mm??c.front_clearance_mm??null,
+    rear_mm:sourceClearance.rear_mm??sourceClearance.rear_door_clearance_mm??sourceClearance.rear_door_mm??c.rear_door_clearance_mm??c.rear_clearance_mm??null,
+    left_mm:sourceClearance.left_mm??sourceClearance.left_wall_clearance_mm??sourceClearance.left_wall_mm??c.left_wall_clearance_mm??c.left_clearance_mm??null,
+    right_mm:sourceClearance.right_mm??sourceClearance.right_wall_clearance_mm??sourceClearance.right_wall_mm??c.right_wall_clearance_mm??c.right_clearance_mm??null,
+    minimum_walkway_mm:sourceClearance.minimum_walkway_mm??sourceClearance.walkway_mm??c.minimum_walkway_mm??null
   };
 
   const metadata=c.metadata||{
-    status:c.metadata?.status||c.status||'draft',
-    derived_from:c.metadata?.derived_from||'',
+    status:c.metadata?.approval_status||c.metadata?.status||c.approval_status||c.status||'draft',
+    derived_from:c.metadata?.derived_from||c.metadata?.source_file||c.derived_from||'',
     confidence:c.metadata?.confidence||'',
     source_file:c.metadata?.source_file||'',
     generated_at:c.metadata?.generated_at||'',
-    notes:c.metadata?.notes||'',
+    notes:c.metadata?.layout_notes||c.metadata?.notes||c.layout_notes||c.notes||'',
     warnings:Array.isArray(c.metadata?.warnings)?c.metadata.warnings:[],
     updated_at:c.updated_at||''
   };
@@ -2881,7 +2938,7 @@ function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
 function designAiVehicleSuggestionPanelHtml(){
   return `
     <div class="dai-panel">
-      <div class="dai-panel-title">AI Geometry Suggestion</div>
+      <div class="dai-panel-title">Suggested Build Area</div>
       <div id="dai-geometry-suggestion-panel" class="dai-empty">
         Checking Google Drive for vehicle research files...
       </div>
@@ -2895,18 +2952,54 @@ function designAiGeometryDate(value){
   if(Number.isNaN(d.getTime()))return raw.slice(0,10)||raw;
   return d.toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'});
 }
+function designAiSuggestionHasMappedBuildArea(s){
+  const area=s?.build_area||{};
+  const clearance=s?.clearance||{};
+  return [
+    area.x_mm,area.y_mm,area.length_mm,area.width_mm,area.height_mm,
+    clearance.front_mm,clearance.rear_mm,clearance.left_mm,clearance.right_mm,clearance.minimum_walkway_mm
+  ].some(value=>value!==undefined&&value!==null&&String(value).trim()!=='');
+}
+function designAiBuildAreaFormHasValues(prefix='dai-rec-'){
+  return [
+    'layout_status','build_origin_x_mm','build_origin_y_mm','build_length_mm','build_width_mm','build_height_mm',
+    'front_clearance_mm','rear_clearance_mm','left_clearance_mm','right_clearance_mm','minimum_walkway_mm','derived_from','layout_notes'
+  ].some(id=>{
+    const el=document.getElementById(prefix+id);
+    return el&&String(el.value||'').trim()&&!(id==='layout_status'&&String(el.value||'').trim()==='draft');
+  });
+}
 function designAiVehicleResearchFilesHtml(data){
   const rows=Array.isArray(data?.research_files?.statuses)?data.research_files.statuses:[];
   const warnings=Array.isArray(data?.research_files?.warnings)?data.research_files.warnings:[];
+  const duplicates=Array.isArray(data?.research_files?.duplicates)?data.research_files.duplicates:[];
   if(!rows.length)return `
     <div class="dai-panel" style="margin-top:12px">
-      <div class="dai-panel-title">Vehicle Research Files Found</div>
+      <div class="dai-panel-title">Files Found in Google Drive</div>
       <div class="dai-empty">No indexed vehicle research files found yet. Sync Google Drive Library after the Agent uploads files.</div>
     </div>
   `;
+  const duplicateTables=duplicates.map(group=>{
+    const files=Array.isArray(group.files)?group.files:[];
+    if(!files.length)return '';
+    return `<div class="dai-panel" style="margin-top:12px">
+      <div class="dai-panel-title">${esc(group.label||'Duplicate Files')}</div>
+      <div class="dai-warning" style="margin-bottom:10px">Multiple possible scan sheets found. Choose the primary scan sheet or ignore old files.</div>
+      <div class="dai-table-wrap"><table class="dai-table" style="min-width:760px">
+        <thead><tr><th>File name</th><th>Google Drive path</th><th>Modified date</th><th>Current role</th><th>Actions</th></tr></thead>
+        <tbody>${files.map(file=>`<tr>
+          <td class="dai-text-wrap">${esc(file.name||'File')}</td>
+          <td class="dai-path">${esc(file.path||'')}</td>
+          <td>${esc(file.modified_time?designAiGeometryDate(file.modified_time):'—')}</td>
+          <td>${designAiFileStatusPill(file)}<div class="pc-s">${esc(file.current_role||file.match_type||'')}</div></td>
+          <td>${designAiFileActionsHtml(file,{allowRestore:true})||'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
   return `
     <div class="dai-panel" style="margin-top:12px">
-      <div class="dai-panel-title">Vehicle Research Files Found</div>
+      <div class="dai-panel-title">Files Found in Google Drive</div>
       <div class="dai-list">
         ${rows.map(item=>{
           const found=Boolean(item.found);
@@ -2918,20 +3011,25 @@ function designAiVehicleResearchFilesHtml(data){
                 <div class="dai-file-name">${found?esc(item.original_filename||'Detected file'):'No matching indexed file'}</div>
                 ${found?`<div class="dai-path">${esc(item.path||'')}</div><div class="pc-s">${esc(match)}</div>`:''}
               </div>
-              <div>${found?'<span class="dai-pill done">Found</span>':'<span class="dai-pill error">Missing</span>'}</div>
-              <div class="dai-path">${found?esc(item.detected_type||'detected file'):'Expected from Drive sync'}</div>
+              <div>${found?designAiFileStatusPill(item):'<span class="dai-pill error">Missing</span>'}</div>
+              <div class="dai-path">
+                ${found?esc(item.detected_type||'detected file'):'Expected from Drive sync'}
+                ${found?designAiFileActionsHtml(item):''}
+              </div>
             </div>
           `;
         }).join('')}
       </div>
       ${warnings.length?`<div class="dai-warning" style="margin-top:12px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}
     </div>
+    ${duplicateTables}
   `;
 }
 function designAiGeometrySuggestionHtml(data){
   const summary=data?.summary||{};
   const warnings=Array.isArray(summary.warnings)?summary.warnings:[];
   const hasSuggestion=Boolean(data?.suggestion);
+  const hasMappedBuildArea=hasSuggestion&&designAiSuggestionHasMappedBuildArea(data.suggestion);
   const missingMessage=!hasSuggestion?`
     <div class="dai-empty" style="text-align:left;margin-bottom:12px">
       <strong>No geometry suggestion found.</strong><br>
@@ -2942,8 +3040,14 @@ function designAiGeometrySuggestionHtml(data){
       Ask the Vehicle Research Agent to generate layout_constraints.json and buildability_report.md.
     </div>
   `:'';
+  const mappingWarning=hasSuggestion&&!hasMappedBuildArea?`
+    <div class="dai-warning">
+      Layout constraints file found, but no build area fields were mapped. Check parser mapping.
+    </div>
+  `:'';
   return `
     ${missingMessage}
+    ${mappingWarning}
     <div class="dai-list">
       <div class="dai-review-row"><div><strong>Suggestion Status</strong><div class="pc-s">${esc(summary.status||'No suggestion found')}</div></div><div><span class="dai-pill ${data?.status==='ai_suggested'?'work':'error'}">${esc(summary.status||'Missing')}</span></div></div>
       <div class="dai-review-row"><div><strong>Confidence</strong><div class="pc-s">${esc(summary.confidence||'—')}</div></div><div>${designAiConfidencePill(summary.confidence||'')}</div></div>
@@ -2954,8 +3058,8 @@ function designAiGeometrySuggestionHtml(data){
     </div>
     ${designAiVehicleResearchFilesHtml(data)}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion()" ${hasSuggestion?'':'disabled'}>Load Suggestion</button>
-      <button class="btn btn-out btn-sm" onclick="refreshDesignAiGeometrySuggestion()">Refresh</button>
+      <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion(this)" ${hasSuggestion?'':'disabled'}>Load Suggestion</button>
+      <button class="btn btn-out btn-sm" onclick="refreshDesignAiGeometrySuggestion(this)">Refresh</button>
     </div>
   `;
 }
@@ -3037,7 +3141,15 @@ function designAiVehicleBuildAreaValue(prefix){
 
 function designAiVehicleRestrictedZones(record){
   const c=designAiVehicleLayoutConstraints(record);
-  return Array.isArray(c.restricted_zones)?c.restricted_zones:[];
+  return Array.isArray(c.restricted_zones)?c.restricted_zones.map(z=>({
+    name:z.name||z.zone_name||z.zone||z.id||'Restricted Zone',
+    type:z.type||'restricted',
+    x_mm:z.x_mm??z.x??z.left_mm??z.origin_x_mm??null,
+    y_mm:z.y_mm??z.y??z.top_mm??z.origin_y_mm??null,
+    length_mm:z.length_mm??z.length??z.l_mm??null,
+    width_mm:z.width_mm??z.width??z.depth_mm??z.depth??z.w_mm??null,
+    notes:z.notes||z.reason||z.description||z.note||''
+  })):[];
 }
 function designAiVehicleRestrictedZoneHtml(prefix,record){
   const zones=designAiVehicleRestrictedZones(record);
@@ -3045,7 +3157,7 @@ function designAiVehicleRestrictedZoneHtml(prefix,record){
   const rows=Array.from({length:count},(_,i)=>{
     const z=zones[i]||{};
     return `
-      <div class="dai-form-grid" style="border:1px solid var(--g200);border-radius:16px;padding:12px;margin-bottom:10px">
+      <div class="dai-form-grid" data-dai-zone-row="1" style="border:1px solid var(--g200);border-radius:16px;padding:12px;margin-bottom:10px">
         ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_name','Zone Name',z.name||'',i===0?'e.g. Left wheel arch':'')}
         ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_type','Type',z.type||'restricted','restricted / door / wheel_arch / seat_clearance')}
         ${designAiVehicleBuildAreaInput(prefix+'rz_'+i+'_x_mm','X (mm)',z.x_mm,'')}
@@ -3057,7 +3169,7 @@ function designAiVehicleRestrictedZoneHtml(prefix,record){
     `;
   }).join('');
   return `
-    <div class="dai-panel">
+    <div class="dai-panel" id="${esc(prefix+'restricted-zones-panel')}">
       <div class="dai-panel-title">🚫 Restricted Zones</div>
       <div class="dai-warning">Areas where AI should not place products. Start simple: wheel arches, rear hatch clearance, sliding door clearance, seat travel.</div>
       ${rows}
@@ -3090,6 +3202,15 @@ function designAiVehicleRestrictedZoneValue(prefix){
     }
   });
   return zones;
+}
+function designAiEnsureRestrictedZoneRows(prefix,record){
+  const panel=document.getElementById(prefix+'restricted-zones-panel');
+  if(!panel)return;
+  const existing=panel.querySelectorAll('[data-dai-zone-row]').length;
+  const needed=Math.max(12,Number(DESIGN_AI.vehicleGeometryZoneCount||0),designAiVehicleRestrictedZones(record).length);
+  if(needed<=existing)return;
+  panel.outerHTML=designAiVehicleRestrictedZoneHtml(prefix,record);
+  designAiVehicleBindGeometryEditor(prefix);
 }
 
 function designAiVehicleFloorPlanPreviewHtml(record){
@@ -3162,19 +3283,24 @@ function designAiVehicleBindGeometryEditor(prefix='dai-rec-'){
   });
   designAiVehicleUpdateFloorPlanPreview();
 }
-async function refreshDesignAiGeometrySuggestion(){
+async function refreshDesignAiGeometrySuggestion(button){
   const ctx=DESIGN_AI.record||{};
   const panel=document.getElementById('dai-geometry-suggestion-panel');
   if(!panel||ctx.kind!=='vehicles'||ctx.isNew){
     if(panel)panel.innerHTML='Save the vehicle before loading a Google Drive geometry suggestion.';
     return;
   }
-  panel.innerHTML='Checking Google Drive for vehicle research files...';
   try{
-    const data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
-    DESIGN_AI.geometrySuggestion=data;
-    panel.className='';
-    panel.innerHTML=designAiGeometrySuggestionHtml(data);
+    await designAiRunButton(button,'Refreshing...',async()=>{
+      panel.innerHTML='Checking Google Drive for vehicle research files...';
+      const data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
+      DESIGN_AI.geometrySuggestion=data;
+      panel.className='';
+      panel.innerHTML=designAiGeometrySuggestionHtml(data);
+      if(data?.suggestion&&!designAiBuildAreaFormHasValues('dai-rec-')){
+        designAiApplyGeometrySuggestion(data,{silent:true});
+      }
+    });
   }catch(e){
     DESIGN_AI.geometrySuggestion=null;
     panel.className='dai-empty';
@@ -3189,19 +3315,15 @@ function designAiGeometrySetField(id,value){
   const el=document.getElementById(id);
   if(el)el.value=value===undefined||value===null?'':value;
 }
-async function loadDesignAiGeometrySuggestion(){
-  const ctx=DESIGN_AI.record||{};
-  let data=DESIGN_AI.geometrySuggestion;
-  if(!data?.suggestion){
-    data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
-    DESIGN_AI.geometrySuggestion=data;
-  }
+function designAiApplyGeometrySuggestion(data,opts={}){
   const s=data?.suggestion;
-  if(!s){toast('No geometry suggestion found. Sync Google Drive after the Agent uploads layout constraints data.');return;}
-  DESIGN_AI.vehicleGeometryZoneCount=Math.max(12,(s.restricted_zones||[]).length);
+  if(!s)return false;
+  const zones=Array.isArray(s.restricted_zones)?s.restricted_zones:[];
+  DESIGN_AI.vehicleGeometryZoneCount=Math.max(12,zones.length);
   DESIGN_AI.currentRecord={...(DESIGN_AI.currentRecord||{}),layout_constraints_json:s};
   const p='dai-rec-';
-  designAiGeometrySetField(p+'layout_status',s.metadata?.status||'ai_suggested');
+  designAiEnsureRestrictedZoneRows(p,DESIGN_AI.currentRecord);
+  designAiGeometrySetField(p+'layout_status',s.metadata?.approval_status||s.metadata?.status||s.status||'ai_suggested');
   designAiGeometrySetField(p+'build_origin_x_mm',s.build_area?.x_mm);
   designAiGeometrySetField(p+'build_origin_y_mm',s.build_area?.y_mm);
   designAiGeometrySetField(p+'build_length_mm',s.build_area?.length_mm);
@@ -3212,12 +3334,12 @@ async function loadDesignAiGeometrySuggestion(){
   designAiGeometrySetField(p+'left_clearance_mm',s.clearance?.left_mm);
   designAiGeometrySetField(p+'right_clearance_mm',s.clearance?.right_mm);
   designAiGeometrySetField(p+'minimum_walkway_mm',s.clearance?.minimum_walkway_mm);
-  designAiGeometrySetField(p+'derived_from',s.metadata?.source_file||data.file?.name||'layout_constraints.json');
-  designAiGeometrySetField(p+'layout_notes',s.metadata?.notes||'');
-  const count=Math.max(12,(s.restricted_zones||[]).length);
+  designAiGeometrySetField(p+'derived_from',s.metadata?.derived_from||s.metadata?.source_file||data.file?.name||'layout_constraints.json');
+  designAiGeometrySetField(p+'layout_notes',s.metadata?.layout_notes||s.metadata?.notes||'');
+  const count=Math.max(12,zones.length);
   for(let i=0;i<count;i+=1){
-    const z=(s.restricted_zones||[])[i]||{};
-    designAiGeometrySetField(p+'rz_'+i+'_name',z.name||'');
+    const z=zones[i]||{};
+    designAiGeometrySetField(p+'rz_'+i+'_name',z.name||z.zone_name||'');
     designAiGeometrySetField(p+'rz_'+i+'_type',z.type||'restricted');
     designAiGeometrySetField(p+'rz_'+i+'_x_mm',z.x_mm);
     designAiGeometrySetField(p+'rz_'+i+'_y_mm',z.y_mm);
@@ -3226,11 +3348,33 @@ async function loadDesignAiGeometrySuggestion(){
     designAiGeometrySetField(p+'rz_'+i+'_notes',z.notes||'');
   }
   designAiVehicleUpdateFloorPlanPreview();
-  toast('Geometry suggestion loaded for review. Save Vehicle to approve it.');
+  if(!opts.silent){
+    toast(designAiSuggestionHasMappedBuildArea(s)
+      ? 'Geometry suggestion loaded for review. Save Vehicle to approve it.'
+      : 'Layout constraints found, but no build area fields were mapped.');
+  }
+  return true;
+}
+async function loadDesignAiGeometrySuggestion(button){
+  const ctx=DESIGN_AI.record||{};
+  try{
+    await designAiRunButton(button,'Loading...',async()=>{
+      let data=DESIGN_AI.geometrySuggestion;
+      if(!data?.suggestion){
+        data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
+        DESIGN_AI.geometrySuggestion=data;
+      }
+      if(!designAiApplyGeometrySuggestion(data)){
+        toast('No geometry suggestion found. Sync Google Drive after the Agent uploads layout constraints data.');
+      }
+    });
+  }catch(e){
+    toast(`Load suggestion failed: ${errMsg(e)}`,6500);
+  }
 }
 
 function designAiVehicleEditorSection(prefix,title,fields,record){
-  if(String(title).includes('AI Geometry Suggestion'))return designAiVehicleSuggestionPanelHtml();
+  if(String(title).includes('Suggested Build Area'))return designAiVehicleSuggestionPanelHtml();
   if(String(title).includes('Floor Plan'))return designAiVehicleFloorPlanHtml(record);
   if(String(title).includes('Build Area'))return designAiVehicleBuildAreaHtml(prefix,record);
   if(String(title).includes('Restricted Zones'))return designAiVehicleRestrictedZoneHtml(prefix,record);
@@ -3358,7 +3502,8 @@ function designAiSourceFilesHtml(files=[]){
         </div>
         <div>
           <div class="dai-source-meta">${file.direct_content_available?'Readable':'Metadata only'}</div>
-          <div class="dai-source-action">${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</div>
+          <div class="dai-source-action">${designAiFileStatusPill(file)}</div>
+          ${designAiFileActionsHtml(file,{allowRestore:true})}
         </div>
       </div>`).join('')}</div>
     </div>
@@ -3397,6 +3542,89 @@ function designAiUnmappedSourceHtml(items=[]){
     <thead><tr><th>Source Field</th><th>Value</th><th>Source File</th></tr></thead><tbody>${rows}</tbody>
   </table></div>`;
 }
+function designAiVehicleToolsHtml(vehicleId){
+  const id=String(vehicleId||'').trim();
+  if(!designAiIsAdmin()||!id)return '';
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">Vehicle Tools</div>
+    <div class="dai-warning">
+      These tools affect only CRDN's synced/extracted Design AI data for this vehicle. They do not delete files from Google Drive.
+    </div>
+    <div class="dai-progress">
+      <strong>Rebuild Vehicle Data</strong>
+      <div class="dai-progress-step"><span class="mark">1</span><span>Clear old extraction cache</span></div>
+      <div class="dai-progress-step"><span class="mark">2</span><span>Re-sync Google Drive files for this vehicle</span></div>
+      <div class="dai-progress-step"><span class="mark">3</span><span>Re-extract from exact CRDN files first</span></div>
+    </div>
+    <div id="dai-vehicle-tools-message" class="pc-s" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-brand btn-sm" onclick="rebuildDesignAiVehicle('${designAiJsArg(id)}',this)">Rebuild Vehicle Data</button>
+      <button class="btn btn-out btn-sm" onclick="resetDesignAiVehicleExtraction('${designAiJsArg(id)}',this)">Reset AI Extraction</button>
+      <button class="btn btn-out btn-sm" onclick="resetDesignAiVehicleResearchFiles('${designAiJsArg(id)}',this)">Reset Vehicle Research Files</button>
+      <button class="btn btn-danger btn-sm" onclick="fullResetDesignAiVehicle('${designAiJsArg(id)}',this)">Full Vehicle Reset</button>
+    </div>
+  </div>`;
+}
+async function resetDesignAiVehicleExtraction(vehicleId,button){
+  try{
+    await designAiRunButton(button,'Resetting...',async()=>{
+      await POST(`/api/design-ai/vehicles/${encodeURIComponent(vehicleId)}/reset-extraction`,{});
+    });
+    DESIGN_AI.geometrySuggestion=null;
+    designAiActionMessage('dai-vehicle-tools-message','AI extraction cache cleared for this vehicle.');
+    toast('AI extraction reset ✓');
+    if(DESIGN_AI.extractionDraft?.id)openDesignAI('vehicles');
+  }catch(e){
+    designAiActionMessage('dai-vehicle-tools-message',errMsg(e),'error');
+    toast(`Reset failed: ${errMsg(e)}`,6500);
+  }
+}
+async function resetDesignAiVehicleResearchFiles(vehicleId,button){
+  try{
+    await designAiRunButton(button,'Resetting...',async()=>{
+      await POST(`/api/design-ai/vehicles/${encodeURIComponent(vehicleId)}/reset-research-files`,{});
+    });
+    DESIGN_AI.geometrySuggestion=null;
+    designAiActionMessage('dai-vehicle-tools-message','Synced research file references were marked reset-pending. Run Sync or Rebuild to repopulate a clean list.');
+    toast('Vehicle research files reset ✓');
+    if(DESIGN_AI.record?.kind==='vehicles')await refreshDesignAiGeometrySuggestion();
+  }catch(e){
+    designAiActionMessage('dai-vehicle-tools-message',errMsg(e),'error');
+    toast(`Research file reset failed: ${errMsg(e)}`,6500);
+  }
+}
+async function fullResetDesignAiVehicle(vehicleId,button){
+  const expected=`RESET ${String(vehicleId||'').toUpperCase()}`;
+  const entered=prompt(`This clears the vehicle record, extraction drafts, geometry suggestion references, synced file references, and layout constraints from CRDN for ${vehicleId}. It does not delete Google Drive files.\n\nType ${expected} to confirm.`);
+  if(entered!==expected){toast('Full reset cancelled');return;}
+  try{
+    await designAiRunButton(button,'Resetting...',async()=>{
+      await POST(`/api/design-ai/vehicles/${encodeURIComponent(vehicleId)}/full-reset`,{confirmation:entered});
+    });
+    toast('Full vehicle reset complete ✓');
+    openDesignAI('vehicles');
+  }catch(e){
+    designAiActionMessage('dai-vehicle-tools-message',errMsg(e),'error');
+    toast(`Full reset failed: ${errMsg(e)}`,6500);
+  }
+}
+async function rebuildDesignAiVehicle(vehicleId,button){
+  try{
+    designAiActionMessage('dai-vehicle-tools-message','1. Clearing old extraction cache... 2. Re-syncing Google Drive... 3. Re-extracting exact CRDN files...');
+    let result=null;
+    await designAiRunButton(button,'Rebuilding...',async()=>{
+      result=await POST(`/api/design-ai/vehicles/${encodeURIComponent(vehicleId)}/rebuild`,{});
+    });
+    DESIGN_AI.choices=null;
+    designAiActionMessage('dai-vehicle-tools-message',`Rebuild complete. Cleared ${commas(result?.cleared_extraction_drafts||0)} draft(s), synced ${commas(result?.indexed_count||0)} file(s), and created extraction draft #${result?.draft?.id||'new'}.`);
+    toast('Vehicle data rebuilt ✓');
+    if(result?.draft?.id)openDesignAI('extraction',{id:result.draft.id});
+    else if(DESIGN_AI.record?.kind==='vehicles')await refreshDesignAiGeometrySuggestion();
+  }catch(e){
+    designAiActionMessage('dai-vehicle-tools-message',errMsg(e),'error');
+    toast(`Rebuild failed: ${errMsg(e)}`,6500);
+  }
+}
 function designAiMeasurementRequiredHtml(items=[]){
   if(!items.length)return '<div class="dai-empty" style="padding:12px">No required physical measurements flagged.</div>';
   return `<div class="dai-list">${items.map(item=>`<div class="dai-review-row">
@@ -3417,8 +3645,9 @@ async function renderDesignAiExtraction(id){
     const warnings=extracted._content_warnings||[];
     const unmapped=extracted._unmapped_source_data||[];
     const unmappedPanel=unmapped.length>12
-      ? `<details class="dai-details"><summary>Unmapped Source Data (${commas(unmapped.length)} fields)</summary><div class="dai-details-body">${designAiUnmappedSourceHtml(unmapped)}</div></details>`
-      : `<div class="dai-panel"><div class="dai-panel-title">Unmapped Source Data</div>${designAiUnmappedSourceHtml(unmapped)}</div>`;
+      ? `<details class="dai-details"><summary>Data Found But Not Used (${commas(unmapped.length)} fields)</summary><div class="dai-details-body">${designAiUnmappedSourceHtml(unmapped)}</div></details>`
+      : `<div class="dai-panel"><div class="dai-panel-title">Data Found But Not Used</div>${designAiUnmappedSourceHtml(unmapped)}</div>`;
+    const vehicleTools=draft.entity_type==='vehicle'?designAiVehicleToolsHtml(draft.entity_id):'';
     designAiBody().innerHTML=designAiHeader('Extraction Review',`${esc(draft.entity_type||'entity')} · ${esc(draft.entity_id||'')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
       `${warnings.length?`<div class="dai-warning"><strong>Partial extraction:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
       <div class="dai-result-grid">
@@ -3427,14 +3656,15 @@ async function renderDesignAiExtraction(id){
           <div class="dai-panel"><div class="dai-panel-title">Editable Extracted Fields</div>
             <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,extracted[field],draft.confidence||{})).join('')}</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-              <button class="btn btn-out btn-sm" onclick="saveDesignAiExtraction(${Number(id)})">Save Draft</button>
-              <button class="btn btn-brand btn-sm" onclick="approveDesignAiExtraction(${Number(id)})">Approve to ${draft.entity_type==='vehicle'?'Vehicle':'Product'} Database</button>
-              <button class="btn btn-out btn-sm" onclick="reextractDesignAi(${Number(id)})">Re-extract</button>
+              <button class="btn btn-out btn-sm" onclick="saveDesignAiExtraction(${Number(id)},this)">Save Draft</button>
+              <button class="btn btn-brand btn-sm" onclick="approveDesignAiExtraction(${Number(id)},this)">Approve to ${draft.entity_type==='vehicle'?'Vehicle':'Product'} Database</button>
+              <button class="btn btn-out btn-sm" onclick="reextractDesignAi(${Number(id)},this)">Re-extract</button>
             </div>
           </div>
         </div>
         <div>
-          <div class="dai-panel"><div class="dai-panel-title">Source Files Used</div>${designAiSourceFilesHtml(draft.source_files||[])}</div>
+          ${vehicleTools}
+          <div class="dai-panel"><div class="dai-panel-title">Files Used for This Extraction</div>${designAiSourceFilesHtml(draft.source_files||[])}</div>
           <div class="dai-panel"><div class="dai-panel-title">Physical Measurement Required</div>${designAiMeasurementRequiredHtml(extracted._measurement_required||[])}</div>
           ${unmappedPanel}
           <details class="dai-details" ${DESIGN_AI.rawOpen?'open':''}><summary>Raw JSON</summary><div class="dai-details-body"><pre class="dai-pre">${esc(JSON.stringify(data,null,2))}</pre></div></details>
@@ -3446,31 +3676,41 @@ async function renderDesignAiExtraction(id){
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
-async function saveDesignAiExtraction(id){
+async function saveDesignAiExtraction(id,button){
   const draft=DESIGN_AI.extractionDraft||{};
   const fields=designAiEntityFields(draft.entity_type);
   const extracted={...(draft.extracted||{}),...designAiCollectFields('dai-ext-',fields),entity_type:draft.entity_type};
   try{
-    const res=await PATCH(`/api/design-ai/extractions/${id}`,{extracted,status:'draft'});
-    DESIGN_AI.extractionDraft=res.draft;
-    toast('Extraction draft saved ✓');
-    await renderDesignAiExtraction(id);
+    await designAiRunButton(button,'Saving...',async()=>{
+      const res=await PATCH(`/api/design-ai/extractions/${id}`,{extracted,status:'draft'});
+      DESIGN_AI.extractionDraft=res.draft;
+      toast('Extraction draft saved ✓');
+      await renderDesignAiExtraction(id);
+    });
   }catch(e){toast(`Draft save failed: ${errMsg(e)}`,5000);}
 }
-async function approveDesignAiExtraction(id){
+async function approveDesignAiExtraction(id,button){
   try{
-    await saveDesignAiExtraction(id);
-    const res=await POST(`/api/design-ai/extractions/${id}/approve`,{});
-    toast('Approved to Design AI database ✓');
-    openDesignAI(res.draft?.entity_type==='vehicle'?'vehicles':'products');
+    await designAiRunButton(button,'Approving...',async()=>{
+      const draft=DESIGN_AI.extractionDraft||{};
+      const fields=designAiEntityFields(draft.entity_type);
+      const extracted={...(draft.extracted||{}),...designAiCollectFields('dai-ext-',fields),entity_type:draft.entity_type};
+      const saved=await PATCH(`/api/design-ai/extractions/${id}`,{extracted,status:'draft'});
+      DESIGN_AI.extractionDraft=saved.draft;
+      const res=await POST(`/api/design-ai/extractions/${id}/approve`,{});
+      toast('Approved to Design AI database ✓');
+      openDesignAI(res.draft?.entity_type==='vehicle'?'vehicles':'products');
+    });
   }catch(e){toast(`Approval failed: ${errMsg(e)}`,6500);}
 }
-async function reextractDesignAi(id){
+async function reextractDesignAi(id,button){
   const draft=DESIGN_AI.extractionDraft||{};
   try{
-    toast('Re-extracting…');
-    const res=await POST('/api/design-ai/extract',{entity_type:draft.entity_type,entity_id:draft.entity_id,folder_path:draft.folder_path||draft.entity_id});
-    if(res.draft?.id)openDesignAI('extraction',{id:res.draft.id});
+    await designAiRunButton(button,'Re-extracting...',async()=>{
+      toast('Re-extracting...');
+      const res=await POST('/api/design-ai/extract',{entity_type:draft.entity_type,entity_id:draft.entity_id,folder_path:draft.folder_path||draft.entity_id});
+      if(res.draft?.id)openDesignAI('extraction',{id:res.draft.id});
+    });
   }catch(e){toast(`Re-extract failed: ${errMsg(e)}`,6500);}
 }
 function designAiRecordDimensions(kind,record){
@@ -3528,7 +3768,7 @@ function designAiProductEditorHtml(record,isNew){
     <div class="pc-s" style="margin-bottom:12px">${meta}</div>
     ${DESIGN_AI_PRODUCT_FIELD_SECTIONS.map(([title,fields])=>designAiProductEditorSection(prefix,title,fields,record)).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord()">Save Product</button>
+      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save Product</button>
       <button class="btn btn-out btn-sm" onclick="openDesignAI('products')">Back to Product Database</button>
       ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
     </div>`;
@@ -3563,8 +3803,9 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     ).join('') +
 
     `
+    ${!isNew?designAiVehicleToolsHtml(record[cfg.idKey]||recordKey):''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord()">
+      <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">
         Save Vehicle
       </button>
 
@@ -3585,7 +3826,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
       <div class="dai-panel">
         <div class="dai-form-grid">${cfg.fields.map(([field,label])=>designAiFieldInput(prefix,field,label,field==='compatible_vehicles'?record.compatible_vehicles:record[field],{})).join('')}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-          <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord()">Save ${cfg.single}</button>
+          <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save ${cfg.single}</button>
         </div>
       </div>`;
   }catch(e){
@@ -3593,7 +3834,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
-async function saveDesignAiRecord(){
+async function saveDesignAiRecord(button){
   const ctx=DESIGN_AI.record||{};
   const cfg=designAiRecordConfig(ctx.kind||'products');
   const prefix='dai-rec-';
@@ -3602,11 +3843,13 @@ async function saveDesignAiRecord(){
   const id=payload[cfg.idKey]||ctx.recordKey;
   if(!id){toast(`${cfg.single} ID is required`);return;}
   try{
-    if(ctx.isNew)await POST(`/api/design-ai/${cfg.kind}`,payload);
-    else await PATCH(`/api/design-ai/${cfg.kind}/${encodeURIComponent(ctx.recordKey)}`,payload);
-    DESIGN_AI.choices=null;
-    toast('Design AI record saved ✓');
-    openDesignAI(cfg.route,{id});
+    await designAiRunButton(button,'Saving...',async()=>{
+      if(ctx.isNew)await POST(`/api/design-ai/${cfg.kind}`,payload);
+      else await PATCH(`/api/design-ai/${cfg.kind}/${encodeURIComponent(ctx.recordKey)}`,payload);
+      DESIGN_AI.choices=null;
+      toast('Design AI record saved ✓');
+      openDesignAI(cfg.route,{id});
+    });
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
 }
 async function archiveDesignAiProduct(){

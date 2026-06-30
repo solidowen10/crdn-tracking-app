@@ -656,14 +656,19 @@ function designLibraryStatus() {
   byFolder.forEach(row => { folders[row.folder_type] = row.count; });
   const total = db.prepare('SELECT COUNT(*) AS count FROM design_library_files').get().count;
   const files = designLibraryFiles('all');
+  const activeFiles = activeDesignLibraryFiles(files);
   return {
     total_indexed_files: total,
     folders,
-    readiness: designLibraryReadiness(files, designExtractionStatusLookup()),
+    readiness: designLibraryReadiness(activeFiles, designExtractionStatusLookup()),
     last_sync_at: designSetting('last_sync_at'),
     last_sync_error: designSetting('last_sync_error'),
     drive: driveStatus()
   };
+}
+
+function activeDesignLibraryFiles(files = []) {
+  return files.filter(file => !['ignored', 'archived', 'reset_pending'].includes(text(file.file_status || 'active')));
 }
 
 function designLibraryFiles(folderType = 'all') {
@@ -765,6 +770,7 @@ function designEntityFolderFiles(entityType, folderPath, entityId) {
     SELECT *
     FROM design_library_files
     WHERE folder_type=?
+      AND COALESCE(file_status, 'active')='active'
       AND (
         path=?
         OR path LIKE ?
@@ -800,6 +806,7 @@ function vehicleResearchFilesForRecord(vehicle) {
       FROM design_library_files
       WHERE folder_type='vehicles'
         AND is_folder=0
+        AND COALESCE(file_status, 'active')='active'
         AND lower(path) LIKE ?
       ORDER BY modified_time DESC, path COLLATE NOCASE
     `).all(`%${text(vehicle.vehicle_id).toLowerCase()}%`);
@@ -816,7 +823,8 @@ function vehicleResearchStatusesWithFloorplan(research, files = []) {
       const pathValue = text(file.path).toLowerCase();
       return name === 'floorplan.svg' || pathValue.endsWith('/floorplan.svg') || (name.endsWith('.svg') && name.includes('floorplan'));
     });
-  statuses.push({
+  const floorplanStatus = {
+    id: floorplan?.id || null,
     key: 'floorplan',
     label: 'Floorplan',
     found: Boolean(floorplan),
@@ -825,12 +833,26 @@ function vehicleResearchStatusesWithFloorplan(research, files = []) {
     path: floorplan?.path || '',
     match_type: floorplan ? 'exact_filename' : '',
     match_label: floorplan ? 'exact filename' : '',
+    current_role: floorplan?.extraction_role === 'primary' ? 'primary' : '',
+    file_status: floorplan?.file_status || 'active',
+    extraction_role: floorplan?.extraction_role || '',
     modified_time: floorplan?.modified_time || '',
     web_view_link: floorplan?.web_view_link || '',
     candidate_count: floorplan ? 1 : 0,
     same_priority_count: floorplan ? 1 : 0
-  });
+  };
+  const manifestIndex = statuses.findIndex(item => item?.key === 'manifest');
+  if (manifestIndex >= 0) statuses.splice(manifestIndex, 0, floorplanStatus);
+  else statuses.push(floorplanStatus);
   return statuses;
+}
+
+function vehicleResearchPayload(research, files = []) {
+  return {
+    statuses: vehicleResearchStatusesWithFloorplan(research, files),
+    warnings: research?.warnings || [],
+    duplicates: research?.duplicates || []
+  };
 }
 
 function normalizeWarnings(value) {
@@ -846,18 +868,20 @@ function nullableNumber(value) {
 
 function normalizeLayoutZone(zone = {}) {
   return {
-    name: text(zone.name || zone.zone || zone.id || 'Restricted Zone'),
+    name: text(zone.name || zone.zone_name || zone.zone || zone.id || 'Restricted Zone'),
     type: text(zone.type || 'restricted'),
-    x_mm: nullableNumber(zone.x_mm ?? zone.x ?? zone.left_mm),
-    y_mm: nullableNumber(zone.y_mm ?? zone.y ?? zone.top_mm),
-    length_mm: nullableNumber(zone.length_mm ?? zone.width_mm ?? zone.length ?? zone.width),
-    width_mm: nullableNumber(zone.width_mm ?? zone.depth_mm ?? zone.height ?? zone.depth),
-    notes: text(zone.notes || zone.reason || zone.description)
+    x_mm: nullableNumber(zone.x_mm ?? zone.x ?? zone.left_mm ?? zone.origin_x_mm),
+    y_mm: nullableNumber(zone.y_mm ?? zone.y ?? zone.top_mm ?? zone.origin_y_mm),
+    length_mm: nullableNumber(zone.length_mm ?? zone.length ?? zone.l_mm),
+    width_mm: nullableNumber(zone.width_mm ?? zone.width ?? zone.depth_mm ?? zone.depth ?? zone.w_mm),
+    notes: text(zone.notes || zone.reason || zone.description || zone.note)
   };
 }
 
 function normalizeVehicleLayoutSuggestion(raw, file) {
   const input = raw?.layout_constraints_json || raw?.layout_constraints || raw || {};
+  const buildArea = input.build_area || input.buildArea || input.buildable_area || input.buildableArea || {};
+  const clearance = input.clearance || input.clearances || {};
   const metadata = input.metadata || {};
   const generatedAt = text(
     metadata.generated_at ||
@@ -869,18 +893,18 @@ function normalizeVehicleLayoutSuggestion(raw, file) {
   return {
     schema_version: input.schema_version || 1,
     build_area: {
-      x_mm: nullableNumber(input.build_area?.x_mm ?? input.build_area?.x ?? input.build_origin_x_mm),
-      y_mm: nullableNumber(input.build_area?.y_mm ?? input.build_area?.y ?? input.build_origin_y_mm),
-      length_mm: nullableNumber(input.build_area?.length_mm ?? input.build_area?.length ?? input.build_length_mm),
-      width_mm: nullableNumber(input.build_area?.width_mm ?? input.build_area?.width ?? input.build_width_mm),
-      height_mm: nullableNumber(input.build_area?.height_mm ?? input.build_area?.height ?? input.build_height_mm)
+      x_mm: nullableNumber(buildArea.x_mm ?? buildArea.x ?? buildArea.origin_x_mm ?? input.build_origin_x_mm ?? input.origin_x_mm),
+      y_mm: nullableNumber(buildArea.y_mm ?? buildArea.y ?? buildArea.origin_y_mm ?? input.build_origin_y_mm ?? input.origin_y_mm),
+      length_mm: nullableNumber(buildArea.length_mm ?? buildArea.buildable_length_mm ?? buildArea.length ?? input.buildable_length_mm ?? input.build_length_mm),
+      width_mm: nullableNumber(buildArea.width_mm ?? buildArea.buildable_width_mm ?? buildArea.width ?? input.buildable_width_mm ?? input.build_width_mm),
+      height_mm: nullableNumber(buildArea.height_mm ?? buildArea.buildable_height_mm ?? buildArea.height ?? input.buildable_height_mm ?? input.build_height_mm)
     },
     clearance: {
-      front_mm: nullableNumber(input.clearance?.front_mm),
-      rear_mm: nullableNumber(input.clearance?.rear_mm),
-      left_mm: nullableNumber(input.clearance?.left_mm),
-      right_mm: nullableNumber(input.clearance?.right_mm),
-      minimum_walkway_mm: nullableNumber(input.clearance?.minimum_walkway_mm)
+      front_mm: nullableNumber(clearance.front_mm ?? clearance.front_seat_clearance_mm ?? clearance.front_seat_mm ?? input.front_seat_clearance_mm ?? input.front_clearance_mm),
+      rear_mm: nullableNumber(clearance.rear_mm ?? clearance.rear_door_clearance_mm ?? clearance.rear_door_mm ?? input.rear_door_clearance_mm ?? input.rear_clearance_mm),
+      left_mm: nullableNumber(clearance.left_mm ?? clearance.left_wall_clearance_mm ?? clearance.left_wall_mm ?? input.left_wall_clearance_mm ?? input.left_clearance_mm),
+      right_mm: nullableNumber(clearance.right_mm ?? clearance.right_wall_clearance_mm ?? clearance.right_wall_mm ?? input.right_wall_clearance_mm ?? input.right_clearance_mm),
+      minimum_walkway_mm: nullableNumber(clearance.minimum_walkway_mm ?? clearance.walkway_mm ?? input.minimum_walkway_mm)
     },
     restricted_zones: Array.isArray(input.restricted_zones)
       ? input.restricted_zones.map(normalizeLayoutZone)
@@ -888,12 +912,12 @@ function normalizeVehicleLayoutSuggestion(raw, file) {
     mounting_points: Array.isArray(input.mounting_points) ? input.mounting_points : [],
     metadata: {
       ...metadata,
-      status: text(metadata.status || input.status || 'ai_suggested'),
+      status: text(metadata.approval_status || metadata.status || input.approval_status || input.status || 'ai_suggested'),
       confidence: text(metadata.confidence || input.confidence || raw.confidence || 'MEDIUM').toUpperCase() || 'MEDIUM',
-      source_file: text(metadata.source_file || file?.name || 'layout_constraints.json'),
+      source_file: text(metadata.source_file || metadata.derived_from || input.derived_from || file?.name || 'layout_constraints.json'),
       source_path: text(metadata.source_path || file?.path || ''),
       generated_at: generatedAt,
-      notes: text(metadata.notes || input.notes || raw.notes),
+      notes: text(metadata.notes || metadata.layout_notes || input.layout_notes || input.notes || raw.notes),
       warnings: normalizeWarnings(metadata.warnings || input.warnings || raw.warnings)
     }
   };
@@ -934,6 +958,77 @@ function designExtractionStatusLookup() {
     });
   });
   return lookup;
+}
+
+function vehicleFileLookupClauses(vehicleId) {
+  const id = text(vehicleId);
+  return {
+    exact: id,
+    child: `${id}/%`,
+    loose: `%${id.toLowerCase()}%`
+  };
+}
+
+function designVehicleLibraryFiles(vehicleId, { activeOnly = false } = {}) {
+  const parts = vehicleFileLookupClauses(vehicleId);
+  return db.prepare(`
+    SELECT *
+    FROM design_library_files
+    WHERE folder_type='vehicles'
+      ${activeOnly ? "AND COALESCE(file_status, 'active')='active'" : ''}
+      AND (
+        path=?
+        OR path LIKE ?
+        OR lower(path) LIKE ?
+      )
+    ORDER BY modified_time DESC, path COLLATE NOCASE
+  `).all(parts.exact, parts.child, parts.loose);
+}
+
+function upsertDesignLibraryFiles(files = []) {
+  const upsert = db.prepare(`
+    INSERT INTO design_library_files (
+      drive_file_id, folder_type, name, path, parent_drive_file_id, mime_type,
+      web_view_link, modified_time, size, is_folder, file_status, extraction_role, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', '', CURRENT_TIMESTAMP)
+    ON CONFLICT(drive_file_id) DO UPDATE SET
+      folder_type=excluded.folder_type,
+      name=excluded.name,
+      path=excluded.path,
+      parent_drive_file_id=excluded.parent_drive_file_id,
+      mime_type=excluded.mime_type,
+      web_view_link=excluded.web_view_link,
+      modified_time=excluded.modified_time,
+      size=excluded.size,
+      is_folder=excluded.is_folder,
+      file_status=CASE
+        WHEN design_library_files.file_status='reset_pending' THEN 'active'
+        ELSE COALESCE(design_library_files.file_status, 'active')
+      END,
+      extraction_role=CASE
+        WHEN design_library_files.file_status='reset_pending' THEN ''
+        ELSE COALESCE(design_library_files.extraction_role, '')
+      END,
+      ignored_at=CASE WHEN design_library_files.file_status='reset_pending' THEN NULL ELSE design_library_files.ignored_at END,
+      archived_at=CASE WHEN design_library_files.file_status='reset_pending' THEN NULL ELSE design_library_files.archived_at END,
+      updated_at=CURRENT_TIMESTAMP
+  `);
+  const tx = db.transaction(rows => {
+    rows.forEach(file => upsert.run(
+      text(file.drive_file_id),
+      text(file.folder_type),
+      text(file.name),
+      text(file.path),
+      text(file.parent_drive_file_id),
+      text(file.mime_type),
+      text(file.web_view_link),
+      text(file.modified_time),
+      text(file.size),
+      Number(file.is_folder) ? 1 : 0
+    ));
+  });
+  tx(files);
 }
 
 function designExtractionFromRow(row) {
@@ -1984,39 +2079,7 @@ app.post('/api/design-ai/settings', requireAuth, (req, res) => {
 app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
   try {
     const result = await syncDriveFolders(designAiSettings());
-    const upsert = db.prepare(`
-      INSERT INTO design_library_files (
-        drive_file_id, folder_type, name, path, parent_drive_file_id, mime_type,
-        web_view_link, modified_time, size, is_folder, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(drive_file_id) DO UPDATE SET
-        folder_type=excluded.folder_type,
-        name=excluded.name,
-        path=excluded.path,
-        parent_drive_file_id=excluded.parent_drive_file_id,
-        mime_type=excluded.mime_type,
-        web_view_link=excluded.web_view_link,
-        modified_time=excluded.modified_time,
-        size=excluded.size,
-        is_folder=excluded.is_folder,
-        updated_at=CURRENT_TIMESTAMP
-    `);
-    const tx = db.transaction(files => {
-      files.forEach(file => upsert.run(
-        text(file.drive_file_id),
-        text(file.folder_type),
-        text(file.name),
-        text(file.path),
-        text(file.parent_drive_file_id),
-        text(file.mime_type),
-        text(file.web_view_link),
-        text(file.modified_time),
-        text(file.size),
-        Number(file.is_folder) ? 1 : 0
-      ));
-    });
-    tx(result.files);
+    upsertDesignLibraryFiles(result.files);
     setDesignSetting('last_sync_at', result.synced_at);
     setDesignSetting('last_sync_error', '');
     res.json({
@@ -2039,16 +2102,148 @@ app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
 app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
   const folderType = text(req.query.folder_type || req.query.folder || 'all').toLowerCase();
   const files = designLibraryFiles(folderType);
+  const activeFiles = activeDesignLibraryFiles(files);
   res.json({
     files,
     status: designLibraryStatus(),
-    readiness: designLibraryReadiness(files, designExtractionStatusLookup()),
+    readiness: designLibraryReadiness(activeFiles, designExtractionStatusLookup()),
     required_checklist: {
       vehicle_required: ['vehicle.json', 'dimensions.csv', 'floorplan.svg'],
       vehicle_optional: ['mounting_points.csv', 'restricted_zones.csv', 'layout_constraints.json', 'buildability_report.md', 'manifest.json', 'vehicle_knowledge_sheet.pdf', 'scan.glb', 'photos/'],
       product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
+});
+
+app.patch('/api/design-ai/library-files/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const file = db.prepare('SELECT * FROM design_library_files WHERE id=?').get(id);
+  if (!file) return res.status(404).json({ error: 'Library file not found.' });
+  const action = text(req.body.action || req.body.file_status).toLowerCase();
+  const now = new Date().toISOString();
+  if (action === 'ignore') {
+    db.prepare(`
+      UPDATE design_library_files
+      SET file_status='ignored', extraction_role='', ignored_at=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(now, id);
+  } else if (action === 'archive' || action === 'archived') {
+    db.prepare(`
+      UPDATE design_library_files
+      SET file_status='archived', extraction_role='', archived_at=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(now, id);
+  } else if (action === 'primary') {
+    db.prepare(`
+      UPDATE design_library_files
+      SET file_status='active', extraction_role='primary', ignored_at=NULL, archived_at=NULL, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(id);
+  } else if (action === 'restore' || action === 'active') {
+    db.prepare(`
+      UPDATE design_library_files
+      SET file_status='active', extraction_role='', ignored_at=NULL, archived_at=NULL, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(id);
+  } else {
+    return res.status(400).json({ error: 'Unsupported file action.' });
+  }
+  res.json({ file: db.prepare('SELECT * FROM design_library_files WHERE id=?').get(id) });
+});
+
+app.post('/api/design-ai/vehicles/:vehicleId/reset-extraction', requireAdmin, (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  const deleted = db.prepare(`
+    DELETE FROM design_ai_extraction_drafts
+    WHERE entity_type='vehicle' AND lower(entity_id)=lower(?)
+  `).run(vehicleId).changes;
+  res.json({ ok: true, deleted_extraction_drafts: deleted });
+});
+
+app.post('/api/design-ai/vehicles/:vehicleId/reset-research-files', requireAdmin, (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  const files = designVehicleLibraryFiles(vehicleId);
+  const tx = db.transaction(rows => {
+    rows.forEach(file => {
+      db.prepare(`
+        UPDATE design_library_files
+        SET file_status='reset_pending', extraction_role='', ignored_at=NULL, archived_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(file.id);
+    });
+  });
+  tx(files);
+  res.json({ ok: true, marked_reset_pending: files.length });
+});
+
+app.post('/api/design-ai/vehicles/:vehicleId/full-reset', requireAdmin, (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  const expected = `RESET ${vehicleId.toUpperCase()}`;
+  if (text(req.body.confirmation) !== expected) {
+    return res.status(400).json({ error: `Type ${expected} to confirm full reset.` });
+  }
+  const files = designVehicleLibraryFiles(vehicleId);
+  const result = db.transaction(() => {
+    const drafts = db.prepare(`
+      DELETE FROM design_ai_extraction_drafts
+      WHERE entity_type='vehicle' AND lower(entity_id)=lower(?)
+    `).run(vehicleId).changes;
+    const records = db.prepare('DELETE FROM design_ai_vehicle_records WHERE lower(vehicle_id)=lower(?)').run(vehicleId).changes;
+    let fileRefs = 0;
+    files.forEach(file => {
+      fileRefs += db.prepare('DELETE FROM design_library_files WHERE id=?').run(file.id).changes;
+    });
+    return { drafts, records, fileRefs };
+  })();
+  res.json({ ok: true, ...result });
+});
+
+app.post('/api/design-ai/vehicles/:vehicleId/rebuild', requireAdmin, async (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  try {
+    const cleared = db.prepare(`
+      DELETE FROM design_ai_extraction_drafts
+      WHERE entity_type='vehicle' AND lower(entity_id)=lower(?)
+    `).run(vehicleId).changes;
+    const syncResult = await syncDriveFolders(designAiSettings());
+    upsertDesignLibraryFiles(syncResult.files);
+    setDesignSetting('last_sync_at', syncResult.synced_at);
+    setDesignSetting('last_sync_error', '');
+    const files = designEntityFolderFiles('vehicle', vehicleId, vehicleId);
+    if (!files.length) return res.status(404).json({ error: 'No active Drive files found for this vehicle after sync.' });
+    const sourceFolder = files.find(file => Number(file.is_folder) === 1 && text(file.path) === vehicleId) || files[0];
+    const result = await extractDesignEntity({
+      entity_type: 'vehicle',
+      entity_id: vehicleId,
+      folder_path: vehicleId,
+      files
+    });
+    const draft = saveExtractionDraft({
+      entityType: 'vehicle',
+      entityId: vehicleId,
+      folderPath: vehicleId,
+      sourceDriveFolderId: sourceFolder?.drive_file_id || sourceFolder?.parent_drive_file_id || '',
+      extracted: {
+        ...result.extracted,
+        _content_warnings: result.content_warnings || []
+      },
+      confidence: result.confidence,
+      sourceFiles: result.source_files,
+      createdBy: actor(req).userId || ''
+    });
+    res.json({
+      ok: true,
+      cleared_extraction_drafts: cleared,
+      synced_at: syncResult.synced_at,
+      indexed_count: syncResult.files.length,
+      draft,
+      extracted: draft.extracted
+    });
+  } catch (err) {
+    const message = err.message || 'Vehicle rebuild failed.';
+    setDesignSetting('last_sync_error', message);
+    res.status(err.status || 502).json({ error: message });
+  }
 });
 
 app.post('/api/design-ai/moodboards', requireAuth, (req, res) => {
@@ -2225,7 +2420,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
 
     const files = vehicleResearchFilesForRecord(vehicle);
     const research = await normalizeVehicleResearchFileCandidates(files, vehicle.vehicle_id);
-    const researchStatuses = vehicleResearchStatusesWithFloorplan(research, files);
+    const researchFiles = vehicleResearchPayload(research, files);
     const layoutCandidate = research.items.layout_constraints;
     const file = layoutCandidate?.file || null;
     if (!file) {
@@ -2239,10 +2434,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
           notes: 'Sync Google Drive after the Vehicle Research Agent uploads layout_constraints.json or an equivalent layout constraints JSON file.',
           warnings: research.warnings || []
         },
-        research_files: {
-          statuses: researchStatuses,
-          warnings: research.warnings || []
-        },
+        research_files: researchFiles,
         suggestion: null
       });
     }
@@ -2271,10 +2463,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
           match_type: layoutCandidate?.match_type || '',
           match_label: layoutCandidate?.match_label || ''
         },
-        research_files: {
-          statuses: researchStatuses,
-          warnings: research.warnings || []
-        },
+        research_files: researchFiles,
         suggestion: null
       });
     }
@@ -2302,10 +2491,7 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
         match_type: layoutCandidate?.match_type || '',
         match_label: layoutCandidate?.match_label || ''
       },
-      research_files: {
-        statuses: researchStatuses,
-        warnings: research.warnings || []
-      },
+      research_files: researchFiles,
       suggestion
     });
   } catch (err) {

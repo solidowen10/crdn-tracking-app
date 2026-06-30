@@ -362,6 +362,10 @@ function migrate() {
       modified_time TEXT,
       size TEXT,
       is_folder INTEGER NOT NULL DEFAULT 0,
+      file_status TEXT NOT NULL DEFAULT 'active',
+      extraction_role TEXT NOT NULL DEFAULT '',
+      ignored_at TEXT,
+      archived_at TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -603,6 +607,10 @@ function migrate() {
   addColumn('design_library_files', 'path', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'parent_drive_file_id', "TEXT DEFAULT ''");
   addColumn('design_library_files', 'is_folder', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn('design_library_files', 'file_status', "TEXT NOT NULL DEFAULT 'active'");
+  addColumn('design_library_files', 'extraction_role', "TEXT NOT NULL DEFAULT ''");
+  addColumn('design_library_files', 'ignored_at', 'TEXT');
+  addColumn('design_library_files', 'archived_at', 'TEXT');
   addColumn('design_ai_vehicle_records', 'make', 'TEXT');
   addColumn('design_ai_vehicle_records', 'generation', 'TEXT');
   addColumn('design_ai_vehicle_records', 'market', 'TEXT');

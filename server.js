@@ -671,6 +671,102 @@ function layoutConceptPayload(body = {}, existing = null) {
   };
 }
 
+function positiveNumber(value, fallback = 0) {
+  const n = number(value, fallback);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function layoutVehicleName(row = {}) {
+  const parts = [
+    text(row.make || row.brand),
+    text(row.model)
+  ].filter(Boolean);
+  return parts.join(' ') || text(row.vehicle_id) || 'CRDN Vehicle';
+}
+
+function layoutVehicleBuildDimensions(row = {}) {
+  const constraints = parseJsonPayload(row.layout_constraints_json) || {};
+  const buildArea = constraints.build_area
+    || constraints.buildArea
+    || constraints.buildable_area
+    || constraints.buildableArea
+    || constraints.usable_floor_envelope_mm
+    || {};
+  const buildLength = positiveNumber(
+    buildArea.length_mm
+      ?? buildArea.buildable_length_mm
+      ?? buildArea.length
+      ?? buildArea.length_y
+      ?? constraints.buildable_length_mm
+      ?? constraints.build_length_mm
+      ?? row.interior_length_mm,
+    1900
+  );
+  const buildWidth = positiveNumber(
+    buildArea.width_mm
+      ?? buildArea.buildable_width_mm
+      ?? buildArea.width
+      ?? buildArea.width_x
+      ?? constraints.buildable_width_mm
+      ?? constraints.build_width_mm
+      ?? row.interior_width_mm,
+    1340
+  );
+  return { buildLength, buildWidth };
+}
+
+function layoutConceptVehiclesForLibrary() {
+  const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
+  const status = approvedCount > 0 ? 'approved' : 'draft';
+  return db.prepare(`
+    SELECT vehicle_id, brand, make, model, interior_length_mm, interior_width_mm,
+      layout_constraints_json, status, updated_at
+    FROM design_ai_vehicle_records
+    WHERE status=?
+    ORDER BY updated_at DESC, vehicle_id COLLATE NOCASE
+    LIMIT 200
+  `).all(status).map(row => {
+    const dimensions = layoutVehicleBuildDimensions(row);
+    return {
+      key: text(row.vehicle_id),
+      name: layoutVehicleName(row),
+      buildLength: dimensions.buildLength,
+      buildWidth: dimensions.buildWidth,
+      source: 'design_ai_vehicle_records',
+      status: row.status || status
+    };
+  }).filter(vehicle => vehicle.key);
+}
+
+function layoutConceptProductsForLibrary() {
+  const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_product_records WHERE status='approved'").get().count;
+  const status = approvedCount > 0 ? 'approved' : 'draft';
+  return db.prepare(`
+    SELECT product_id, name, category, layout_width_mm, layout_depth_mm, layout_height_mm,
+      width_mm, depth_mm, height_mm, color, status, updated_at
+    FROM design_ai_product_records
+    WHERE status=?
+    ORDER BY updated_at DESC, product_id COLLATE NOCASE
+    LIMIT 500
+  `).all(status).map(row => {
+    const width = positiveNumber(row.layout_width_mm ?? row.width_mm, 0);
+    const depth = positiveNumber(row.layout_depth_mm ?? row.depth_mm, 0);
+    const height = positiveNumber(row.layout_height_mm ?? row.height_mm, 0);
+    return {
+      id: text(row.product_id),
+      name: text(row.name || row.product_id || 'CRDN Product'),
+      category: text(row.category),
+      width,
+      depth,
+      height,
+      color: text(row.color),
+      source: 'design_ai_product_records',
+      status: row.status || status,
+      missing_dimensions: !width || !depth
+    };
+  }).filter(product => product.id);
+}
+
 function setting(key, fallback = '') {
   return db.prepare('SELECT value FROM app_settings WHERE key=?').get(key)?.value || fallback;
 }
@@ -2128,6 +2224,13 @@ app.get('/api/layout-concepts', requireAuth, (req, res) => {
     LIMIT 200
   `).all().map(row => layoutConceptFromRow(row));
   res.json({ concepts });
+});
+
+app.get('/api/layout-concepts/library-data', requireAuth, (req, res) => {
+  res.json({
+    vehicles: layoutConceptVehiclesForLibrary(),
+    products: layoutConceptProductsForLibrary()
+  });
 });
 
 app.get('/api/layout-concepts/:id', requireAuth, (req, res) => {

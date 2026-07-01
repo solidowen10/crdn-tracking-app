@@ -67,6 +67,7 @@
     .save-status.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
     .save-status.warn{border-color:#fde68a;background:#fffbeb;color:#92400e}
     .save-status.error{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+    .source-pill{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:5px 10px;border-radius:99px;background:var(--brand-f);color:var(--brand);font-size:var(--xxxs);font-weight:700;margin-bottom:12px}
     .canvas-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:12px;overflow:auto}
     .canvas-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
     .canvas-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;line-height:1}
@@ -134,6 +135,7 @@
         <section class="panel">
           <div class="panel-title">Layout Setup</div>
           <div class="warning">Concept Layout Only. This is a pre-sales discussion tool, not final CAD or fabrication approval.</div>
+          <div class="source-pill" id="librarySourceBadge">Loading library data...</div>
           <div class="field">
             <label for="layoutTitle">Layout Title</label>
             <input id="layoutTitle" type="text" placeholder="Customer camper concept">
@@ -162,7 +164,7 @@
             </div>
             <button class="btn primary" type="button" onclick="addSelectedProduct()">Add</button>
           </div>
-          <p class="hint">Positions are in millimeters relative to the buildable area. Product rectangles clamp inside the buildable area.</p>
+          <p class="hint" id="productLibraryHint">Positions are in millimeters relative to the buildable area. Product rectangles clamp inside the buildable area.</p>
         </section>
 
         <section class="panel">
@@ -205,14 +207,14 @@
     const VIEWBOX = { width: 980, height: 560 };
     const cargoZone = { x: 354, y: 114, width: 526, height: 330 };
 
-    const vehicles = {
+    const demoVehicles = {
       townace: { name: 'Toyota TownAce', buildLength: 1900, buildWidth: 1340 },
       hiace: { name: 'Toyota Hiace', buildLength: 2700, buildWidth: 1500 },
       caddy: { name: 'VW Caddy', buildLength: 1820, buildWidth: 1220 },
       delica: { name: 'Mitsubishi Delica', buildLength: 2050, buildWidth: 1380 }
     };
 
-    const products = {
+    const demoProducts = {
       sleepPlatform: { name: 'Sleep Platform', length: 1750, width: 1050, fill: '#d7ecff', stroke: '#2563eb' },
       rearKitchen: { name: 'Rear Kitchen', length: 760, width: 430, fill: '#fff3d6', stroke: '#ca741f' },
       storageCabinet: { name: 'Storage Cabinet', length: 760, width: 360, fill: '#ede9fe', stroke: '#7c3aed' },
@@ -220,6 +222,29 @@
       waterTank: { name: 'Water Tank', length: 520, width: 330, fill: '#cffafe', stroke: '#0891b2' },
       motoRail: { name: 'Motorcycle Rail', length: 1800, width: 260, fill: '#fee2e2', stroke: '#dc2626' },
       campTable: { name: 'Fold-out Table', length: 700, width: 430, fill: '#f5f5f4', stroke: '#57534e' }
+    };
+
+    let vehicles = { ...demoVehicles };
+    let products = { ...demoProducts };
+
+    const productPalette = [
+      { fill: '#d7ecff', stroke: '#2563eb' },
+      { fill: '#fff3d6', stroke: '#ca741f' },
+      { fill: '#ede9fe', stroke: '#7c3aed' },
+      { fill: '#dcfce7', stroke: '#16a34a' },
+      { fill: '#cffafe', stroke: '#0891b2' },
+      { fill: '#fee2e2', stroke: '#dc2626' },
+      { fill: '#f5f5f4', stroke: '#57534e' }
+    ];
+
+    const presetProductAliases = {
+      sleepPlatform: ['sleep', 'bed', 'platform'],
+      rearKitchen: ['kitchen', 'cook', 'galley'],
+      storageCabinet: ['storage', 'cabinet', 'drawer'],
+      fridgeSlide: ['fridge', 'refrigerator', 'cooler'],
+      waterTank: ['water', 'tank'],
+      motoRail: ['motorcycle', 'moto', 'bike', 'rail'],
+      campTable: ['table', 'fold']
     };
 
     const presets = {
@@ -264,6 +289,7 @@
     const state = {
       activeConceptId: null,
       savedConcepts: [],
+      libraryMode: 'demo',
       vehicleKey: 'townace',
       title: 'Basic Camper Concept',
       notes: '',
@@ -279,8 +305,150 @@
       return String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
     }
 
+    function positiveNumber(value, fallback = 0) {
+      const n = Number(value);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    }
+
+    function paletteForKey(key) {
+      const textKey = String(key || '');
+      const sum = [...textKey].reduce((total, char) => total + char.charCodeAt(0), 0);
+      return productPalette[sum % productPalette.length];
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(String(value || '').trim());
+    }
+
+    function productStyle(key, color) {
+      if (isHexColor(color)) return { fill: color, stroke: color };
+      return paletteForKey(key);
+    }
+
+    function setLibraryBadge(label, isFallback = false) {
+      const badge = document.getElementById('librarySourceBadge');
+      if (!badge) return;
+      badge.textContent = label;
+      badge.style.background = isFallback ? '#fffbeb' : 'var(--brand-f)';
+      badge.style.color = isFallback ? '#92400e' : 'var(--brand)';
+    }
+
+    function fallbackVehicleForKey(key) {
+      const demo = demoVehicles[key] || demoVehicles.townace;
+      return {
+        ...demo,
+        name: demoVehicles[key]?.name || `Saved vehicle (${key || 'unknown'})`,
+        source: 'saved_fallback',
+        status: 'unavailable'
+      };
+    }
+
+    function fallbackProductForKey(key) {
+      const demo = demoProducts[key];
+      if (demo) return { ...demo, source: 'saved_fallback', status: 'unavailable', selectable: false };
+      const style = paletteForKey(key);
+      return {
+        name: `Saved product (${key || 'unknown'})`,
+        length: 520,
+        width: 330,
+        fill: style.fill,
+        stroke: style.stroke,
+        source: 'saved_fallback',
+        status: 'unavailable',
+        selectable: false
+      };
+    }
+
+    function ensureVehicleForKey(key) {
+      const vehicleKey = String(key || 'townace');
+      if (!vehicles[vehicleKey]) vehicles[vehicleKey] = fallbackVehicleForKey(vehicleKey);
+      return vehicles[vehicleKey];
+    }
+
+    function ensureProductForKey(key) {
+      const productKey = String(key || 'unknown-product');
+      if (!products[productKey]) products[productKey] = fallbackProductForKey(productKey);
+      return products[productKey];
+    }
+
+    function useDemoLibraryData(message = 'Demo Fallback Data') {
+      vehicles = Object.fromEntries(Object.entries(demoVehicles).map(([key, vehicle]) => [
+        key,
+        { ...vehicle, source: 'demo_fallback', status: 'demo' }
+      ]));
+      products = Object.fromEntries(Object.entries(demoProducts).map(([key, product]) => [
+        key,
+        { ...product, source: 'demo_fallback', status: 'demo' }
+      ]));
+      state.libraryMode = 'demo';
+      setLibraryBadge('Demo Fallback Data', true);
+      const hint = document.getElementById('productLibraryHint');
+      if (hint) hint.textContent = `${message}. Positions are in millimeters relative to the buildable area.`;
+    }
+
+    function normalizeLibraryVehicle(vehicle) {
+      const key = String(vehicle?.key || '').trim();
+      if (!key) return null;
+      return {
+        name: vehicle.name || key,
+        buildLength: positiveNumber(vehicle.buildLength, 1900),
+        buildWidth: positiveNumber(vehicle.buildWidth, 1340),
+        source: vehicle.source || 'design_ai_vehicle_records',
+        status: vehicle.status || ''
+      };
+    }
+
+    function normalizeLibraryProduct(product, index) {
+      const key = String(product?.id || '').trim();
+      if (!key) return null;
+      const width = positiveNumber(product.width, 0);
+      const depth = positiveNumber(product.depth, 0);
+      const missingDimensions = Boolean(product.missing_dimensions) || !width || !depth;
+      const style = productStyle(key, product.color);
+      return {
+        name: product.name || key,
+        category: product.category || '',
+        length: missingDimensions ? 0 : depth,
+        width: missingDimensions ? 0 : width,
+        height: positiveNumber(product.height, 0),
+        fill: style.fill,
+        stroke: style.stroke,
+        source: product.source || 'design_ai_product_records',
+        status: product.status || '',
+        missingDimensions
+      };
+    }
+
+    async function loadLibraryData() {
+      try {
+        const data = await apiJson('/api/layout-concepts/library-data');
+        const nextVehicles = {};
+        (data.vehicles || []).forEach(vehicle => {
+          const normalized = normalizeLibraryVehicle(vehicle);
+          if (normalized) nextVehicles[vehicle.key] = normalized;
+        });
+        const nextProducts = {};
+        (data.products || []).forEach((product, index) => {
+          const normalized = normalizeLibraryProduct(product, index);
+          if (normalized) nextProducts[product.id] = normalized;
+        });
+        if (!Object.keys(nextVehicles).length || !Object.keys(nextProducts).length) {
+          useDemoLibraryData('No complete Design AI vehicle/product library records found yet');
+          return;
+        }
+        vehicles = nextVehicles;
+        products = nextProducts;
+        state.libraryMode = 'real';
+        setLibraryBadge('Real Library Data', false);
+        const hint = document.getElementById('productLibraryHint');
+        if (hint) hint.textContent = 'Products come from Design AI records. Items missing footprint dimensions cannot be placed yet.';
+      } catch (err) {
+        useDemoLibraryData(`Library data unavailable: ${err.message}`);
+      }
+    }
+
     function currentVehicle() {
-      return vehicles[state.vehicleKey] || vehicles.townace;
+      return vehicles[state.vehicleKey] || ensureVehicleForKey(state.vehicleKey);
     }
 
     function getBuildGeometry() {
@@ -300,6 +468,7 @@
 
     function resolveCoordinate(product, value, axis) {
       const vehicle = currentVehicle();
+      if (!product || product.missingDimensions) return 0;
       const max = axis === 'x' ? vehicle.buildLength - product.length : vehicle.buildWidth - product.width;
       if (value === 'center') return max / 2;
       if (value === 'right') return max;
@@ -313,15 +482,18 @@
 
     function clampItem(item) {
       const vehicle = currentVehicle();
-      const product = products[item.productKey];
+      const product = products[item.productKey] || ensureProductForKey(item.productKey);
       if (!product) return item;
-      item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - product.length));
-      item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - product.width));
+      const productLength = positiveNumber(product.length, 520);
+      const productWidth = positiveNumber(product.width, 330);
+      item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - productLength));
+      item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - productWidth));
       return item;
     }
 
     function createItem(productKey, x = 0, y = 0) {
-      const product = products[productKey];
+      const product = products[productKey] || ensureProductForKey(productKey);
+      if (!product || product.missingDimensions) return null;
       const item = {
         id: state.nextId++,
         productKey,
@@ -386,17 +558,21 @@
     }
 
     function applyLayoutSnapshot(layout = {}) {
-      const vehicleKey = vehicles[layout.vehicleKey] ? layout.vehicleKey : state.vehicleKey;
+      const vehicleKey = vehicles[layout.vehicleKey] ? layout.vehicleKey : String(layout.vehicleKey || state.vehicleKey || 'townace');
+      ensureVehicleForKey(vehicleKey);
       state.vehicleKey = vehicleKey;
       const rawItems = Array.isArray(layout.placed) ? layout.placed : [];
       state.placed = rawItems
-        .filter(item => products[item.productKey])
-        .map(item => clampItem({
-          id: Number(item.id || state.nextId++),
-          productKey: item.productKey,
-          x: Number(item.x || 0),
-          y: Number(item.y || 0)
-        }));
+        .filter(item => item?.productKey)
+        .map(item => {
+          ensureProductForKey(item.productKey);
+          return clampItem({
+            id: Number(item.id || state.nextId++),
+            productKey: item.productKey,
+            x: Number(item.x || 0),
+            y: Number(item.y || 0)
+          });
+        });
       const maxId = state.placed.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0);
       state.nextId = Math.max(Number(layout.nextId || 1), maxId + 1, 1);
     }
@@ -568,17 +744,44 @@
       }
     }
 
+    function findProductKeyForPreset(defaultKey) {
+      if (products[defaultKey] && !products[defaultKey].missingDimensions) return defaultKey;
+      const aliases = presetProductAliases[defaultKey] || [];
+      return Object.entries(products).find(([, product]) => {
+        if (product.selectable === false || product.missingDimensions) return false;
+        const haystack = `${product.name || ''} ${product.category || ''}`.toLowerCase();
+        return aliases.some(alias => haystack.includes(alias));
+      })?.[0] || null;
+    }
+
     function applyPreset(key) {
       const preset = presets[key] || presets.empty;
-      state.placed = preset.items.map(([productKey, x, y]) => createItem(productKey, x, y));
+      state.placed = preset.items
+        .map(([productKey, x, y]) => {
+          const resolvedKey = findProductKeyForPreset(productKey);
+          return resolvedKey ? createItem(resolvedKey, x, y) : null;
+        })
+        .filter(Boolean);
+      if (preset.items.length && !state.placed.length) {
+        setStatus('No library products with matching footprint dimensions are available for this preset yet.', 'warn');
+      }
       render();
     }
 
     function addSelectedProduct() {
       const key = document.getElementById('productSelect').value;
       const product = products[key];
+      if (!product) {
+        setStatus('Choose a product to add.', 'warn');
+        return;
+      }
+      if (product.missingDimensions) {
+        setStatus(`${product.name} is missing footprint dimensions and cannot be placed yet.`, 'warn');
+        return;
+      }
       const vehicle = currentVehicle();
-      state.placed.push(createItem(key, (vehicle.buildLength - product.length) / 2, (vehicle.buildWidth - product.width) / 2));
+      const item = createItem(key, (vehicle.buildLength - product.length) / 2, (vehicle.buildWidth - product.width) / 2);
+      if (item) state.placed.push(item);
       render();
     }
 
@@ -603,11 +806,11 @@
     }
 
     function productRect(item, geometry) {
-      const product = products[item.productKey];
+      const product = products[item.productKey] || ensureProductForKey(item.productKey);
       const x = geometry.x + item.x * geometry.scale;
       const y = geometry.y + item.y * geometry.scale;
-      const width = product.length * geometry.scale;
-      const height = product.width * geometry.scale;
+      const width = positiveNumber(product.length, 520) * geometry.scale;
+      const height = positiveNumber(product.width, 330) * geometry.scale;
       return { product, x, y, width, height };
     }
 
@@ -615,11 +818,13 @@
       const geometry = getBuildGeometry();
       const productNodes = state.placed.map(item => {
         const rect = productRect(clampItem(item), geometry);
+        const productLength = positiveNumber(rect.product.length, 520);
+        const productWidth = positiveNumber(rect.product.width, 330);
         return `
           <g>
             <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
-            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#111">${rect.product.name}</text>
-            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 14).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${rect.product.length} × ${rect.product.width} mm</text>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#111">${esc(rect.product.name)}</text>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 14).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${productLength} × ${productWidth} mm</text>
           </g>
         `;
       }).join('');
@@ -662,10 +867,22 @@
 
     function renderControls() {
       const vehicleSelect = document.getElementById('vehicleSelect');
-      vehicleSelect.innerHTML = Object.entries(vehicles).map(([key, vehicle]) => `<option value="${key}" ${key === state.vehicleKey ? 'selected' : ''}>${vehicle.name}</option>`).join('');
+      ensureVehicleForKey(state.vehicleKey);
+      vehicleSelect.innerHTML = Object.entries(vehicles).map(([key, vehicle]) => {
+        const meta = vehicle.source === 'design_ai_vehicle_records' ? ` · ${vehicle.status || 'record'}` : '';
+        return `<option value="${esc(key)}" ${key === state.vehicleKey ? 'selected' : ''}>${esc(vehicle.name)}${esc(meta)}</option>`;
+      }).join('');
 
       const productSelect = document.getElementById('productSelect');
-      productSelect.innerHTML = Object.entries(products).map(([key, product]) => `<option value="${key}">${product.name} · ${product.length} × ${product.width} mm</option>`).join('');
+      const productOptions = Object.entries(products)
+        .filter(([, product]) => product.selectable !== false)
+        .map(([key, product]) => {
+          const label = product.missingDimensions
+            ? `${product.name} · Missing footprint dimensions`
+            : `${product.name} · ${positiveNumber(product.length, 0)} × ${positiveNumber(product.width, 0)} mm`;
+          return `<option value="${esc(key)}" ${product.missingDimensions ? 'disabled' : ''}>${esc(label)}</option>`;
+        }).join('');
+      productSelect.innerHTML = productOptions || '<option value="">No products with footprint dimensions yet</option>';
 
       const presetWrap = document.getElementById('presetButtons');
       presetWrap.innerHTML = Object.entries(presets).map(([key, preset]) => `<button class="btn" type="button" onclick="applyPreset('${key}')">${preset.label}</button>`).join('');
@@ -686,13 +903,20 @@
         return;
       }
       wrap.innerHTML = state.placed.map(item => {
-        const product = products[item.productKey];
+        const product = products[item.productKey] || ensureProductForKey(item.productKey);
+        const productLength = positiveNumber(product.length, 520);
+        const productWidth = positiveNumber(product.width, 330);
+        const sourceLabel = product.source === 'design_ai_product_records'
+          ? `${product.status || 'record'} · Real Library Data`
+          : product.source === 'demo_fallback'
+            ? 'Demo Fallback Data'
+            : 'Saved fallback';
         return `
           <div class="placed-card">
             <div class="placed-head">
               <div>
-                <div class="placed-name">${product.name}</div>
-                <div class="placed-meta">Size: ${product.length} × ${product.width} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm</div>
+                <div class="placed-name">${esc(product.name)}</div>
+                <div class="placed-meta">Size: ${productLength} × ${productWidth} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm<br>${esc(sourceLabel)}</div>
               </div>
               <button class="btn small danger" type="button" onclick="removeItem(${item.id})">Remove</button>
             </div>
@@ -763,6 +987,7 @@
     document.getElementById('layoutNotes').addEventListener('input', readFormFields);
 
     async function initLayoutConceptPage() {
+      await loadLibraryData();
       renderControls();
       writeFormFields();
       applyPreset('basicCamper');

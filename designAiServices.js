@@ -74,6 +74,7 @@ const REQUIRED_MISSING_DATA = [
 ];
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DESIGN_AI_LOG_PREFIX = '[design-ai]';
+const DESIGN_AI_DEBUG_LOGS = process.env.DESIGN_AI_DEBUG_LOGS === '1';
 const VEHICLE_METADATA_FIELDS = new Set([
   'brand', 'make', 'model', 'generation', 'market', 'body_type', 'year_range', 'notes'
 ]);
@@ -153,6 +154,7 @@ function clean(value) {
 }
 
 function designAiLog(event, details = {}) {
+  if (!DESIGN_AI_DEBUG_LOGS) return;
   try {
     console.log(DESIGN_AI_LOG_PREFIX, JSON.stringify({ event, ...details }));
   } catch (err) {

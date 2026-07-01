@@ -2754,7 +2754,10 @@ function designAiReadinessHtml(readiness){
       <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div>${designAiResearchChecklistHtml(group)}${warnings.length?`<div class="dai-warning" style="margin-top:10px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}</div>
       <div>${designAiReadinessPill(group.status)}<div class="pc-s">${esc(group.extraction_status||'No extraction yet')}</div></div>
       <div class="dai-path">${esc(missing)}${evidence?`<br>${esc(evidence)}`:''}</div>
-      <div>${canExtract?`<button class="btn btn-out btn-sm" onclick="extractDesignAiFolder('${entityType}','${designAiJsArg(group.entity)}',this)">Extract Data</button>`:''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+${canExtract?`<button class="btn btn-out btn-sm" onclick="extractDesignAiFolder('${entityType}','${designAiJsArg(group.entity)}',this)">Extract Data</button>`:''}
+${entityType==='vehicle'?`<button class="btn btn-danger btn-sm" onclick="(async()=>{if(!confirm('Archive all indexed research for ${designAiJsArg(group.entity)}?\\n\\nGoogle Drive files will NOT be deleted.'))return;const r=await fetch('/api/design-ai/library-files/archive-entity',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_type:'vehicles',entity_path:'${designAiJsArg(group.entity)}'})});const j=await r.json();if(!r.ok){alert(j.error||'Archive failed.');return;}alert('Archived '+j.archived_count+' indexed file(s).');location.reload();})()">Archive Research</button>`:''}
+</div>
     </div>`;
   }).join('');
   return `<div class="dai-panel"><div class="dai-panel-title">Library Readiness</div><div class="dai-list">${rows}</div></div>`;

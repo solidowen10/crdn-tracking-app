@@ -2191,6 +2191,28 @@ app.delete('/api/layout-concepts/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+
+app.patch('/api/design-ai/library-files/archive-entity', requireAdmin, (req, res) => {
+  try {
+    const folderType = text(req.body.folder_type);
+    const entityPath = text(req.body.entity_path);
+    if (!folderType || !entityPath) return res.status(400).json({ error: 'folder_type and entity_path are required' });
+
+    const result = db.prepare(`
+      UPDATE design_library_files
+      SET file_status='archived',
+          archived_at=CURRENT_TIMESTAMP,
+          updated_at=CURRENT_TIMESTAMP
+      WHERE folder_type=?
+        AND (path=? OR path LIKE ?)
+    `).run(folderType, entityPath, `${entityPath}/%`);
+
+    res.json({ ok: true, archived_count: result.changes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/design-ai/settings', requireAuth, (req, res) => {
   res.json({
     settings: designAiSettings(),

@@ -40,7 +40,7 @@
     button{cursor:pointer}
     .app{min-height:100vh;display:flex;flex-direction:column}
     .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--w);border-bottom:1px solid var(--g200);padding:0 18px;box-shadow:var(--sh);flex-shrink:0}
-    .brand{display:flex;align-items:center;gap:11px;min-width:0}
+    .brand{display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;color:inherit}
     .brand img{width:34px;height:34px;border-radius:7px;object-fit:cover}
     .brand-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;line-height:1}
     .brand-title span{color:var(--brand)}
@@ -90,14 +90,15 @@
       .svg-wrap{min-width:680px}
     }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app">
     <header class="topbar">
-      <div class="brand">
+      <a class="brand" href="/" title="Back to main app">
         <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
         <div class="brand-title">Creative Den <span>Studio</span></div>
-      </div>
+      </a>
       <div class="top-actions">
         <a class="btn" href="/">← Projects</a>
         <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>

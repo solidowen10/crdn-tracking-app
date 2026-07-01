@@ -843,7 +843,7 @@ button{cursor:pointer}
     <button class="btn btn-out btn-sm desktop-timeline-btn" onclick="openGarageTimeline()">📅 Timeline</button>
     <button class="btn btn-out btn-sm hide-sm" onclick="openMockups()">🖼 Mockup</button>
     <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
-    <button class="btn btn-out btn-sm hide-sm" onclick="openLayoutConcept()">2D Layout</button>
+    <button class="btn btn-out btn-sm hide-sm" onclick="openLayoutConcept()">🧭 2D Layout</button>
     <button class="btn btn-out btn-sm hide-sm" onclick="openDesignAI()">🤖 AI Design</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
@@ -855,7 +855,7 @@ button{cursor:pointer}
         <button onclick="goHome();closeNavMenu()">Projects</button>
         <button onclick="openGarageTimeline();closeNavMenu()">Timeline</button>
         <button onclick="openMockups();closeNavMenu()">Mockup</button>
-        <button onclick="openLayoutConcept()">2D Layout</button>
+        <button onclick="openLayoutConcept()">🧭 2D Layout</button>
         <button onclick="openDesignAI();closeNavMenu()">AI Design</button>
         <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
@@ -2178,7 +2178,7 @@ function goHome(){
   showView('dash');
 }
 function openMockups(){showView('mockups');}
-function openLayoutConcept(){location.href='/layout-concept.html';}
+function openLayoutConcept(){location.href='/layout-concept';}
 function toggleNavMenu(event){
   event?.stopPropagation();
   const menu=document.getElementById('nav-menu');

@@ -880,8 +880,8 @@ function normalizeLayoutZone(zone = {}) {
 
 function normalizeVehicleLayoutSuggestion(raw, file) {
   const input = raw?.layout_constraints_json || raw?.layout_constraints || raw || {};
-  const buildArea = input.build_area || input.buildArea || input.buildable_area || input.buildableArea || {};
-  const clearance = input.clearance || input.clearances || {};
+  const buildArea = input.build_area || input.buildArea || input.buildable_area || input.buildableArea || input.usable_floor_envelope_mm || {};
+  const clearance = input.clearance || input.clearances || input.recommended_layout_clearances_mm || {};
   const metadata = input.metadata || {};
   const generatedAt = text(
     metadata.generated_at ||
@@ -895,16 +895,16 @@ function normalizeVehicleLayoutSuggestion(raw, file) {
     build_area: {
       x_mm: nullableNumber(buildArea.x_mm ?? buildArea.x ?? buildArea.origin_x_mm ?? input.build_origin_x_mm ?? input.origin_x_mm),
       y_mm: nullableNumber(buildArea.y_mm ?? buildArea.y ?? buildArea.origin_y_mm ?? input.build_origin_y_mm ?? input.origin_y_mm),
-      length_mm: nullableNumber(buildArea.length_mm ?? buildArea.buildable_length_mm ?? buildArea.length ?? input.buildable_length_mm ?? input.build_length_mm),
-      width_mm: nullableNumber(buildArea.width_mm ?? buildArea.buildable_width_mm ?? buildArea.width ?? input.buildable_width_mm ?? input.build_width_mm),
-      height_mm: nullableNumber(buildArea.height_mm ?? buildArea.buildable_height_mm ?? buildArea.height ?? input.buildable_height_mm ?? input.build_height_mm)
+      length_mm: nullableNumber(buildArea.length_mm ?? buildArea.buildable_length_mm ?? buildArea.length ?? buildArea.length_y ?? input.buildable_length_mm ?? input.build_length_mm),
+      width_mm: nullableNumber(buildArea.width_mm ?? buildArea.buildable_width_mm ?? buildArea.width ?? buildArea.width_x ?? input.buildable_width_mm ?? input.build_width_mm),
+      height_mm: nullableNumber(buildArea.height_mm ?? buildArea.buildable_height_mm ?? buildArea.height ?? buildArea.height_z ?? input.buildable_height_mm ?? input.build_height_mm)
     },
     clearance: {
       front_mm: nullableNumber(clearance.front_mm ?? clearance.front_seat_clearance_mm ?? clearance.front_seat_mm ?? input.front_seat_clearance_mm ?? input.front_clearance_mm),
-      rear_mm: nullableNumber(clearance.rear_mm ?? clearance.rear_door_clearance_mm ?? clearance.rear_door_mm ?? input.rear_door_clearance_mm ?? input.rear_clearance_mm),
-      left_mm: nullableNumber(clearance.left_mm ?? clearance.left_wall_clearance_mm ?? clearance.left_wall_mm ?? input.left_wall_clearance_mm ?? input.left_clearance_mm),
-      right_mm: nullableNumber(clearance.right_mm ?? clearance.right_wall_clearance_mm ?? clearance.right_wall_mm ?? input.right_wall_clearance_mm ?? input.right_clearance_mm),
-      minimum_walkway_mm: nullableNumber(clearance.minimum_walkway_mm ?? clearance.walkway_mm ?? input.minimum_walkway_mm)
+      rear_mm: nullableNumber(clearance.rear_mm ?? clearance.rear_door_clearance_mm ?? clearance.rear_door_mm ?? clearance.rear_access_clearance ?? input.rear_door_clearance_mm ?? input.rear_clearance_mm),
+      left_mm: nullableNumber(clearance.left_mm ?? clearance.left_wall_clearance_mm ?? clearance.left_wall_mm ?? clearance.cabinet_service_clearance ?? input.left_wall_clearance_mm ?? input.left_clearance_mm),
+      right_mm: nullableNumber(clearance.right_mm ?? clearance.right_wall_clearance_mm ?? clearance.right_wall_mm ?? clearance.cabinet_service_clearance ?? input.right_wall_clearance_mm ?? input.right_clearance_mm),
+      minimum_walkway_mm: nullableNumber(clearance.minimum_walkway_mm ?? clearance.walkway_mm ?? clearance.minimum_walkway_width ?? clearance.comfortable_walkway_width ?? input.minimum_walkway_mm)
     },
     restricted_zones: Array.isArray(input.restricted_zones)
       ? input.restricted_zones.map(normalizeLayoutZone)

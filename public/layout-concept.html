@@ -4,64 +4,85 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>CRDN 2D Layout Concept</title>
+  <link rel="icon" type="image/png" href="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png">
+  <link rel="apple-touch-icon" href="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png">
   <style>
     :root{
-      --brand:#ca741f;
-      --ink:#111110;
-      --muted:#6b6b68;
-      --line:#dededa;
-      --soft:#f8f8f5;
-      --panel:#ffffff;
+      --brand:#CA741F;
+      --brand-d:#a55c15;
+      --brand-l:#f9ede0;
+      --brand-f:#fdf8f3;
+      --black:#111110;
+      --g700:#3d3d3b;
+      --g500:#6b6b68;
+      --g400:#8c8c89;
+      --g300:#b8b8b4;
+      --g200:#e2e2de;
+      --g100:#f0f0ec;
+      --g50:#f8f8f5;
+      --w:#fff;
       --ok:#188038;
       --warn:#9a3412;
-      --radius:14px;
+      --danger:#dc2626;
+      --dl:#fef2f2;
+      --r:10px;
+      --rs:6px;
+      --sh:0 1px 4px rgba(0,0,0,.07);
+      --fs:16px;
+      --sm:15px;
+      --xs:14px;
+      --xxs:13px;
+      --xxxs:12px;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--soft);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{margin:0;background:var(--g50);color:var(--black);font-family:'Noto Sans TC',ui-sans-serif,system-ui,sans-serif;font-size:var(--fs)}
     button,input,select{font:inherit}
     button{cursor:pointer}
     .app{min-height:100vh;display:flex;flex-direction:column}
-    .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fff;border-bottom:1px solid var(--line);padding:0 22px}
+    .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--w);border-bottom:1px solid var(--g200);padding:0 18px;box-shadow:var(--sh);flex-shrink:0}
     .brand{display:flex;align-items:center;gap:11px;min-width:0}
-    .brand img{width:38px;height:38px;border-radius:8px;object-fit:cover}
-    .brand-title{font-weight:900;letter-spacing:.08em;font-size:15px;text-transform:uppercase;white-space:nowrap}
+    .brand img{width:34px;height:34px;border-radius:7px;object-fit:cover}
+    .brand-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;line-height:1}
     .brand-title span{color:var(--brand)}
     .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-    .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:7px}
-    .btn:hover{border-color:var(--brand);color:var(--brand)}
+    .btn{padding:8px 15px;border-radius:var(--rs);font-size:var(--xs);font-weight:500;border:1px solid var(--g200);transition:.15s;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;background:var(--w);color:var(--g700);text-decoration:none}
+    .btn:hover{background:var(--g50);border-color:var(--g300)}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-    .btn.danger{border-color:#fecaca;color:#b91c1c}
-    .layout{display:grid;grid-template-columns:290px minmax(0,1fr) 310px;gap:14px;padding:14px;align-items:start}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+    .btn.primary:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
+    .btn.danger{background:var(--dl);border-color:#fecaca;color:var(--danger)}
+    .btn.danger:hover{background:#fee2e2;color:var(--danger)}
+    .layout{display:grid;grid-template-columns:292px minmax(0,1fr) 316px;gap:14px;padding:14px 18px 22px;align-items:start}
+    .panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px;box-shadow:none}
     .panel + .panel{margin-top:12px}
-    .panel-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:#8c8c89;margin-bottom:11px}
+    .panel-title{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:11px}
     .field{display:grid;gap:5px;margin-bottom:12px}
-    .field label{font-size:12px;font-weight:800;color:var(--muted)}
-    .field input,.field select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;color:var(--ink)}
-    .hint{font-size:12px;line-height:1.5;color:var(--muted)}
-    .warning{border:1px solid #fed7aa;background:#fff7ed;color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:750;line-height:1.45;margin-bottom:12px}
-    .canvas-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px;overflow:auto}
+    .field label{font-size:var(--xxxs);font-weight:700;color:var(--g500)}
+    .field input,.field select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:8px 10px;background:var(--w);color:var(--black)}
+    .hint{font-size:var(--xxxs);line-height:1.5;color:var(--g500)}
+    .warning{border:1px solid #fed7aa;background:#fff7ed;color:var(--warn);border-radius:var(--rs);padding:10px 12px;font-size:var(--xxs);font-weight:700;line-height:1.45;margin-bottom:12px}
+    .canvas-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:12px;overflow:auto}
     .canvas-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
-    .canvas-title{font-weight:900;font-size:18px}
-    .canvas-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .canvas-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;line-height:1}
+    .canvas-sub{font-size:var(--xxxs);color:var(--g500);margin-top:2px}
     .svg-wrap{min-width:760px}
-    #layoutSvg{width:100%;height:auto;display:block;background:#fff;border:1px solid #ecece8;border-radius:12px}
+    #layoutSvg{width:100%;height:auto;display:block;background:var(--w);border:1px solid var(--g100);border-radius:var(--r)}
     .product-grid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
     .preset-grid{display:grid;grid-template-columns:1fr;gap:8px}
     .placed-list{display:grid;gap:10px}
-    .placed-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:11px}
+    .placed-card{border:1px solid var(--g200);border-radius:var(--r);background:var(--w);padding:11px}
     .placed-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
-    .placed-name{font-weight:900;line-height:1.25}
-    .placed-meta{font-size:12px;color:var(--muted);line-height:1.45}
+    .placed-name{font-weight:700;line-height:1.25}
+    .placed-meta{font-size:var(--xxxs);color:var(--g500);line-height:1.45}
     .move-pad{display:grid;grid-template-columns:34px 34px 34px;gap:5px;width:max-content;margin:8px 0}
-    .move-pad .btn{width:34px;height:30px;padding:0;font-size:13px}
+    .move-pad .btn{width:34px;height:30px;padding:0;font-size:var(--xxs)}
     .row-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-    .small{font-size:12px;padding:7px 9px}
-    .empty{border:1px dashed var(--line);border-radius:12px;background:var(--soft);padding:16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5}
+    .small{font-size:var(--xxxs);padding:6px 8px}
+    .empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:16px;text-align:center;color:var(--g500);font-size:var(--xxs);line-height:1.5}
     .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-    .stat{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}
-    .stat strong{display:block;font-size:15px}
-    .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+    .stat{border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);padding:9px}
+    .stat strong{display:block;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;line-height:1.05}
+    .stat span{font-size:11px;color:var(--g400);text-transform:uppercase;letter-spacing:.06em}
+    .bb{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em}
     @media(max-width:1100px){
       .layout{grid-template-columns:1fr}
       .topbar{height:auto;min-height:64px;align-items:flex-start;padding:13px 14px;flex-direction:column}
@@ -78,6 +99,7 @@
         <div class="brand-title">Creative Den <span>Studio</span></div>
       </div>
       <div class="top-actions">
+        <a class="btn" href="/">← Projects</a>
         <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
         <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
       </div>
@@ -316,7 +338,7 @@
         const rect = productRect(clampItem(item), geometry);
         return `
           <g>
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="8" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
             <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#111">${rect.product.name}</text>
             <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 14).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${rect.product.length} × ${rect.product.width} mm</text>
           </g>
@@ -326,30 +348,31 @@
       document.getElementById('layoutSvg').innerHTML = `
         <defs>
           <pattern id="cargoGrid" width="26" height="26" patternUnits="userSpaceOnUse">
-            <path d="M 26 0 L 0 0 0 26" fill="none" stroke="#ecece8" stroke-width="1"/>
+            <path d="M 26 0 L 0 0 0 26" fill="none" stroke="#f0f0ec" stroke-width="1"/>
           </pattern>
         </defs>
 
         <rect x="0" y="0" width="${VIEWBOX.width}" height="${VIEWBOX.height}" fill="#ffffff"/>
-        <text x="34" y="42" font-size="18" font-weight="900" fill="#111">CRDN 2D Layout Concept</text>
-        <text x="34" y="64" font-size="12" fill="#6b6b68">Concept Layout Only · Generic van outline · Buildable area changes per vehicle</text>
+        <text x="34" y="42" font-family="Bebas Neue, Arial Narrow, sans-serif" font-size="24" letter-spacing="1.2" fill="#111">CRDN 2D Layout Concept</text>
+        <text x="34" y="66" font-size="12" fill="#6b6b68">Concept Layout Only · Generic van outline · Buildable area changes per vehicle</text>
 
-        <rect x="66" y="92" width="848" height="374" rx="70" fill="#fbfaf7" stroke="#222" stroke-width="2.4"/>
-        <path d="M126 124 C96 160 94 398 126 432" fill="none" stroke="#b8b8b2" stroke-width="1.5"/>
-        <line x1="292" y1="112" x2="292" y2="446" stroke="#cfcfca" stroke-width="1.5" stroke-dasharray="6 8"/>
-        <text x="226" y="126" font-size="11" fill="#777" text-anchor="middle">Front seats / cabin</text>
-        <text x="620" y="126" font-size="11" fill="#777" text-anchor="middle">Rear cargo zone</text>
+        <rect x="66" y="92" width="848" height="374" rx="70" fill="#fbfaf7" stroke="#111110" stroke-width="2"/>
+        <path d="M126 124 C96 160 94 398 126 432" fill="none" stroke="#d8d8d2" stroke-width="1.5"/>
+        <line x1="292" y1="112" x2="292" y2="446" stroke="#d8d8d2" stroke-width="1.2" stroke-dasharray="6 8"/>
+        <line x1="354" y1="279" x2="880" y2="279" stroke="#ededeb" stroke-width="1" stroke-dasharray="4 6"/>
+        <text x="226" y="126" font-size="11" fill="#8c8c89" text-anchor="middle">Front seats / cabin</text>
+        <text x="620" y="126" font-size="11" fill="#8c8c89" text-anchor="middle">Rear cargo zone</text>
 
-        <rect x="154" y="190" width="70" height="70" rx="12" fill="#f1f1ed" stroke="#b8b8b2"/>
-        <rect x="154" y="300" width="70" height="70" rx="12" fill="#f1f1ed" stroke="#b8b8b2"/>
-        <line x1="252" y1="160" x2="252" y2="398" stroke="#d7d7d2" stroke-width="1"/>
+        <rect x="154" y="190" width="70" height="70" rx="10" fill="#f0f0ec" stroke="#c9c9c3"/>
+        <rect x="154" y="300" width="70" height="70" rx="10" fill="#f0f0ec" stroke="#c9c9c3"/>
+        <line x1="252" y1="160" x2="252" y2="398" stroke="#e2e2de" stroke-width="1"/>
 
-        <rect x="${cargoZone.x}" y="${cargoZone.y}" width="${cargoZone.width}" height="${cargoZone.height}" rx="22" fill="url(#cargoGrid)" stroke="#d6d6d1" stroke-width="1.6" stroke-dasharray="8 7"/>
+        <rect x="${cargoZone.x}" y="${cargoZone.y}" width="${cargoZone.width}" height="${cargoZone.height}" rx="18" fill="url(#cargoGrid)" stroke="#d8d8d2" stroke-width="1.3" stroke-dasharray="8 7"/>
         <text x="${cargoZone.x + 18}" y="${cargoZone.y + 24}" font-size="11" fill="#8c8c89">Reusable cargoZone</text>
 
-        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="14" fill="rgba(24,128,56,.12)" stroke="#188038" stroke-width="3"/>
-        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="900" fill="#188038">Centered Buildable Area</text>
-        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#188038">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
+        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="#fdf8f3" stroke="#CA741F" stroke-width="2.4"/>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">Centered Buildable Area</text>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#a55c15">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
 
         ${productNodes}
 

@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CRDN 2D Layout Concept</title>
+  <style>
+    :root{
+      --brand:#ca741f;
+      --ink:#111110;
+      --muted:#6b6b68;
+      --line:#dededa;
+      --soft:#f8f8f5;
+      --panel:#ffffff;
+      --ok:#188038;
+      --warn:#9a3412;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--soft);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    .topbar{height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fff;border-bottom:1px solid var(--line);padding:0 22px}
+    .brand{display:flex;align-items:center;gap:11px;min-width:0}
+    .brand img{width:38px;height:38px;border-radius:8px;object-fit:cover}
+    .brand-title{font-weight:900;letter-spacing:.08em;font-size:15px;text-transform:uppercase;white-space:nowrap}
+    .brand-title span{color:var(--brand)}
+    .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+    .btn:hover{border-color:var(--brand);color:var(--brand)}
+    .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+    .btn.danger{border-color:#fecaca;color:#b91c1c}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr) 310px;gap:14px;padding:14px;align-items:start}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+    .panel + .panel{margin-top:12px}
+    .panel-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:#8c8c89;margin-bottom:11px}
+    .field{display:grid;gap:5px;margin-bottom:12px}
+    .field label{font-size:12px;font-weight:800;color:var(--muted)}
+    .field input,.field select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;color:var(--ink)}
+    .hint{font-size:12px;line-height:1.5;color:var(--muted)}
+    .warning{border:1px solid #fed7aa;background:#fff7ed;color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:750;line-height:1.45;margin-bottom:12px}
+    .canvas-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px;overflow:auto}
+    .canvas-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+    .canvas-title{font-weight:900;font-size:18px}
+    .canvas-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .svg-wrap{min-width:760px}
+    #layoutSvg{width:100%;height:auto;display:block;background:#fff;border:1px solid #ecece8;border-radius:12px}
+    .product-grid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+    .preset-grid{display:grid;grid-template-columns:1fr;gap:8px}
+    .placed-list{display:grid;gap:10px}
+    .placed-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:11px}
+    .placed-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
+    .placed-name{font-weight:900;line-height:1.25}
+    .placed-meta{font-size:12px;color:var(--muted);line-height:1.45}
+    .move-pad{display:grid;grid-template-columns:34px 34px 34px;gap:5px;width:max-content;margin:8px 0}
+    .move-pad .btn{width:34px;height:30px;padding:0;font-size:13px}
+    .row-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+    .small{font-size:12px;padding:7px 9px}
+    .empty{border:1px dashed var(--line);border-radius:12px;background:var(--soft);padding:16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5}
+    .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .stat{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}
+    .stat strong{display:block;font-size:15px}
+    .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+    @media(max-width:1100px){
+      .layout{grid-template-columns:1fr}
+      .topbar{height:auto;min-height:64px;align-items:flex-start;padding:13px 14px;flex-direction:column}
+      .top-actions{justify-content:flex-start}
+      .svg-wrap{min-width:680px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
+        <div class="brand-title">Creative Den <span>Studio</span></div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
+        <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside>
+        <section class="panel">
+          <div class="panel-title">Layout Setup</div>
+          <div class="warning">Concept Layout Only. This is a pre-sales discussion tool, not final CAD or fabrication approval.</div>
+          <div class="field">
+            <label for="vehicleSelect">Vehicle</label>
+            <select id="vehicleSelect"></select>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="statLength">-</strong><span>Build L</span></div>
+            <div class="stat"><strong id="statWidth">-</strong><span>Build W</span></div>
+            <div class="stat"><strong id="statScale">-</strong><span>Scale</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Add Product</div>
+          <div class="product-grid">
+            <div class="field" style="margin-bottom:0">
+              <label for="productSelect">Product</label>
+              <select id="productSelect"></select>
+            </div>
+            <button class="btn primary" type="button" onclick="addSelectedProduct()">Add</button>
+          </div>
+          <p class="hint">Positions are in millimeters relative to the buildable area. Product rectangles clamp inside the buildable area.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Presets</div>
+          <div class="preset-grid" id="presetButtons"></div>
+        </section>
+      </aside>
+
+      <section class="canvas-card">
+        <div class="canvas-head">
+          <div>
+            <div class="canvas-title" id="canvasTitle">2D Layout Concept</div>
+            <div class="canvas-sub">Generic van outline · centered rear cargo buildable area · approximate product placement</div>
+          </div>
+          <button class="btn danger" type="button" onclick="clearLayout()">Clear Layout</button>
+        </div>
+        <div class="svg-wrap">
+          <svg id="layoutSvg" viewBox="0 0 980 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CRDN 2D layout concept"></svg>
+        </div>
+      </section>
+
+      <aside>
+        <section class="panel">
+          <div class="panel-title">Placed Items</div>
+          <div class="field">
+            <label for="moveStep">Move Step</label>
+            <select id="moveStep">
+              <option value="25">25 mm</option>
+              <option value="50" selected>50 mm</option>
+              <option value="100">100 mm</option>
+            </select>
+          </div>
+          <div id="placedList" class="placed-list"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const VIEWBOX = { width: 980, height: 560 };
+    const cargoZone = { x: 354, y: 114, width: 526, height: 330 };
+
+    const vehicles = {
+      townace: { name: 'Toyota TownAce', buildLength: 1900, buildWidth: 1340 },
+      hiace: { name: 'Toyota Hiace', buildLength: 2700, buildWidth: 1500 },
+      caddy: { name: 'VW Caddy', buildLength: 1820, buildWidth: 1220 },
+      delica: { name: 'Mitsubishi Delica', buildLength: 2050, buildWidth: 1380 }
+    };
+
+    const products = {
+      sleepPlatform: { name: 'Sleep Platform', length: 1750, width: 1050, fill: '#d7ecff', stroke: '#2563eb' },
+      rearKitchen: { name: 'Rear Kitchen', length: 760, width: 430, fill: '#fff3d6', stroke: '#ca741f' },
+      storageCabinet: { name: 'Storage Cabinet', length: 760, width: 360, fill: '#ede9fe', stroke: '#7c3aed' },
+      fridgeSlide: { name: 'Fridge Slide', length: 620, width: 430, fill: '#dcfce7', stroke: '#16a34a' },
+      waterTank: { name: 'Water Tank', length: 520, width: 330, fill: '#cffafe', stroke: '#0891b2' },
+      motoRail: { name: 'Motorcycle Rail', length: 1800, width: 260, fill: '#fee2e2', stroke: '#dc2626' },
+      campTable: { name: 'Fold-out Table', length: 700, width: 430, fill: '#f5f5f4', stroke: '#57534e' }
+    };
+
+    const presets = {
+      empty: { label: 'Empty', items: [] },
+      basicCamper: {
+        label: 'Basic Camper',
+        items: [
+          ['sleepPlatform', 70, 'center'],
+          ['rearKitchen', 'rear', 70],
+          ['fridgeSlide', 'rearMinus:720', 'right']
+        ]
+      },
+      rearKitchen: {
+        label: 'Rear Kitchen',
+        items: [
+          ['rearKitchen', 'rear', 'center'],
+          ['fridgeSlide', 'rearMinus:760', 80],
+          ['waterTank', 'rearMinus:760', 'right'],
+          ['storageCabinet', 80, 'center']
+        ]
+      },
+      sleepPlatform: {
+        label: 'Sleep Platform',
+        items: [
+          ['sleepPlatform', 60, 'center'],
+          ['storageCabinet', 'rearMinus:840', 70],
+          ['campTable', 'rearMinus:840', 'right']
+        ]
+      },
+      motorcycleCamp: {
+        label: 'Motorcycle + Camp',
+        items: [
+          ['motoRail', 80, 'center'],
+          ['storageCabinet', 'rearMinus:820', 70],
+          ['rearKitchen', 'rearMinus:820', 'right']
+        ]
+      }
+    };
+
+    const state = {
+      vehicleKey: 'townace',
+      placed: [],
+      nextId: 1
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function currentVehicle() {
+      return vehicles[state.vehicleKey] || vehicles.townace;
+    }
+
+    function getBuildGeometry() {
+      const vehicle = currentVehicle();
+      const buildableScale = Math.min(cargoZone.width / vehicle.buildLength, cargoZone.height / vehicle.buildWidth);
+      const widthVisual = vehicle.buildLength * buildableScale;
+      const heightVisual = vehicle.buildWidth * buildableScale;
+      return {
+        vehicle,
+        scale: buildableScale,
+        x: cargoZone.x + (cargoZone.width - widthVisual) / 2,
+        y: cargoZone.y + (cargoZone.height - heightVisual) / 2,
+        width: widthVisual,
+        height: heightVisual
+      };
+    }
+
+    function resolveCoordinate(product, value, axis) {
+      const vehicle = currentVehicle();
+      const max = axis === 'x' ? vehicle.buildLength - product.length : vehicle.buildWidth - product.width;
+      if (value === 'center') return max / 2;
+      if (value === 'right') return max;
+      if (value === 'rear') return max;
+      if (typeof value === 'string' && value.startsWith('rearMinus:')) {
+        const offset = Number(value.split(':')[1] || 0);
+        return vehicle.buildLength - offset;
+      }
+      return Number(value || 0);
+    }
+
+    function clampItem(item) {
+      const vehicle = currentVehicle();
+      const product = products[item.productKey];
+      if (!product) return item;
+      item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - product.length));
+      item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - product.width));
+      return item;
+    }
+
+    function createItem(productKey, x = 0, y = 0) {
+      const product = products[productKey];
+      const item = {
+        id: state.nextId++,
+        productKey,
+        x: resolveCoordinate(product, x, 'x'),
+        y: resolveCoordinate(product, y, 'y')
+      };
+      return clampItem(item);
+    }
+
+    function applyPreset(key) {
+      const preset = presets[key] || presets.empty;
+      state.placed = preset.items.map(([productKey, x, y]) => createItem(productKey, x, y));
+      render();
+    }
+
+    function addSelectedProduct() {
+      const key = document.getElementById('productSelect').value;
+      const product = products[key];
+      const vehicle = currentVehicle();
+      state.placed.push(createItem(key, (vehicle.buildLength - product.length) / 2, (vehicle.buildWidth - product.width) / 2));
+      render();
+    }
+
+    function clearLayout() {
+      state.placed = [];
+      render();
+    }
+
+    function moveItem(id, dx, dy) {
+      const step = Number(document.getElementById('moveStep').value || 50);
+      const item = state.placed.find(entry => entry.id === id);
+      if (!item) return;
+      item.x += dx * step;
+      item.y += dy * step;
+      clampItem(item);
+      render();
+    }
+
+    function removeItem(id) {
+      state.placed = state.placed.filter(item => item.id !== id);
+      render();
+    }
+
+    function productRect(item, geometry) {
+      const product = products[item.productKey];
+      const x = geometry.x + item.x * geometry.scale;
+      const y = geometry.y + item.y * geometry.scale;
+      const width = product.length * geometry.scale;
+      const height = product.width * geometry.scale;
+      return { product, x, y, width, height };
+    }
+
+    function renderVanSvg() {
+      const geometry = getBuildGeometry();
+      const productNodes = state.placed.map(item => {
+        const rect = productRect(clampItem(item), geometry);
+        return `
+          <g>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="8" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#111">${rect.product.name}</text>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 14).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${rect.product.length} × ${rect.product.width} mm</text>
+          </g>
+        `;
+      }).join('');
+
+      document.getElementById('layoutSvg').innerHTML = `
+        <defs>
+          <pattern id="cargoGrid" width="26" height="26" patternUnits="userSpaceOnUse">
+            <path d="M 26 0 L 0 0 0 26" fill="none" stroke="#ecece8" stroke-width="1"/>
+          </pattern>
+        </defs>
+
+        <rect x="0" y="0" width="${VIEWBOX.width}" height="${VIEWBOX.height}" fill="#ffffff"/>
+        <text x="34" y="42" font-size="18" font-weight="900" fill="#111">CRDN 2D Layout Concept</text>
+        <text x="34" y="64" font-size="12" fill="#6b6b68">Concept Layout Only · Generic van outline · Buildable area changes per vehicle</text>
+
+        <rect x="66" y="92" width="848" height="374" rx="70" fill="#fbfaf7" stroke="#222" stroke-width="2.4"/>
+        <path d="M126 124 C96 160 94 398 126 432" fill="none" stroke="#b8b8b2" stroke-width="1.5"/>
+        <line x1="292" y1="112" x2="292" y2="446" stroke="#cfcfca" stroke-width="1.5" stroke-dasharray="6 8"/>
+        <text x="226" y="126" font-size="11" fill="#777" text-anchor="middle">Front seats / cabin</text>
+        <text x="620" y="126" font-size="11" fill="#777" text-anchor="middle">Rear cargo zone</text>
+
+        <rect x="154" y="190" width="70" height="70" rx="12" fill="#f1f1ed" stroke="#b8b8b2"/>
+        <rect x="154" y="300" width="70" height="70" rx="12" fill="#f1f1ed" stroke="#b8b8b2"/>
+        <line x1="252" y1="160" x2="252" y2="398" stroke="#d7d7d2" stroke-width="1"/>
+
+        <rect x="${cargoZone.x}" y="${cargoZone.y}" width="${cargoZone.width}" height="${cargoZone.height}" rx="22" fill="url(#cargoGrid)" stroke="#d6d6d1" stroke-width="1.6" stroke-dasharray="8 7"/>
+        <text x="${cargoZone.x + 18}" y="${cargoZone.y + 24}" font-size="11" fill="#8c8c89">Reusable cargoZone</text>
+
+        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="14" fill="rgba(24,128,56,.12)" stroke="#188038" stroke-width="3"/>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="900" fill="#188038">Centered Buildable Area</text>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#188038">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
+
+        ${productNodes}
+
+        <line x1="84" y1="484" x2="898" y2="484" stroke="#dededa" stroke-width="1"/>
+        <text x="84" y="508" font-size="11" fill="#777">Presales concept. Product rectangles are approximate footprints clamped inside the centered buildable area.</text>
+      `;
+    }
+
+    function renderControls() {
+      const vehicleSelect = document.getElementById('vehicleSelect');
+      vehicleSelect.innerHTML = Object.entries(vehicles).map(([key, vehicle]) => `<option value="${key}" ${key === state.vehicleKey ? 'selected' : ''}>${vehicle.name}</option>`).join('');
+
+      const productSelect = document.getElementById('productSelect');
+      productSelect.innerHTML = Object.entries(products).map(([key, product]) => `<option value="${key}">${product.name} · ${product.length} × ${product.width} mm</option>`).join('');
+
+      const presetWrap = document.getElementById('presetButtons');
+      presetWrap.innerHTML = Object.entries(presets).map(([key, preset]) => `<button class="btn" type="button" onclick="applyPreset('${key}')">${preset.label}</button>`).join('');
+    }
+
+    function renderStats() {
+      const geometry = getBuildGeometry();
+      document.getElementById('canvasTitle').textContent = `${geometry.vehicle.name} Layout Concept`;
+      document.getElementById('statLength').textContent = `${geometry.vehicle.buildLength} mm`;
+      document.getElementById('statWidth').textContent = `${geometry.vehicle.buildWidth} mm`;
+      document.getElementById('statScale').textContent = `${geometry.scale.toFixed(3)} px/mm`;
+    }
+
+    function renderPlacedList() {
+      const wrap = document.getElementById('placedList');
+      if (!state.placed.length) {
+        wrap.innerHTML = '<div class="empty">No products placed yet. Choose a preset or add a product.</div>';
+        return;
+      }
+      wrap.innerHTML = state.placed.map(item => {
+        const product = products[item.productKey];
+        return `
+          <div class="placed-card">
+            <div class="placed-head">
+              <div>
+                <div class="placed-name">${product.name}</div>
+                <div class="placed-meta">Size: ${product.length} × ${product.width} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm</div>
+              </div>
+              <button class="btn small danger" type="button" onclick="removeItem(${item.id})">Remove</button>
+            </div>
+            <div class="move-pad" aria-label="Move ${product.name}">
+              <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,-1)">↑</button><span></span>
+              <button class="btn" type="button" onclick="moveItem(${item.id},-1,0)">←</button><span></span><button class="btn" type="button" onclick="moveItem(${item.id},1,0)">→</button>
+              <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,1)">↓</button><span></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function render() {
+      state.placed.forEach(clampItem);
+      renderStats();
+      renderVanSvg();
+      renderPlacedList();
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function svgMarkup() {
+      const svg = document.getElementById('layoutSvg').cloneNode(true);
+      svg.setAttribute('width', VIEWBOX.width);
+      svg.setAttribute('height', VIEWBOX.height);
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      return new XMLSerializer().serializeToString(svg);
+    }
+
+    function exportSvg() {
+      downloadBlob(new Blob([svgMarkup()], { type: 'image/svg+xml;charset=utf-8' }), 'crdn-layout-concept.svg');
+    }
+
+    function exportPng() {
+      const canvas = document.createElement('canvas');
+      canvas.width = VIEWBOX.width;
+      canvas.height = VIEWBOX.height;
+      const ctx = canvas.getContext('2d');
+      const image = new Image();
+      const svgUrl = URL.createObjectURL(new Blob([svgMarkup()], { type: 'image/svg+xml;charset=utf-8' }));
+      image.onload = () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, VIEWBOX.width, VIEWBOX.height);
+        URL.revokeObjectURL(svgUrl);
+        canvas.toBlob(blob => downloadBlob(blob, 'crdn-layout-concept.png'), 'image/png');
+      };
+      image.src = svgUrl;
+    }
+
+    document.getElementById('vehicleSelect').addEventListener('change', event => {
+      state.vehicleKey = event.target.value;
+      state.placed.forEach(clampItem);
+      render();
+    });
+
+    renderControls();
+    applyPreset('basicCamper');
+  </script>
+</body>
+</html>

@@ -1934,6 +1934,7 @@ app.get('/auth/me', requireAuth, (req, res) => res.json(req.session.user));
 app.post('/auth/logout', (req, res) => req.session.destroy(() => res.redirect('/login')));
 
 app.get('/', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+app.get('/layout-concept.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'layout-concept.html')));
 app.get([
   '/design-ai',
   '/design-ai/settings',

@@ -605,6 +605,72 @@ function dashboardSummary(rows) {
   };
 }
 
+function parseJsonPayload(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch (err) {
+      return null;
+    }
+  }
+  try {
+    JSON.stringify(value);
+    return value;
+  } catch (err) {
+    return null;
+  }
+}
+
+function layoutConceptFromRow(row, includeLayout = false) {
+  if (!row) return null;
+  const concept = {
+    id: row.id,
+    title: row.title || '',
+    vehicle_key: row.vehicle_key || '',
+    vehicle_name: row.vehicle_name || '',
+    notes: row.notes || '',
+    created_by_line_user_id: row.created_by_line_user_id || '',
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || ''
+  };
+  if (includeLayout) concept.layout_json = parseJsonPayload(row.layout_json) || {};
+  return concept;
+}
+
+function layoutConceptPayload(body = {}, existing = null) {
+  const title = text(body.title ?? existing?.title);
+  const vehicleKey = text(body.vehicle_key ?? body.vehicleKey ?? existing?.vehicle_key);
+  const vehicleName = text(body.vehicle_name ?? body.vehicleName ?? existing?.vehicle_name);
+  const notes = text(body.notes ?? existing?.notes);
+  const rawLayout = body.layout_json ?? body.layoutJson ?? existing?.layout_json;
+  const layout = parseJsonPayload(rawLayout);
+
+  if (!title) {
+    const err = new Error('Layout title is required.');
+    err.status = 400;
+    throw err;
+  }
+  if (!vehicleKey) {
+    const err = new Error('Vehicle key is required.');
+    err.status = 400;
+    throw err;
+  }
+  if (!layout) {
+    const err = new Error('Valid layout_json is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  return {
+    title,
+    vehicle_key: vehicleKey,
+    vehicle_name: vehicleName,
+    notes,
+    layout_json: JSON.stringify(layout)
+  };
+}
+
 function setting(key, fallback = '') {
   return db.prepare('SELECT value FROM app_settings WHERE key=?').get(key)?.value || fallback;
 }
@@ -1935,7 +2001,7 @@ app.post('/auth/logout', (req, res) => req.session.destroy(() => res.redirect('/
 
 app.get('/', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
 app.get('/layout-concept', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'layout-concept.html')));
-app.get('/layout-concept.html', (req, res) => res.redirect(301, '/layout-concept'));
+app.get('/layout-concept.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'layout-concept.html')));
 app.get([
   '/design-ai',
   '/design-ai/settings',
@@ -2052,6 +2118,77 @@ app.get('/api/dashboard', requireAuth, (req, res) => {
   const rows = dashboardRows(text(req.query.filter) || 'All');
   const allRows = dashboardRows('All');
   res.json({ summary: dashboardSummary(allRows), projects: rows });
+});
+
+app.get('/api/layout-concepts', requireAuth, (req, res) => {
+  const concepts = db.prepare(`
+    SELECT id, title, vehicle_key, vehicle_name, notes, created_by_line_user_id, created_at, updated_at
+    FROM design_layout_concepts
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 200
+  `).all().map(row => layoutConceptFromRow(row));
+  res.json({ concepts });
+});
+
+app.get('/api/layout-concepts/:id', requireAuth, (req, res) => {
+  const row = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(Number(req.params.id));
+  const concept = layoutConceptFromRow(row, true);
+  if (!concept) return res.status(404).json({ error: 'Layout concept not found.' });
+  res.json({ concept });
+});
+
+app.post('/api/layout-concepts', requireAuth, (req, res) => {
+  try {
+    const payload = layoutConceptPayload(req.body || {});
+    const result = db.prepare(`
+      INSERT INTO design_layout_concepts (
+        title, vehicle_key, vehicle_name, layout_json, notes, created_by_line_user_id,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(
+      payload.title,
+      payload.vehicle_key,
+      payload.vehicle_name,
+      payload.layout_json,
+      payload.notes,
+      actor(req).userId || ''
+    );
+    const row = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(result.lastInsertRowid);
+    res.status(201).json({ concept: layoutConceptFromRow(row, true) });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Could not save layout concept.' });
+  }
+});
+
+app.patch('/api/layout-concepts/:id', requireAuth, (req, res) => {
+  const existing = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(Number(req.params.id));
+  if (!existing) return res.status(404).json({ error: 'Layout concept not found.' });
+  try {
+    const payload = layoutConceptPayload(req.body || {}, existing);
+    db.prepare(`
+      UPDATE design_layout_concepts
+      SET title=?, vehicle_key=?, vehicle_name=?, layout_json=?, notes=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(
+      payload.title,
+      payload.vehicle_key,
+      payload.vehicle_name,
+      payload.layout_json,
+      payload.notes,
+      existing.id
+    );
+    const row = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(existing.id);
+    res.json({ concept: layoutConceptFromRow(row, true) });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Could not update layout concept.' });
+  }
+});
+
+app.delete('/api/layout-concepts/:id', requireAuth, (req, res) => {
+  const result = db.prepare('DELETE FROM design_layout_concepts WHERE id=?').run(Number(req.params.id));
+  if (!result.changes) return res.status(404).json({ error: 'Layout concept not found.' });
+  res.json({ ok: true });
 });
 
 app.get('/api/design-ai/settings', requireAuth, (req, res) => {

@@ -51,15 +51,22 @@
     .btn.primary:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
     .btn.danger{background:var(--dl);border-color:#fecaca;color:var(--danger)}
     .btn.danger:hover{background:#fee2e2;color:var(--danger)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
     .layout{display:grid;grid-template-columns:292px minmax(0,1fr) 316px;gap:14px;padding:14px 18px 22px;align-items:start}
     .panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px;box-shadow:none}
     .panel + .panel{margin-top:12px}
     .panel-title{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:11px}
     .field{display:grid;gap:5px;margin-bottom:12px}
     .field label{font-size:var(--xxxs);font-weight:700;color:var(--g500)}
-    .field input,.field select{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:8px 10px;background:var(--w);color:var(--black)}
+    .field input,.field select,.field textarea{width:100%;border:1px solid var(--g200);border-radius:var(--rs);padding:8px 10px;background:var(--w);color:var(--black)}
+    .field textarea{min-height:78px;resize:vertical;line-height:1.45}
     .hint{font-size:var(--xxxs);line-height:1.5;color:var(--g500)}
     .warning{border:1px solid #fed7aa;background:#fff7ed;color:var(--warn);border-radius:var(--rs);padding:10px 12px;font-size:var(--xxs);font-weight:700;line-height:1.45;margin-bottom:12px}
+    .save-status{display:none;border:1px solid var(--g200);border-radius:var(--rs);padding:9px 10px;margin-top:10px;font-size:var(--xxs);line-height:1.45;color:var(--g500);background:var(--g50)}
+    .save-status.show{display:block}
+    .save-status.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+    .save-status.warn{border-color:#fde68a;background:#fffbeb;color:#92400e}
+    .save-status.error{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
     .canvas-card{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:12px;overflow:auto}
     .canvas-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
     .canvas-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;line-height:1}
@@ -67,6 +74,7 @@
     .svg-wrap{min-width:760px}
     #layoutSvg{width:100%;height:auto;display:block;background:var(--w);border:1px solid var(--g100);border-radius:var(--r)}
     .product-grid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+    .saved-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
     .preset-grid{display:grid;grid-template-columns:1fr;gap:8px}
     .placed-list{display:grid;gap:10px}
     .placed-card{border:1px solid var(--g200);border-radius:var(--r);background:var(--w);padding:11px}
@@ -100,6 +108,7 @@
         <div class="brand-title">Creative Den <span>Studio</span></div>
       </a>
       <div class="top-actions">
+        <button class="btn primary" id="saveLayoutBtn" type="button" onclick="saveLayout()">Save Layout</button>
         <a class="btn" href="/">← Projects</a>
         <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
         <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
@@ -109,11 +118,33 @@
     <main class="layout">
       <aside>
         <section class="panel">
+          <div class="panel-title">Saved Layouts</div>
+          <div class="field">
+            <label for="savedConceptSelect">Saved layout</label>
+            <select id="savedConceptSelect"></select>
+          </div>
+          <div class="saved-actions">
+            <button class="btn" type="button" onclick="loadSelectedConcept()">Load</button>
+            <button class="btn" type="button" onclick="newLayout()">New</button>
+            <button class="btn danger" type="button" onclick="deleteSelectedConcept()">Delete</button>
+          </div>
+          <div class="save-status" id="conceptStatus"></div>
+        </section>
+
+        <section class="panel">
           <div class="panel-title">Layout Setup</div>
           <div class="warning">Concept Layout Only. This is a pre-sales discussion tool, not final CAD or fabrication approval.</div>
           <div class="field">
+            <label for="layoutTitle">Layout Title</label>
+            <input id="layoutTitle" type="text" placeholder="Customer camper concept">
+          </div>
+          <div class="field">
             <label for="vehicleSelect">Vehicle</label>
             <select id="vehicleSelect"></select>
+          </div>
+          <div class="field">
+            <label for="layoutNotes">Notes</label>
+            <textarea id="layoutNotes" placeholder="Customer requirements, sales notes, or rough concept direction"></textarea>
           </div>
           <div class="stats">
             <div class="stat"><strong id="statLength">-</strong><span>Build L</span></div>
@@ -228,14 +259,24 @@
       }
     };
 
+    const DRAFT_KEY = 'crdn-layout-concept-draft-v1';
+
     const state = {
+      activeConceptId: null,
+      savedConcepts: [],
       vehicleKey: 'townace',
+      title: 'Basic Camper Concept',
+      notes: '',
       placed: [],
       nextId: 1
     };
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
+    }
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
     }
 
     function currentVehicle() {
@@ -288,6 +329,243 @@
         y: resolveCoordinate(product, y, 'y')
       };
       return clampItem(item);
+    }
+
+    function readFormFields() {
+      const titleInput = document.getElementById('layoutTitle');
+      const notesInput = document.getElementById('layoutNotes');
+      state.title = (titleInput?.value || '').trim();
+      state.notes = notesInput?.value || '';
+    }
+
+    function writeFormFields() {
+      const titleInput = document.getElementById('layoutTitle');
+      const notesInput = document.getElementById('layoutNotes');
+      if (titleInput) titleInput.value = state.title || '';
+      if (notesInput) notesInput.value = state.notes || '';
+    }
+
+    function setStatus(message = '', type = '') {
+      const el = document.getElementById('conceptStatus');
+      if (!el) return;
+      el.textContent = message;
+      el.className = `save-status${message ? ' show' : ''}${type ? ` ${type}` : ''}`;
+    }
+
+    function setSaving(isSaving) {
+      const btn = document.getElementById('saveLayoutBtn');
+      if (!btn) return;
+      btn.disabled = Boolean(isSaving);
+      btn.textContent = isSaving ? 'Saving...' : 'Save Layout';
+    }
+
+    function layoutSnapshot() {
+      return {
+        schema_version: 1,
+        vehicleKey: state.vehicleKey,
+        placed: state.placed.map(item => ({
+          id: item.id,
+          productKey: item.productKey,
+          x: Math.round(Number(item.x || 0)),
+          y: Math.round(Number(item.y || 0))
+        })),
+        nextId: state.nextId
+      };
+    }
+
+    function conceptPayload() {
+      readFormFields();
+      const vehicle = currentVehicle();
+      return {
+        title: state.title,
+        vehicle_key: state.vehicleKey,
+        vehicle_name: vehicle.name,
+        notes: state.notes || '',
+        layout_json: layoutSnapshot()
+      };
+    }
+
+    function applyLayoutSnapshot(layout = {}) {
+      const vehicleKey = vehicles[layout.vehicleKey] ? layout.vehicleKey : state.vehicleKey;
+      state.vehicleKey = vehicleKey;
+      const rawItems = Array.isArray(layout.placed) ? layout.placed : [];
+      state.placed = rawItems
+        .filter(item => products[item.productKey])
+        .map(item => clampItem({
+          id: Number(item.id || state.nextId++),
+          productKey: item.productKey,
+          x: Number(item.x || 0),
+          y: Number(item.y || 0)
+        }));
+      const maxId = state.placed.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0);
+      state.nextId = Math.max(Number(layout.nextId || 1), maxId + 1, 1);
+    }
+
+    async function apiJson(url, options = {}) {
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options
+      });
+      const bodyText = await response.text();
+      let body = {};
+      if (bodyText) {
+        try {
+          body = JSON.parse(bodyText);
+        } catch (err) {
+          throw new Error(`HTTP ${response.status}: ${bodyText.slice(0, 180)}`);
+        }
+      }
+      if (response.status === 401) {
+        location.href = '/login';
+        throw new Error('Not authenticated');
+      }
+      if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+      return body;
+    }
+
+    function saveDraftFallback(reason = '') {
+      try {
+        const payload = conceptPayload();
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          ...payload,
+          activeConceptId: state.activeConceptId,
+          saved_at: new Date().toISOString()
+        }));
+        setStatus(reason ? `${reason} Draft saved in this browser.` : 'Draft saved in this browser.', 'warn');
+      } catch (err) {
+        setStatus(`Draft fallback failed: ${err.message}`, 'error');
+      }
+    }
+
+    function loadDraftFallback(showMessage = true) {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return false;
+        const draft = JSON.parse(raw);
+        state.activeConceptId = draft.activeConceptId || null;
+        state.title = draft.title || state.title;
+        state.notes = draft.notes || '';
+        state.vehicleKey = vehicles[draft.vehicle_key] ? draft.vehicle_key : state.vehicleKey;
+        applyLayoutSnapshot(draft.layout_json || {});
+        renderControls();
+        writeFormFields();
+        render();
+        if (showMessage) setStatus('Loaded temporary browser draft because saved layouts could not be reached.', 'warn');
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    async function loadSavedConcepts() {
+      try {
+        const data = await apiJson('/api/layout-concepts');
+        state.savedConcepts = data.concepts || [];
+        renderSavedConcepts();
+        setStatus(state.savedConcepts.length ? '' : 'No saved layouts yet. Save this concept to make it available from other browsers.', '');
+      } catch (err) {
+        state.savedConcepts = [];
+        renderSavedConcepts();
+        if (!loadDraftFallback(false)) setStatus(`Saved layouts unavailable: ${err.message}`, 'error');
+        else setStatus(`Saved layouts unavailable: ${err.message}. Temporary draft loaded.`, 'warn');
+      }
+    }
+
+    function renderSavedConcepts() {
+      const select = document.getElementById('savedConceptSelect');
+      if (!select) return;
+      const rows = state.savedConcepts.map(concept => {
+        const label = `${concept.title || 'Untitled'} · ${concept.vehicle_name || concept.vehicle_key || 'Vehicle'}`;
+        return `<option value="${concept.id}" ${Number(concept.id) === Number(state.activeConceptId) ? 'selected' : ''}>${esc(label)}</option>`;
+      }).join('');
+      select.innerHTML = `<option value="">${state.savedConcepts.length ? 'Select saved layout...' : 'No saved layouts yet'}</option>${rows}`;
+    }
+
+    async function saveLayout() {
+      const payload = conceptPayload();
+      if (!payload.title.trim()) {
+        setStatus('Layout title is required before saving.', 'error');
+        return;
+      }
+      setSaving(true);
+      try {
+        const url = state.activeConceptId ? `/api/layout-concepts/${state.activeConceptId}` : '/api/layout-concepts';
+        const method = state.activeConceptId ? 'PATCH' : 'POST';
+        const data = await apiJson(url, { method, body: JSON.stringify(payload) });
+        state.activeConceptId = data.concept.id;
+        state.title = data.concept.title || payload.title;
+        state.notes = data.concept.notes || payload.notes;
+        applyLayoutSnapshot(data.concept.layout_json || payload.layout_json);
+        writeFormFields();
+        renderControls();
+        render();
+        await loadSavedConcepts();
+        renderSavedConcepts();
+        try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+        setStatus(`Saved "${state.title}".`, 'ok');
+      } catch (err) {
+        saveDraftFallback(`Save failed: ${err.message}.`);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    async function loadSelectedConcept() {
+      const id = Number(document.getElementById('savedConceptSelect')?.value || 0);
+      if (!id) {
+        setStatus('Choose a saved layout to load.', 'warn');
+        return;
+      }
+      try {
+        const data = await apiJson(`/api/layout-concepts/${id}`);
+        const concept = data.concept;
+        state.activeConceptId = concept.id;
+        state.title = concept.title || '';
+        state.notes = concept.notes || '';
+        state.vehicleKey = vehicles[concept.vehicle_key] ? concept.vehicle_key : state.vehicleKey;
+        applyLayoutSnapshot(concept.layout_json || {});
+        renderControls();
+        writeFormFields();
+        render();
+        renderSavedConcepts();
+        setStatus(`Loaded "${state.title}".`, 'ok');
+      } catch (err) {
+        setStatus(`Load failed: ${err.message}`, 'error');
+      }
+    }
+
+    function newLayout() {
+      state.activeConceptId = null;
+      state.vehicleKey = 'townace';
+      state.title = 'New Layout Concept';
+      state.notes = '';
+      state.placed = [];
+      state.nextId = 1;
+      renderControls();
+      writeFormFields();
+      render();
+      renderSavedConcepts();
+      setStatus('Started a new unsaved layout.', '');
+    }
+
+    async function deleteSelectedConcept() {
+      const id = Number(document.getElementById('savedConceptSelect')?.value || state.activeConceptId || 0);
+      if (!id) {
+        setStatus('Choose a saved layout to delete.', 'warn');
+        return;
+      }
+      const concept = state.savedConcepts.find(item => Number(item.id) === id);
+      const label = concept?.title || state.title || `layout #${id}`;
+      if (!confirm(`Delete saved layout "${label}"? This cannot be undone.`)) return;
+      try {
+        await apiJson(`/api/layout-concepts/${id}`, { method: 'DELETE' });
+        if (Number(state.activeConceptId) === id) newLayout();
+        await loadSavedConcepts();
+        setStatus(`Deleted "${label}".`, 'ok');
+      } catch (err) {
+        setStatus(`Delete failed: ${err.message}`, 'error');
+      }
     }
 
     function applyPreset(key) {
@@ -481,8 +759,17 @@
       render();
     });
 
-    renderControls();
-    applyPreset('basicCamper');
+    document.getElementById('layoutTitle').addEventListener('input', readFormFields);
+    document.getElementById('layoutNotes').addEventListener('input', readFormFields);
+
+    async function initLayoutConceptPage() {
+      renderControls();
+      writeFormFields();
+      applyPreset('basicCamper');
+      await loadSavedConcepts();
+    }
+
+    initLayoutConceptPage();
   </script>
 </body>
 </html>

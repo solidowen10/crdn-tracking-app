@@ -8178,9 +8178,18 @@ async function initApp(){
       const route=designAiRoute();
       history.replaceState({view:'designai',page:route.page,id:route.id||null},'',location.pathname);
       showView('designai',true);
+    }else if(location.hash==='#timeline'){
+      history.replaceState({view:'garage'},'','#timeline');
+      showView('garage',true);
     }else if(location.hash==='#mockups'){
       history.replaceState({view:'mockups'},'','#mockups');
       showView('mockups',true);
+    }else if(location.hash==='#cashflow'){
+      history.replaceState({view:'mastercf'},'','#cashflow');
+      showView('mastercf',true);
+    }else if(location.hash==='#designai'){
+      history.replaceState({view:'designai'},'','#designai');
+      showView('designai',true);
     }
   }catch(e){
     toast(`App failed to load: ${errMsg(e)}`,4500);

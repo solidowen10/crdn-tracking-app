@@ -39,7 +39,7 @@
     button,input,select{font:inherit}
     button{cursor:pointer}
     .app{min-height:100vh;display:flex;flex-direction:column}
-    .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--w);border-bottom:1px solid var(--g200);padding:0 18px;box-shadow:var(--sh);flex-shrink:0}
+    .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--w);border-bottom:1px solid var(--g200);padding:0 18px;box-shadow:var(--sh);flex-shrink:0;position:sticky;top:0;z-index:50}
     .brand{display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;color:inherit}
     .brand img{width:34px;height:34px;border-radius:7px;object-fit:cover}
     .brand-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;line-height:1}
@@ -53,6 +53,11 @@
     .btn.danger:hover{background:#fee2e2;color:var(--danger)}
     .btn:disabled{opacity:.45;cursor:not-allowed}
     .layout{display:grid;grid-template-columns:292px minmax(0,1fr) 316px;gap:14px;padding:14px 18px 22px;align-items:start}
+.layout>aside:first-child{max-height:calc(100vh - 84px);overflow-y:auto;padding-right:2px}
+.layout>section.canvas-card{position:sticky;top:70px;max-height:calc(100vh - 84px);overflow:auto}
+.layout>aside:last-child{position:sticky;top:70px;max-height:calc(100vh - 84px);overflow:hidden;display:flex;flex-direction:column;gap:12px}
+.layout>aside:last-child .panel{margin-top:0}
+.layout>aside:last-child .panel:last-child{flex:1;min-height:0;overflow-y:auto}
     .panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px;box-shadow:none}
     .panel + .panel{margin-top:12px}
     .panel-title{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:11px}
@@ -94,44 +99,292 @@
     .bb{font-family:'Bebas Neue',sans-serif;letter-spacing:.05em}
     @media(max-width:1100px){
       .layout{grid-template-columns:1fr}
+      .layout>aside:first-child,.layout>section.canvas-card,.layout>aside:last-child{position:static;max-height:none;overflow:visible;display:block}
       .topbar{height:auto;min-height:64px;align-items:flex-start;padding:13px 14px;flex-direction:column}
       .top-actions{justify-content:flex-start}
       .svg-wrap{min-width:680px}
     }
+
+    @media(max-width:720px){
+      html,body,.app{
+        width:100%;
+        max-width:100%;
+        overflow-x:hidden;
+      }
+
+      .topbar{
+        position:sticky;
+        top:0;
+        z-index:100;
+        width:100%;
+        max-width:100%;
+        padding:10px 12px;
+        gap:10px;
+      }
+
+      .brand img{width:30px;height:30px}
+      .brand-title{font-size:20px}
+
+      .top-actions{
+        width:100%;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+      }
+
+      .top-actions .btn{
+        width:100%;
+        padding:9px 10px;
+        font-size:13px;
+      }
+
+      .top-actions .btn.primary{
+        grid-column:1 / -1;
+      }
+
+      .layout{
+        display:flex;
+        flex-direction:column;
+        width:100%;
+        max-width:100%;
+        padding:10px;
+        gap:10px;
+        overflow:visible;
+      }
+
+      .layout>section.canvas-card{
+        order:-1;
+        position:sticky;
+        top:150px;
+        z-index:70;
+        width:100%;
+        max-width:100%;
+        max-height:58vh;
+        overflow:hidden;
+        background:var(--w);
+      }
+
+      .layout>aside:first-child{
+        order:1;
+        width:100%;
+        max-width:100%;
+      }
+
+      .layout>aside:last-child{
+        order:2;
+        width:100%;
+        max-width:100%;
+      }
+
+      .panel,.canvas-card{
+        width:100%;
+        max-width:100%;
+        padding:11px;
+        border-radius:9px;
+      }
+
+      .canvas-sub{
+        white-space:normal;
+        overflow-wrap:anywhere;
+      }
+
+      .canvas-head{
+        flex-direction:column;
+        align-items:stretch;
+      }
+
+      .canvas-head .btn{
+        width:100%;
+      }
+
+      .canvas-title{font-size:24px}
+
+      .svg-wrap{
+        width:100%;
+        max-width:100%;
+        min-width:0;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+
+      #layoutSvg{
+        width:96vw;
+        max-width:96vw;
+        min-width:96vw;
+        height:auto;
+      }
+
+      .stats{grid-template-columns:repeat(3,1fr);gap:6px}
+      .stat{padding:7px}
+      .stat strong{font-size:19px}
+      .product-grid{grid-template-columns:1fr}
+      .product-grid .btn{width:100%}
+      .saved-actions{grid-template-columns:1fr}
+      .placed-head{flex-direction:column}
+      .row-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+      .row-actions .btn{width:100%}
+      .move-pad{grid-template-columns:repeat(3,38px)}
+      .move-pad .btn{width:38px;height:34px}
+    }
+
+  
+
+  
+    /* mobile fixed header + fixed canvas */
+    @media(max-width:720px){
+      :root{
+        --mobile-header-h:132px;
+        --mobile-canvas-h:330px;
+      }
+
+      .topbar{
+        position:fixed !important;
+        top:0 !important;
+        left:0 !important;
+        right:0 !important;
+        z-index:200 !important;
+        width:100% !important;
+        max-width:100% !important;
+      }
+
+      .layout{
+        display:flex !important;
+        flex-direction:column !important;
+        padding-top:calc(var(--mobile-header-h) + var(--mobile-canvas-h) + 18px) !important;
+        overflow:visible !important;
+      }
+
+      .layout>section.canvas-card{
+        position:fixed !important;
+        top:var(--mobile-header-h) !important;
+        left:10px !important;
+        right:10px !important;
+        z-index:150 !important;
+        height:var(--mobile-canvas-h) !important;
+        max-height:var(--mobile-canvas-h) !important;
+        overflow:hidden !important;
+        background:var(--w) !important;
+      }
+
+      .layout>aside:first-child{
+        order:1 !important;
+      }
+
+      .layout>aside:last-child{
+        order:2 !important;
+      }
+
+      .canvas-head{
+        margin-bottom:6px !important;
+      }
+
+      .canvas-title{
+        font-size:22px !important;
+      }
+
+      .canvas-sub{
+        display:none !important;
+      }
+
+      .svg-wrap{
+        height:245px !important;
+        overflow:auto !important;
+        -webkit-overflow-scrolling:touch;
+      }
+
+      #layoutSvg{
+        width:96vw !important;
+        max-width:96vw !important;
+        min-width:96vw !important;
+        height:auto !important;
+      }
+    }
+
+  
+    /* saved layout buttons: two per row */
+    .saved-actions{
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+    .saved-actions .btn{
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+    }
+
+  
+    /* main app header compatibility */
+    .tlogo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;color:inherit}
+    .tlogo img{width:34px;height:34px;border-radius:7px;object-fit:cover}
+    .tlogo-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;white-space:nowrap}
+    .tlogo-name span{color:var(--brand)}
+    .tright{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .btn-out{background:var(--w);color:var(--g700);border:1px solid var(--g200)}
+    .btn-out:hover{background:var(--g50);border-color:var(--g300)}
+    .btn-brand{background:var(--brand);border-color:var(--brand);color:#fff}
+    .btn-brand:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
+    .btn-dark{background:var(--black);border-color:var(--black);color:#fff}
+    .btn-sm{padding:6px 11px;font-size:var(--xxs)}
+    .menu-wrap{position:relative;display:flex;align-items:center}
+    .menu-btn{width:34px;height:34px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+    .menu-btn span{width:16px;height:2px;border-radius:2px;background:var(--black);display:block}
+    .nav-menu{position:absolute;right:0;top:42px;min-width:156px;background:var(--w);border:1px solid var(--g200);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:none;z-index:220}
+    .nav-menu.open{display:flex;flex-direction:column;gap:3px}
+    .nav-menu a,.nav-menu button{border:none;background:transparent;color:var(--black);font-size:var(--sm);font-weight:600;text-align:left;padding:9px 10px;border-radius:var(--rs);cursor:pointer;text-decoration:none}
+    .nav-menu a:hover,.nav-menu button:hover{background:var(--brand-f);color:var(--brand)}
+    .upill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--g100);border-radius:99px;font-size:var(--xxs);font-weight:500}
+    .udot{width:7px;height:7px;border-radius:50%;background:#22c55e}
+
+  
+    /* main header alias styles */
+    .tlogo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;color:inherit}
+    .tlogo-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;white-space:nowrap}
+    .tlogo-name span{color:var(--brand)}
+    .tright{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .btn-out{background:var(--w);color:var(--g700);border:1px solid var(--g200)}
+    .btn-dark{background:var(--black);border-color:var(--black);color:#fff}
+    .btn-sm{padding:6px 11px;font-size:var(--xxs)}
+    .hide-sm{display:inline-flex}
+    @media(max-width:720px){
+      .hide-sm{display:none !important}
+      .tright>.btn-dark{display:none !important}
+    }
+
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <a class="brand" href="/" title="Back to main app">
+    <div class="topbar">
+      <a class="tlogo" href="/" title="Back to main app">
         <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="CRDN">
-        <div class="brand-title">Creative Den <span>Studio</span></div>
+        <span class="tlogo-name">CREATIVE DEN <span>STUDIO</span></span>
       </a>
-      <div class="top-actions">
-        <button class="btn primary" id="saveLayoutBtn" type="button" onclick="saveLayout()">Save Layout</button>
-        <a class="btn" href="/">← Projects</a>
-        <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
-        <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
+      <div class="tright">
+        <a class="btn btn-out btn-sm desktop-timeline-btn" href="/#timeline">📅 Timeline</a>
+        <a class="btn btn-out btn-sm hide-sm" href="/#mockups">🖼 Mockup</a>
+        <a class="btn btn-out btn-sm hide-sm" href="/#cashflow">📊 Cashflow</a>
+        <a class="btn btn-out btn-sm hide-sm" href="/layout-concept">🧭 2D Layout</a>
+        <a class="btn btn-out btn-sm hide-sm" href="/#designai">🤖 AI Design</a>
+        <a class="btn btn-dark btn-sm" href="/">+ New Project</a>
+        <div class="menu-wrap">
+          <button class="menu-btn" onclick="toggleLayoutNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="nav-menu" id="layout-nav-menu">
+            <a href="/">Projects</a>
+            <a href="/#timeline">Timeline</a>
+            <a href="/#mockups">Mockup</a>
+            <a href="/layout-concept">2D Layout</a>
+            <a href="/#designai">AI Design</a>
+            <a href="/#cashflow">Cashflow</a>
+          </div>
+        </div>
+        <div class="upill"><div class="udot"></div><span>Owen Lu ・ 呂信誠</span></div>
       </div>
-    </header>
+    </div>
 
     <main class="layout">
       <aside>
-        <section class="panel">
-          <div class="panel-title">Saved Layouts</div>
-          <div class="field">
-            <label for="savedConceptSelect">Saved layout</label>
-            <select id="savedConceptSelect"></select>
-          </div>
-          <div class="saved-actions">
-            <button class="btn" type="button" onclick="loadSelectedConcept()">Load</button>
-            <button class="btn" type="button" onclick="newLayout()">New</button>
-            <button class="btn danger" type="button" onclick="deleteSelectedConcept()">Delete</button>
-          </div>
-          <div class="save-status" id="conceptStatus"></div>
-        </section>
-
         <section class="panel">
           <div class="panel-title">Layout Setup</div>
           <div class="warning">Concept Layout Only. This is a pre-sales discussion tool, not final CAD or fabrication approval.</div>
@@ -171,6 +424,22 @@
           <div class="panel-title">Presets</div>
           <div class="preset-grid" id="presetButtons"></div>
         </section>
+
+        <section class="panel">
+          <div class="panel-title">Saved Layouts</div>
+          <div class="field">
+            <label for="savedConceptSelect">Saved layout</label>
+            <select id="savedConceptSelect"></select>
+          </div>
+          <div class="saved-actions">
+            <button class="btn" type="button" onclick="loadSelectedConcept()">Load</button>
+            <button class="btn" type="button" onclick="newLayout()">New</button>
+            <button class="btn danger" type="button" onclick="deleteSelectedConcept()">Delete</button>
+            <button class="btn danger" type="button" onclick="clearLayout()">Clear Layout</button>
+          </div>
+          <div class="save-status" id="conceptStatus"></div>
+        </section>
+
       </aside>
 
       <section class="canvas-card">
@@ -179,7 +448,7 @@
             <div class="canvas-title" id="canvasTitle">2D Layout Concept</div>
             <div class="canvas-sub">Generic van outline · centered rear cargo buildable area · approximate product placement</div>
           </div>
-          <button class="btn danger" type="button" onclick="clearLayout()">Clear Layout</button>
+
         </div>
         <div class="svg-wrap">
           <svg id="layoutSvg" viewBox="0 0 980 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CRDN 2D layout concept"></svg>
@@ -187,6 +456,15 @@
       </section>
 
       <aside>
+        <section class="panel">
+          <div class="panel-title">Layout Actions</div>
+          <div class="preset-grid">
+            <button class="btn primary" id="saveLayoutBtn" type="button" onclick="saveLayout()">Save Layout</button>
+            <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
+            <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
+          </div>
+        </section>
+
         <section class="panel">
           <div class="panel-title">Placed Items</div>
           <div class="field">
@@ -204,6 +482,16 @@
   </div>
 
   <script>
+
+    function toggleLayoutNavMenu(event){
+      event?.stopPropagation?.();
+      document.getElementById('layout-nav-menu')?.classList.toggle('open');
+    }
+    function closeLayoutNavMenu(){
+      document.getElementById('layout-nav-menu')?.classList.remove('open');
+    }
+    document.addEventListener('click', closeLayoutNavMenu);
+
     const VIEWBOX = { width: 980, height: 560 };
     const cargoZone = { x: 354, y: 114, width: 526, height: 330 };
 
@@ -961,16 +1249,19 @@
     }
 
     function exportPng() {
+      const exportScale = 3;
       const canvas = document.createElement('canvas');
-      canvas.width = VIEWBOX.width;
-      canvas.height = VIEWBOX.height;
+      canvas.width = VIEWBOX.width * exportScale;
+      canvas.height = VIEWBOX.height * exportScale;
       const ctx = canvas.getContext('2d');
       const image = new Image();
       const svgUrl = URL.createObjectURL(new Blob([svgMarkup()], { type: 'image/svg+xml;charset=utf-8' }));
       image.onload = () => {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, VIEWBOX.width, VIEWBOX.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(svgUrl);
         canvas.toBlob(blob => downloadBlob(blob, 'crdn-layout-concept.png'), 'image/png');
       };

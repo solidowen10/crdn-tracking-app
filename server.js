@@ -52,6 +52,7 @@ const PART_STATUSES = ['Not Needed', 'Need to Order', 'Ordered', 'Arrived', 'Ins
 const PRIORITIES = ['Low', 'Normal', 'High', 'Urgent'];
 const TELEGRAM_MOCKUP_STATUSES = new Set(['pending', 'in_progress', 'done', 'cancelled']);
 const MOCKUP_RESULT_DIR = path.join(__dirname, 'data', 'mockup-results');
+const LAYOUT_RENDER_DIR = path.join(__dirname, 'data', 'layout-renders');
 const MOCKUP_IMAGE_TYPES = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -660,7 +661,7 @@ function layoutAgentRenderRequestFromRow(row) {
 function layoutAgentStatusLabel(status) {
   const key = text(status || 'pending').toLowerCase();
   if (key === 'sent') return 'Sent to Agent';
-  if (key === 'ready' || key === 'done') return 'Ready / Result Uploaded later';
+  if (key === 'ready' || key === 'done') return 'Ready';
   return 'Pending Agent Render';
 }
 
@@ -677,11 +678,17 @@ async function sendLayoutAgentTelegramMessage(requestId, layoutId) {
   if (!token || !chatId) return { sent: false, chatId, messageId: '', reason: 'Telegram bot token or allowed chat ID is not configured.' };
 
   const message = [
-    'CRDN Layout Render Request',
+    '🖼 CRDN Interior Render Request',
     `Request ID: ${requestId}`,
     `Layout ID: ${layoutId}`,
-    'Action: render customer-facing interior concept',
-    'Agent: read CRDN backend for full layout/product/vehicle data'
+    '',
+    'Please generate a customer-facing top-down interior concept render.',
+    '',
+    'Use CRDN Agent API:',
+    `GET /api/agent/layout-render-requests/${requestId}`,
+    '',
+    'Reply to this Telegram thread with the completed image and include:',
+    `Request ID: ${requestId}`
   ].join('\n');
 
   try {
@@ -2352,6 +2359,20 @@ app.get('/api/layout-concepts/:id/agent-render-requests', requireAuth, (req, res
     ORDER BY created_at DESC, id DESC
   `).all(layout.id).map(layoutAgentRenderRequestFromRow);
   res.json({ requests });
+});
+
+app.get('/api/layout-agent-render-requests/:id/result-image', requireAuth, (req, res) => {
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT id, result_image_path FROM layout_agent_render_requests WHERE id=?').get(id);
+  const resultPath = row ? layoutRenderResultPath(row.result_image_path) : '';
+  if (!row || !resultPath || !fs.existsSync(resultPath)) return res.status(404).send('Result image not found');
+
+  res.setHeader('Content-Type', layoutRenderImageType(row.result_image_path));
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  if (req.query.download === '1') {
+    res.setHeader('Content-Disposition', `attachment; filename="layout-render-request-${id}-result${path.extname(resultPath) || '.jpg'}"`);
+  }
+  return res.sendFile(resultPath);
 });
 
 app.post('/api/layout-concepts/:id/send-to-agent', requireAuth, async (req, res) => {
@@ -4189,6 +4210,10 @@ function ensureMockupResultDir() {
   fs.mkdirSync(MOCKUP_RESULT_DIR, { recursive: true });
 }
 
+function ensureLayoutRenderDir() {
+  fs.mkdirSync(LAYOUT_RENDER_DIR, { recursive: true });
+}
+
 function mockupResultFilename(value) {
   const filename = path.basename(text(value));
   return filename && /^[a-zA-Z0-9._-]+$/.test(filename) ? filename : '';
@@ -4204,6 +4229,98 @@ function mockupImageType(filename) {
   if (ext === '.png') return 'image/png';
   if (ext === '.webp') return 'image/webp';
   return 'image/jpeg';
+}
+
+function layoutRenderResultFilename(value) {
+  const filename = path.basename(text(value));
+  return filename && /^[a-zA-Z0-9._-]+$/.test(filename) ? filename : '';
+}
+
+function layoutRenderResultPath(value) {
+  const filename = layoutRenderResultFilename(value);
+  return filename ? path.join(LAYOUT_RENDER_DIR, filename) : '';
+}
+
+function layoutRenderImageType(filename) {
+  const ext = path.extname(text(filename)).toLowerCase();
+  if (ext === '.png') return 'image/png';
+  if (ext === '.webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+function layoutRenderImageExt(filePath, contentType) {
+  const type = text(contentType).toLowerCase();
+  const ext = path.extname(text(filePath)).toLowerCase().replace('.', '');
+  if (type.includes('png') || ext === 'png') return 'png';
+  if (type.includes('webp') || ext === 'webp') return 'webp';
+  return 'jpg';
+}
+
+function layoutRenderRequestIdFromText(value) {
+  const body = text(value);
+  if (!body) return 0;
+  const patterns = [
+    /\bRequest\s*ID\s*:?\s*#?(\d+)\b/i,
+    /\brender\s+request\s*:?\s*#?(\d+)\b/i,
+    /#(\d+)\b/
+  ];
+  for (const pattern of patterns) {
+    const match = body.match(pattern);
+    if (match) return Number(match[1]) || 0;
+  }
+  return 0;
+}
+
+async function saveTelegramLayoutRenderResult({ requestId, caption, photos }) {
+  const id = Number(requestId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const current = db.prepare('SELECT * FROM layout_agent_render_requests WHERE id=?').get(id);
+  if (!current) return null;
+
+  const photoList = Array.isArray(photos) ? photos : [];
+  const largestPhoto = photoList[photoList.length - 1];
+  if (!largestPhoto?.file_id) {
+    throw Object.assign(new Error('Telegram photo is missing.'), { status: 400 });
+  }
+
+  const filePath = await telegramFilePath(largestPhoto.file_id);
+  const fileUrl = telegramFileUrl(filePath);
+  if (!fileUrl) {
+    throw Object.assign(new Error('Telegram photo file is unavailable.'), { status: 502 });
+  }
+
+  const response = await fetch(fileUrl);
+  if (!response.ok) {
+    throw Object.assign(new Error(`Telegram photo download failed: HTTP ${response.status}`), { status: 502 });
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  const ext = layoutRenderImageExt(filePath, contentType);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (!buffer.length || buffer.length > 12 * 1024 * 1024) {
+    throw Object.assign(new Error('Telegram photo result is empty or too large.'), { status: 400 });
+  }
+
+  ensureLayoutRenderDir();
+  const filename = `layout-render-request-${id}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  const resultPath = path.join(LAYOUT_RENDER_DIR, filename);
+  fs.writeFileSync(resultPath, buffer);
+
+  const previousPath = layoutRenderResultPath(current.result_image_path);
+  if (previousPath && previousPath !== resultPath && fs.existsSync(previousPath)) {
+    try { fs.unlinkSync(previousPath); } catch (err) { console.warn('Previous layout render cleanup failed:', err.message || err); }
+  }
+
+  db.prepare(`
+    UPDATE layout_agent_render_requests
+    SET status='ready',
+        result_image_path=?,
+        result_notes=?,
+        updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(filename, text(caption), id);
+
+  return db.prepare('SELECT * FROM layout_agent_render_requests WHERE id=?').get(id);
 }
 
 async function sendTelegramMessage(chatId, reply) {
@@ -4895,8 +5012,29 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
 
     const text = message.text || message.caption || '';
     const senderName = telegramSenderName(message.from);
+    const photos = Array.isArray(message.photo) ? message.photo : [];
 
     let reply = '';
+    const layoutRenderRequestId = photos.length && !/^\/mockup(?:@\w+)?/i.test(text)
+      ? layoutRenderRequestIdFromText(text)
+      : 0;
+    if (layoutRenderRequestId) {
+      try {
+        const saved = await saveTelegramLayoutRenderResult({
+          requestId: layoutRenderRequestId,
+          caption: text,
+          photos
+        });
+        reply = saved
+          ? `Layout render request #${layoutRenderRequestId} saved.\nStatus: ready`
+          : `Could not find layout render request #${layoutRenderRequestId}.`;
+      } catch (err) {
+        console.warn('Layout render Telegram save failed:', err.message || err);
+        reply = `Could not save layout render request #${layoutRenderRequestId}: ${err.message || 'Unknown error'}`;
+      }
+      await sendTelegramMessage(chatId, reply);
+      return res.json({ ok: true });
+    }
 
     if (text.startsWith('/status')) {
       reply = `CRDN Agent online.\nChat ID: ${chatId}`;
@@ -4924,7 +5062,6 @@ app.post('/api/telegram/webhook/:secret', async (req, res) => {
       await telegramVehicleLayoutReply(chatId, text);
       return res.json({ ok: true });
     } else if (/^\/mockup(?:@\w+)?/i.test(text)) {
-      const photos = message.photo || [];
       const largestPhoto = photos[photos.length - 1];
 
       if (!largestPhoto) {

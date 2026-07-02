@@ -961,7 +961,7 @@
     function agentStatusLabel(status) {
       const key = String(status || 'pending').toLowerCase();
       if (key === 'sent') return 'Sent to Agent';
-      if (key === 'ready' || key === 'done') return 'Ready / Result Uploaded later';
+      if (key === 'ready' || key === 'done') return 'Ready';
       return 'Pending Agent Render';
     }
 
@@ -983,10 +983,23 @@
         if (btn) btn.disabled = false;
         return;
       }
-      const status = latest.status_label || agentStatusLabel(latest.status);
+      const statusKey = String(latest.status || '').toLowerCase();
+      const hasResult = Boolean(latest.result_image_path);
+      const status = hasResult ? 'Ready' : (latest.status_label || agentStatusLabel(latest.status));
       const created = latest.created_at || '';
-      el.className = `save-status show ${latest.status === 'sent' ? 'ok' : ''}`;
-      el.textContent = `Latest request #${latest.id} · ${status}${created ? ` · ${created}` : ''}`;
+      el.className = `save-status show ${statusKey === 'sent' || statusKey === 'ready' || hasResult ? 'ok' : ''}`;
+      if (hasResult) {
+        const resultUrl = `/api/layout-agent-render-requests/${encodeURIComponent(latest.id)}/result-image`;
+        el.innerHTML = `
+          <div>Latest request #${esc(latest.id)} · ${esc(status)}${created ? ` · ${esc(created)}` : ''}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
+            <img src="${esc(resultUrl)}" alt="Layout render request ${esc(latest.id)} result" style="width:96px;height:64px;object-fit:cover;border:1px solid #ddd;border-radius:8px;background:#fff">
+            <a class="btn" href="${esc(resultUrl)}" target="_blank" rel="noopener">Open Render</a>
+          </div>
+        `;
+      } else {
+        el.textContent = `Latest request #${latest.id} · ${status}${created ? ` · ${created}` : ''}`;
+      }
       if (btn) btn.disabled = false;
     }
 

@@ -583,6 +583,20 @@ function migrate() {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS layout_agent_render_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      layout_concept_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending',
+      requested_by_line_user_id TEXT,
+      requested_by_name TEXT,
+      telegram_chat_id TEXT,
+      telegram_message_id TEXT,
+      result_image_path TEXT,
+      result_notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS telegram_mockup_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       chat_id TEXT,
@@ -713,6 +727,8 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_ai_workspace_versions_workspace ON design_ai_workspace_versions(workspace_id, version DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_moodboards_status ON design_ai_moodboards(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_layout_concepts_updated ON design_layout_concepts(updated_at DESC, id DESC);
+    CREATE INDEX IF NOT EXISTS idx_layout_agent_render_requests_layout ON layout_agent_render_requests(layout_concept_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_layout_agent_render_requests_status ON layout_agent_render_requests(status, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_telegram_mockup_requests_status ON telegram_mockup_requests(status, created_at DESC);
   `);
 }

@@ -414,6 +414,7 @@ const AGENT_ROUTE_LIST = [
   'GET /api/agent/vehicles',
   'GET /api/agent/products',
   'GET /api/agent/mockups',
+  'GET /api/agent/layout-render-requests/:id',
   'GET /api/agent/projects',
   'GET /api/agent/projects/:id'
 ];
@@ -638,6 +639,67 @@ function layoutConceptFromRow(row, includeLayout = false) {
   return concept;
 }
 
+function layoutAgentRenderRequestFromRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    layout_concept_id: row.layout_concept_id,
+    status: row.status || 'pending',
+    status_label: layoutAgentStatusLabel(row.status || 'pending'),
+    requested_by_line_user_id: row.requested_by_line_user_id || '',
+    requested_by_name: row.requested_by_name || '',
+    telegram_chat_id: row.telegram_chat_id || '',
+    telegram_message_id: row.telegram_message_id || '',
+    result_image_path: row.result_image_path || '',
+    result_notes: row.result_notes || '',
+    created_at: row.created_at || '',
+    updated_at: row.updated_at || ''
+  };
+}
+
+function layoutAgentStatusLabel(status) {
+  const key = text(status || 'pending').toLowerCase();
+  if (key === 'sent') return 'Sent to Agent';
+  if (key === 'ready' || key === 'done') return 'Ready / Result Uploaded later';
+  return 'Pending Agent Render';
+}
+
+function telegramAllowedChatIds() {
+  return text(process.env.TELEGRAM_ALLOWED_CHAT_IDS)
+    .split(',')
+    .map(value => value.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
+}
+
+async function sendLayoutAgentTelegramMessage(requestId, layoutId) {
+  const token = text(process.env.TELEGRAM_BOT_TOKEN);
+  const chatId = telegramAllowedChatIds()[0] || '';
+  if (!token || !chatId) return { sent: false, chatId, messageId: '', reason: 'Telegram bot token or allowed chat ID is not configured.' };
+
+  const message = [
+    'CRDN Layout Render Request',
+    `Request ID: ${requestId}`,
+    `Layout ID: ${layoutId}`,
+    'Action: render customer-facing interior concept',
+    'Agent: read CRDN backend for full layout/product/vehicle data'
+  ].join('\n');
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: message })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.ok === false) {
+      return { sent: false, chatId, messageId: '', reason: body.description || `Telegram HTTP ${response.status}` };
+    }
+    return { sent: true, chatId, messageId: String(body.result?.message_id || '') };
+  } catch (err) {
+    return { sent: false, chatId, messageId: '', reason: err.message || 'Telegram send failed.' };
+  }
+}
+
 function layoutConceptPayload(body = {}, existing = null) {
   const title = text(body.title ?? existing?.title);
   const vehicleKey = text(body.vehicle_key ?? body.vehicleKey ?? existing?.vehicle_key);
@@ -765,6 +827,47 @@ function layoutConceptProductsForLibrary() {
       missing_dimensions: !width || !depth
     };
   }).filter(product => product.id);
+}
+
+function layoutPlacementFromItem(item = {}) {
+  return {
+    id: item.id || '',
+    product_id: text(item.product_id || item.productKey || item.product_id || item.sku || item.name),
+    x_mm: number(item.x_mm ?? item.x ?? 0),
+    y_mm: number(item.y_mm ?? item.y ?? 0),
+    rotation: number(item.rotation ?? 0)
+  };
+}
+
+function layoutAgentRenderRequestDetail(id) {
+  const requestRow = db.prepare('SELECT * FROM layout_agent_render_requests WHERE id=?').get(Number(id));
+  if (!requestRow) return null;
+  const layoutRow = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(Number(requestRow.layout_concept_id));
+  const layoutConcept = layoutConceptFromRow(layoutRow, true);
+  if (!layoutConcept) return null;
+  const parsedLayout = layoutConcept.layout_json || {};
+  const placements = Array.isArray(parsedLayout.placed)
+    ? parsedLayout.placed.map(layoutPlacementFromItem).filter(item => item.product_id)
+    : [];
+  const vehicle = designApprovedVehicle(layoutConcept.vehicle_key) || {
+    vehicle_id: layoutConcept.vehicle_key || '',
+    name: layoutConcept.vehicle_name || '',
+    source: 'layout_concept'
+  };
+  const products = placements.map(placement => ({
+    placement,
+    product: designProductForPlacement(placement.product_id)
+  }));
+
+  return {
+    request: layoutAgentRenderRequestFromRow(requestRow),
+    layout_concept: layoutConcept,
+    parsed_layout_json: parsedLayout,
+    vehicle,
+    products,
+    notes: layoutConcept.notes || '',
+    product_placement_data: placements
+  };
 }
 
 function setting(key, fallback = '') {
@@ -2137,7 +2240,7 @@ app.get('/api/agent/context', requireAgentRead, (req, res) => {
     app: 'CRDN Tracking App',
     routes: AGENT_ROUTE_LIST,
     timestamp: new Date().toISOString(),
-    exposed_data: 'Read-only summaries for Design AI vehicle/product records, Telegram mockup request status summaries, and minimal project planning fields. Customer contact details, LINE session/auth data, secrets, Telegram tokens, file IDs, and payment-sensitive data are not exposed.'
+    exposed_data: 'Read-only summaries for Design AI vehicle/product records, layout render request context, Telegram mockup request status summaries, and minimal project planning fields. Customer contact details, LINE session/auth data, secrets, Telegram tokens, file IDs, and payment-sensitive data are not exposed.'
   });
 });
 
@@ -2185,6 +2288,12 @@ app.get('/api/agent/mockups', requireAgentRead, (req, res) => {
   res.json({ requests });
 });
 
+app.get('/api/agent/layout-render-requests/:id', requireAgentRead, (req, res) => {
+  const detail = layoutAgentRenderRequestDetail(req.params.id);
+  if (!detail) return res.status(404).json({ error: 'Layout render request not found.' });
+  res.json(detail);
+});
+
 app.get('/api/agent/projects', requireAgentRead, (req, res) => {
   const projects = db.prepare(`
     SELECT id, job_no, name, stage, designer, priority, progress,
@@ -2230,6 +2339,48 @@ app.get('/api/layout-concepts/library-data', requireAuth, (req, res) => {
   res.json({
     vehicles: layoutConceptVehiclesForLibrary(),
     products: layoutConceptProductsForLibrary()
+  });
+});
+
+app.get('/api/layout-concepts/:id/agent-render-requests', requireAuth, (req, res) => {
+  const layout = db.prepare('SELECT id FROM design_layout_concepts WHERE id=?').get(Number(req.params.id));
+  if (!layout) return res.status(404).json({ error: 'Layout concept not found.' });
+  const requests = db.prepare(`
+    SELECT *
+    FROM layout_agent_render_requests
+    WHERE layout_concept_id=?
+    ORDER BY created_at DESC, id DESC
+  `).all(layout.id).map(layoutAgentRenderRequestFromRow);
+  res.json({ requests });
+});
+
+app.post('/api/layout-concepts/:id/send-to-agent', requireAuth, async (req, res) => {
+  const layout = db.prepare('SELECT * FROM design_layout_concepts WHERE id=?').get(Number(req.params.id));
+  if (!layout) return res.status(404).json({ error: 'Layout concept not found.' });
+  const user = actor(req);
+  const result = db.prepare(`
+    INSERT INTO layout_agent_render_requests (
+      layout_concept_id, status, requested_by_line_user_id, requested_by_name, updated_at
+    )
+    VALUES (?, 'pending', ?, ?, CURRENT_TIMESTAMP)
+  `).run(layout.id, user.userId || '', user.displayName || '');
+
+  const requestId = result.lastInsertRowid;
+  const telegram = await sendLayoutAgentTelegramMessage(requestId, layout.id);
+  if (telegram.sent) {
+    db.prepare(`
+      UPDATE layout_agent_render_requests
+      SET status='sent', telegram_chat_id=?, telegram_message_id=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(telegram.chatId, telegram.messageId, requestId);
+  }
+
+  const row = db.prepare('SELECT * FROM layout_agent_render_requests WHERE id=?').get(requestId);
+  res.status(201).json({
+    ok: true,
+    request: layoutAgentRenderRequestFromRow(row),
+    telegram_sent: Boolean(telegram.sent),
+    warning: telegram.sent ? '' : telegram.reason || ''
   });
 });
 

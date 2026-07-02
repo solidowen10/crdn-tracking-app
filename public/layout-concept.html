@@ -463,6 +463,11 @@
             <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
             <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
           </div>
+          <div class="preset-grid" style="margin-top:10px">
+            <button class="btn primary" id="sendAgentBtn" type="button" onclick="sendLayoutToAgent()">Send to Agent</button>
+          </div>
+          <p class="hint">Sends this saved layout ID to the CRDN AI Agent so it can render a customer-facing interior concept. No image API is called by the app.</p>
+          <div class="save-status show" id="agentRenderStatus">Save this layout before sending it to the Agent.</div>
         </section>
 
         <section class="panel">
@@ -577,6 +582,7 @@
     const state = {
       activeConceptId: null,
       savedConcepts: [],
+      agentRequests: [],
       libraryMode: 'demo',
       vehicleKey: 'townace',
       title: 'Basic Camper Concept',
@@ -946,6 +952,86 @@
       select.innerHTML = `<option value="">${state.savedConcepts.length ? 'Select saved layout...' : 'No saved layouts yet'}</option>${rows}`;
     }
 
+    function agentStatusLabel(status) {
+      const key = String(status || 'pending').toLowerCase();
+      if (key === 'sent') return 'Sent to Agent';
+      if (key === 'ready' || key === 'done') return 'Ready / Result Uploaded later';
+      return 'Pending Agent Render';
+    }
+
+    function renderAgentStatus() {
+      const el = document.getElementById('agentRenderStatus');
+      const btn = document.getElementById('sendAgentBtn');
+      if (!el) return;
+      if (!state.activeConceptId) {
+        state.agentRequests = [];
+        el.className = 'save-status show warn';
+        el.textContent = 'Save this layout before sending it to the Agent.';
+        if (btn) btn.disabled = false;
+        return;
+      }
+      const latest = state.agentRequests[0];
+      if (!latest) {
+        el.className = 'save-status show';
+        el.textContent = 'No Agent render request has been sent for this layout yet.';
+        if (btn) btn.disabled = false;
+        return;
+      }
+      const status = latest.status_label || agentStatusLabel(latest.status);
+      const created = latest.created_at || '';
+      el.className = `save-status show ${latest.status === 'sent' ? 'ok' : ''}`;
+      el.textContent = `Latest request #${latest.id} · ${status}${created ? ` · ${created}` : ''}`;
+      if (btn) btn.disabled = false;
+    }
+
+    async function loadAgentRenderRequests() {
+      if (!state.activeConceptId) {
+        state.agentRequests = [];
+        renderAgentStatus();
+        return;
+      }
+      try {
+        const data = await apiJson(`/api/layout-concepts/${state.activeConceptId}/agent-render-requests`);
+        state.agentRequests = data.requests || [];
+      } catch (err) {
+        state.agentRequests = [];
+        const el = document.getElementById('agentRenderStatus');
+        if (el) {
+          el.className = 'save-status show error';
+          el.textContent = `Agent render status unavailable: ${err.message}`;
+        }
+        return;
+      }
+      renderAgentStatus();
+    }
+
+    async function sendLayoutToAgent() {
+      if (!state.activeConceptId) {
+        setStatus('Save this layout before sending it to the Agent.', 'warn');
+        renderAgentStatus();
+        return;
+      }
+      if (!confirm('Send this layout to the CRDN AI Agent for interior concept rendering?')) return;
+      const btn = document.getElementById('sendAgentBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+      }
+      try {
+        const data = await apiJson(`/api/layout-concepts/${state.activeConceptId}/send-to-agent`, { method: 'POST' });
+        state.agentRequests = data.request ? [data.request, ...state.agentRequests.filter(req => req.id !== data.request.id)] : state.agentRequests;
+        renderAgentStatus();
+        setStatus(data.telegram_sent ? 'Sent to Agent.' : (data.warning || 'Agent render request created.'), data.telegram_sent ? 'ok' : 'warn');
+      } catch (err) {
+        setStatus(`Send to Agent failed: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Send to Agent';
+        }
+      }
+    }
+
     async function saveLayout() {
       const payload = conceptPayload();
       if (!payload.title.trim()) {
@@ -966,6 +1052,7 @@
         render();
         await loadSavedConcepts();
         renderSavedConcepts();
+        await loadAgentRenderRequests();
         try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
         setStatus(`Saved "${state.title}".`, 'ok');
       } catch (err) {
@@ -993,6 +1080,7 @@
         writeFormFields();
         render();
         renderSavedConcepts();
+        await loadAgentRenderRequests();
         setStatus(`Loaded "${state.title}".`, 'ok');
       } catch (err) {
         setStatus(`Load failed: ${err.message}`, 'error');
@@ -1006,10 +1094,12 @@
       state.notes = '';
       state.placed = [];
       state.nextId = 1;
+      state.agentRequests = [];
       renderControls();
       writeFormFields();
       render();
       renderSavedConcepts();
+      renderAgentStatus();
       setStatus('Started a new unsaved layout.', '');
     }
 
@@ -1026,6 +1116,7 @@
         await apiJson(`/api/layout-concepts/${id}`, { method: 'DELETE' });
         if (Number(state.activeConceptId) === id) newLayout();
         await loadSavedConcepts();
+        await loadAgentRenderRequests();
         setStatus(`Deleted "${label}".`, 'ok');
       } catch (err) {
         setStatus(`Delete failed: ${err.message}`, 'error');
@@ -1397,6 +1488,7 @@
       writeFormFields();
       applyPreset('basicCamper');
       await loadSavedConcepts();
+      await loadAgentRenderRequests();
     }
 
     initLayoutConceptPage();

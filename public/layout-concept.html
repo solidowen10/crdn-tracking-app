@@ -349,6 +349,13 @@
       .tright>.btn-dark{display:none !important}
     }
 
+  
+/* Saved Layouts save button */
+.saved-actions .saved-save-btn{
+  grid-column:1 / -1;
+  width:100%;
+}
+
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Noto+Sans+TC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
 </head>
@@ -431,6 +438,7 @@
             <button class="btn" type="button" onclick="newLayout()">New</button>
             <button class="btn danger" type="button" onclick="deleteSelectedConcept()">Delete</button>
             <button class="btn danger" type="button" onclick="clearLayout()">Clear Layout</button>
+            <button class="btn primary saved-save-btn" id="saveLayoutBtn" type="button" onclick="saveLayout()">Save Layout</button>
           </div>
           <div class="save-status" id="conceptStatus"></div>
         </section>
@@ -454,7 +462,6 @@
         <section class="panel">
           <div class="panel-title">Layout Actions</div>
           <div class="preset-grid">
-            <button class="btn primary" id="saveLayoutBtn" type="button" onclick="saveLayout()">Save Layout</button>
             <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
             <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
           </div>
@@ -830,7 +837,8 @@
           id: item.id,
           productKey: item.productKey,
           x: Math.round(Number(item.x || 0)),
-          y: Math.round(Number(item.y || 0))
+          y: Math.round(Number(item.y || 0)),
+          rotation: Number(item.rotation || 0)
         })),
         nextId: state.nextId
       };
@@ -861,7 +869,8 @@
             id: Number(item.id || state.nextId++),
             productKey: item.productKey,
             x: Number(item.x || 0),
-            y: Number(item.y || 0)
+            y: Number(item.y || 0),
+            rotation: Number(item.rotation || 0)
           });
         });
       const maxId = state.placed.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0);

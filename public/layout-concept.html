@@ -55,9 +55,9 @@
     .layout{display:grid;grid-template-columns:292px minmax(0,1fr) 316px;gap:14px;padding:14px 18px 22px;align-items:start}
 .layout>aside:first-child{max-height:calc(100vh - 84px);overflow-y:auto;padding-right:2px}
 .layout>section.canvas-card{position:sticky;top:70px;max-height:calc(100vh - 84px);overflow:auto}
-.layout>aside:last-child{position:sticky;top:70px;max-height:calc(100vh - 84px);overflow:hidden;display:flex;flex-direction:column;gap:12px}
+.layout>aside:last-child{position:sticky;top:70px;max-height:calc(100vh - 84px);overflow-y:auto;display:block;padding-right:2px}
 .layout>aside:last-child .panel{margin-top:0}
-.layout>aside:last-child .panel:last-child{flex:1;min-height:0;overflow-y:auto}
+.layout>aside:last-child .panel + .panel{margin-top:12px}
     .panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px;box-shadow:none}
     .panel + .panel{margin-top:12px}
     .panel-title{font-size:var(--xxxs);font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:11px}
@@ -421,11 +421,6 @@
         </section>
 
         <section class="panel">
-          <div class="panel-title">Presets</div>
-          <div class="preset-grid" id="presetButtons"></div>
-        </section>
-
-        <section class="panel">
           <div class="panel-title">Saved Layouts</div>
           <div class="field">
             <label for="savedConceptSelect">Saved layout</label>
@@ -778,8 +773,9 @@
       const vehicle = currentVehicle();
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
       if (!product) return item;
-      const productLength = positiveNumber(product.length, 520);
-      const productWidth = positiveNumber(product.width, 330);
+      const rotated = Math.abs(Number(item.rotation || 0)) % 180 === 90;
+      const productLength = rotated ? positiveNumber(product.width, 330) : positiveNumber(product.length, 520);
+      const productWidth = rotated ? positiveNumber(product.length, 520) : positiveNumber(product.width, 330);
       item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - productLength));
       item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - productWidth));
       return item;
@@ -792,7 +788,8 @@
         id: state.nextId++,
         productKey,
         x: resolveCoordinate(product, x, 'x'),
-        y: resolveCoordinate(product, y, 'y')
+        y: resolveCoordinate(product, y, 'y'),
+        rotation: 0
       };
       return clampItem(item);
     }
@@ -1179,6 +1176,14 @@
       render();
     }
 
+    function rotateItem(id, delta) {
+      const item = state.placed.find(entry => entry.id === id);
+      if (!item) return;
+      item.rotation = ((Number(item.rotation || 0) + delta) % 360 + 360) % 360;
+      clampItem(item);
+      render();
+    }
+
     function removeItem(id) {
       state.placed = state.placed.filter(item => item.id !== id);
       render();
@@ -1188,9 +1193,10 @@
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
       const x = geometry.x + item.x * geometry.scale;
       const y = geometry.y + item.y * geometry.scale;
-      const width = positiveNumber(product.length, 520) * geometry.scale;
-      const height = positiveNumber(product.width, 330) * geometry.scale;
-      return { product, x, y, width, height };
+      const rotated = Math.abs(Number(item.rotation || 0)) % 180 === 90;
+      const width = (rotated ? positiveNumber(product.width, 330) : positiveNumber(product.length, 520)) * geometry.scale;
+      const height = (rotated ? positiveNumber(product.length, 520) : positiveNumber(product.width, 330)) * geometry.scale;
+      return { product, x, y, width, height, rotation: Number(item.rotation || 0) };
     }
 
     function renderVanSvg() {
@@ -1202,8 +1208,8 @@
         return `
           <g>
             <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
-            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#111">${esc(rect.product.name)}</text>
-            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 14).toFixed(1)}" text-anchor="middle" font-size="10" fill="#555">${productLength} × ${productWidth} mm</text>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 - 4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#111">${esc(rect.product.name)}</text>
+            <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y + rect.height / 2 + 13).toFixed(1)}" text-anchor="middle" font-size="9" fill="#555">${productLength} × ${productWidth} mm</text>
           </g>
         `;
       }).join('');
@@ -1278,7 +1284,9 @@
       productSelect.innerHTML = productOptions || '<option value="">No products with footprint dimensions yet</option>';
 
       const presetWrap = document.getElementById('presetButtons');
-      presetWrap.innerHTML = Object.entries(presets).map(([key, preset]) => `<button class="btn" type="button" onclick="applyPreset('${key}')">${preset.label}</button>`).join('');
+      if (presetWrap) {
+        presetWrap.innerHTML = Object.entries(presets).map(([key, preset]) => `<button class="btn" type="button" onclick="applyPreset('${key}')">${preset.label}</button>`).join('');
+      }
     }
 
     function renderStats() {
@@ -1317,6 +1325,10 @@
               <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,-1)">↑</button><span></span>
               <button class="btn" type="button" onclick="moveItem(${item.id},-1,0)">←</button><span></span><button class="btn" type="button" onclick="moveItem(${item.id},1,0)">→</button>
               <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,1)">↓</button><span></span>
+            </div>
+            <div class="row-actions">
+              <button class="btn small" type="button" onclick="rotateItem(${item.id},-90)">↶ Turn Left 90°</button>
+              <button class="btn small" type="button" onclick="rotateItem(${item.id},90)">↷ Turn Right 90°</button>
             </div>
           </div>
         `;
@@ -1486,7 +1498,7 @@
       await loadLibraryData();
       renderControls();
       writeFormFields();
-      applyPreset('basicCamper');
+      applyPreset('empty');
       await loadSavedConcepts();
       await loadAgentRenderRequests();
     }

@@ -2936,12 +2936,14 @@ app.patch('/api/design-ai/vehicles/:vehicleId', requireAuth, (req, res) => {
 });
 
 app.get('/api/design-ai/products', requireAuth, (req, res) => {
+  const includeArchived = String(req.query.include_archived || '') === '1';
   const rows = db.prepare(`
     SELECT *
     FROM design_ai_product_records
+    ${includeArchived ? '' : "WHERE COALESCE(status,'') <> 'archived'"}
     ORDER BY updated_at DESC, product_id COLLATE NOCASE
   `).all().map(designProductRecordFromRow);
-  res.json({ records: rows });
+  res.json({ records: rows, include_archived: includeArchived });
 });
 
 app.get('/api/design-ai/products/:productId', requireAuth, (req, res) => {
@@ -2967,12 +2969,22 @@ app.post('/api/design-ai/products', requireAdmin, (req, res) => {
 app.patch('/api/design-ai/products/:productId', requireAdmin, (req, res) => {
   const productId = text(req.params.productId);
   if (!productId) return res.status(400).json({ error: 'product id is required.' });
+
+  const existing = db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(productId);
+  if (!existing) return res.status(404).json({ error: 'Product record not found.' });
+
   const nextId = text(req.body.product_id || productId);
-  if (nextId !== productId && db.prepare('SELECT 1 FROM design_ai_product_records WHERE product_id=?').get(productId)) {
-    db.prepare('UPDATE design_ai_product_records SET product_id=?, updated_at=CURRENT_TIMESTAMP WHERE product_id=?').run(nextId, productId);
+  if (!nextId) return res.status(400).json({ error: 'product_id is required.' });
+
+  if (nextId.toLowerCase() !== productId.toLowerCase()) {
+    const duplicate = db.prepare('SELECT 1 FROM design_ai_product_records WHERE lower(product_id)=lower(?) AND id<>?').get(nextId, existing.id);
+    if (duplicate) return res.status(409).json({ error: `Product ID already exists: ${nextId}` });
+    db.prepare('UPDATE design_ai_product_records SET product_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(nextId, existing.id);
   }
+
   const record = upsertDesignProductRecord(nextId, {
     ...req.body,
+    product_id: nextId,
     status: text(req.body.status || undefined)
   }, {
     manual_edit: true,

@@ -801,6 +801,18 @@ function layoutVehicleBuildDimensions(row = {}) {
   return { buildLength, buildWidth };
 }
 
+function layoutVehicleTemplateAlignment(row = {}) {
+  const constraints = parseJsonPayload(row.layout_constraints_json) || {};
+  const alignment = constraints.template_alignment || constraints.templateAlignment || {};
+  const buildArea = alignment.build_area || alignment.buildArea || null;
+  if (!buildArea || typeof buildArea !== 'object') return null;
+  return {
+    x: number(buildArea.x ?? buildArea.x_px ?? 0),
+    y: number(buildArea.y ?? buildArea.y_px ?? 0),
+    scale: positiveNumber(buildArea.scale, 1)
+  };
+}
+
 function layoutConceptVehiclesForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
@@ -813,6 +825,7 @@ function layoutConceptVehiclesForLibrary() {
     LIMIT 200
   `).all(status).map(row => {
     const dimensions = layoutVehicleBuildDimensions(row);
+    const templateAlignment = layoutVehicleTemplateAlignment(row);
     const vehicleId = text(row.vehicle_id);
     const topdownBase = db.prepare(`
       SELECT drive_file_id, name, path, mime_type
@@ -840,6 +853,7 @@ function layoutConceptVehiclesForLibrary() {
       topdownBaseImageDriveId: topdownBase?.drive_file_id || '',
       topdownBaseImagePath: topdownBase?.path || '',
       topdownBaseImageName: topdownBase?.name || '',
+      templateAlignment,
       source: 'design_ai_vehicle_records',
       status: row.status || status
     };
@@ -3079,6 +3093,45 @@ app.get('/api/design-ai/vehicles/:vehicleId/geometry-suggestion', requireAuth, a
       error: err.message || 'Vehicle geometry suggestion failed.'
     });
   }
+});
+
+app.patch('/api/layout-concepts/vehicles/:vehicleId/template-alignment', requireAuth, (req, res) => {
+  const vehicleId = text(req.params.vehicleId);
+  if (!vehicleId) return res.status(400).json({ error: 'vehicle id is required.' });
+
+  const row = db.prepare('SELECT * FROM design_ai_vehicle_records WHERE lower(vehicle_id)=lower(?)').get(vehicleId);
+  if (!row) return res.status(404).json({ error: 'Vehicle record not found.' });
+
+  const buildArea = req.body?.build_area || {};
+  const nextBuildArea = {
+    x: number(buildArea.x ?? 0),
+    y: number(buildArea.y ?? 0),
+    scale: positiveNumber(buildArea.scale, 1)
+  };
+
+  if (!nextBuildArea.scale) {
+    return res.status(400).json({ error: 'build_area scale is required.' });
+  }
+
+  const constraints = parseJsonPayload(row.layout_constraints_json) || {};
+  constraints.template_alignment = {
+    ...(constraints.template_alignment || {}),
+    build_area: nextBuildArea,
+    updated_at: new Date().toISOString()
+  };
+
+  db.prepare(`
+    UPDATE design_ai_vehicle_records
+    SET layout_constraints_json=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(JSON.stringify(constraints), row.id);
+
+  const updated = db.prepare('SELECT * FROM design_ai_vehicle_records WHERE id=?').get(row.id);
+  res.json({
+    ok: true,
+    vehicle: layoutConceptVehiclesForLibrary().find(v => String(v.key).toLowerCase() === String(vehicleId).toLowerCase()) || null,
+    templateAlignment: layoutVehicleTemplateAlignment(updated)
+  });
 });
 
 app.patch('/api/design-ai/vehicles/:vehicleId', requireAuth, (req, res) => {

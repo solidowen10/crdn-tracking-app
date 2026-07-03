@@ -49,6 +49,7 @@
     .btn:hover{background:var(--g50);border-color:var(--g300)}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
     .btn.primary:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
+    .btn.active{background:var(--brand-f);border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 2px rgba(202,116,31,.12)}
     .btn.danger{background:var(--dl);border-color:#fecaca;color:var(--danger)}
     .btn.danger:hover{background:#fee2e2;color:var(--danger)}
     .btn:disabled{opacity:.45;cursor:not-allowed}
@@ -468,6 +469,7 @@
             <button class="btn" type="button" onclick="scaleBuildArea(0.98)">Scale -</button>
             <button class="btn" type="button" onclick="scaleBuildArea(1.02)">Scale +</button>
             <button class="btn primary" type="button" onclick="saveBuildAreaAlignment()">Save Alignment</button>
+            <button class="btn" type="button" onclick="resetBuildAreaAlignment()">Reset Alignment</button>
           </div>
           <div class="preset-grid" style="margin-top:10px">
             <button class="btn primary" id="sendAgentBtn" type="button" onclick="sendLayoutToAgent()">Send to Agent</button>
@@ -505,6 +507,7 @@
 
     const VIEWBOX = { width: 980, height: 560 };
     const cargoZone = { x: 354, y: 114, width: 526, height: 330 };
+    const vehicleImageBox = { x: 66, y: 92, width: 848, height: 374 };
 
     const demoVehicles = {
       townace: { name: 'Toyota TownAce', buildLength: 1900, buildWidth: 1340 },
@@ -763,15 +766,16 @@
       const baseScale = Math.min(cargoZone.width / vehicle.buildLength, cargoZone.height / vehicle.buildWidth);
       const savedAlignment = vehicle.templateAlignment || {};
       const alignmentScale = positiveNumber(savedAlignment.scale, 1);
-      const buildableScale = baseScale * alignmentScale;
-      const widthVisual = vehicle.buildLength * buildableScale;
-      const heightVisual = vehicle.buildWidth * buildableScale;
+      const pxPerMm = baseScale * alignmentScale;
+      const widthVisual = vehicle.buildLength * pxPerMm;
+      const heightVisual = vehicle.buildWidth * pxPerMm;
       const defaultX = cargoZone.x + (cargoZone.width - widthVisual) / 2;
       const defaultY = cargoZone.y + (cargoZone.height - heightVisual) / 2;
 
       return {
         vehicle,
-        scale: buildableScale,
+        pxPerMm,
+        scale: pxPerMm,
         x: Number.isFinite(Number(savedAlignment.x)) ? Number(savedAlignment.x) : defaultX,
         y: Number.isFinite(Number(savedAlignment.y)) ? Number(savedAlignment.y) : defaultY,
         width: widthVisual,
@@ -1288,8 +1292,6 @@
       state.editingBuildArea = !state.editingBuildArea;
       ensureTemplateAlignment();
       render();
-      const btn = document.getElementById('alignBuildAreaBtn');
-      if (btn) btn.textContent = state.editingBuildArea ? 'Alignment Mode On' : 'Align Build Area';
       setStatus(state.editingBuildArea ? 'Buildable area alignment mode on. Drag the orange box to align it.' : 'Buildable area alignment mode off.', '');
     }
 
@@ -1297,6 +1299,15 @@
       const alignment = ensureTemplateAlignment();
       alignment.scale = Math.max(0.5, Math.min(2, positiveNumber(alignment.scale, 1) * multiplier));
       render();
+    }
+
+    function resetBuildAreaAlignment() {
+      const vehicle = currentVehicle();
+      vehicle.templateAlignment = null;
+      state.draggingBuildArea = false;
+      state.buildAreaDragOffset = null;
+      render();
+      setStatus('Buildable area alignment reset locally. Click Save Alignment to persist the reset.', 'warn');
     }
 
     async function saveBuildAreaAlignment() {
@@ -1319,11 +1330,11 @@
 
     function productRect(item, geometry) {
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
-      const x = geometry.x + item.x * geometry.scale;
-      const y = geometry.y + item.y * geometry.scale;
+      const x = geometry.x + item.x * geometry.pxPerMm;
+      const y = geometry.y + item.y * geometry.pxPerMm;
       const rotated = Math.abs(Number(item.rotation || 0)) % 180 === 90;
-      const width = (rotated ? positiveNumber(product.width, 330) : positiveNumber(product.length, 520)) * geometry.scale;
-      const height = (rotated ? positiveNumber(product.length, 520) : positiveNumber(product.width, 330)) * geometry.scale;
+      const width = (rotated ? positiveNumber(product.width, 330) : positiveNumber(product.length, 520)) * geometry.pxPerMm;
+      const height = (rotated ? positiveNumber(product.length, 520) : positiveNumber(product.width, 330)) * geometry.pxPerMm;
       return { product, x, y, width, height, rotation: Number(item.rotation || 0) };
     }
 
@@ -1335,15 +1346,15 @@
 
       const vehicleBaseLayer = baseImageUrl
         ? `
-          <image href="${baseImageUrl}"
-            x="${geometry.x.toFixed(1)}"
-            y="${geometry.y.toFixed(1)}"
-            width="${geometry.width.toFixed(1)}"
-            height="${geometry.height.toFixed(1)}"
-            preserveAspectRatio="none"
+          <rect x="${vehicleImageBox.x}" y="${vehicleImageBox.y}" width="${vehicleImageBox.width}" height="${vehicleImageBox.height}" rx="22" fill="#fbfaf7" stroke="#e2e2de" stroke-width="1"/>
+          <image href="${esc(baseImageUrl)}"
+            x="${vehicleImageBox.x}"
+            y="${vehicleImageBox.y}"
+            width="${vehicleImageBox.width}"
+            height="${vehicleImageBox.height}"
+            preserveAspectRatio="xMidYMid meet"
             opacity="1"/>
-          <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="rgba(255,255,255,0.18)" stroke="#CA741F" stroke-width="2.4"/>
-          <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">Buildable Area</text>
+          <rect x="${cargoZone.x}" y="${cargoZone.y}" width="${cargoZone.width}" height="${cargoZone.height}" rx="18" fill="none" stroke="#d8d8d2" stroke-width="1.2" stroke-dasharray="8 7"/>
         `
         : `
           <rect x="66" y="92" width="848" height="374" rx="70" fill="#fbfaf7" stroke="#111110" stroke-width="2"/>
@@ -1357,9 +1368,12 @@
           <line x1="252" y1="160" x2="252" y2="398" stroke="#e2e2de" stroke-width="1"/>
           <rect x="${cargoZone.x}" y="${cargoZone.y}" width="${cargoZone.width}" height="${cargoZone.height}" rx="18" fill="url(#cargoGrid)" stroke="#d8d8d2" stroke-width="1.3" stroke-dasharray="8 7"/>
           <text x="${cargoZone.x + 18}" y="${cargoZone.y + 24}" font-size="11" fill="#8c8c89">Reusable cargoZone</text>
-          <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="#fdf8f3" stroke="#CA741F" stroke-width="2.4"/>
-          <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">Centered Buildable Area</text>
         `;
+
+      const buildAreaLayer = `
+        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="#fdf8f3" fill-opacity="${baseImageUrl ? '0.72' : '1'}" stroke="#CA741F" stroke-width="${state.editingBuildArea ? '3.2' : '2.4'}" stroke-dasharray="${state.editingBuildArea ? '10 6' : 'none'}"/>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">${baseImageUrl ? 'Buildable Area' : 'Centered Buildable Area'}</text>
+      `;
 
       const productNodes = state.placed.map(item => {
         const rect = productRect(clampItem(item), geometry);
@@ -1386,6 +1400,7 @@
         <text x="34" y="66" font-size="12" fill="#6b6b68">Concept Layout Only · Generic van outline · Buildable area changes per vehicle</text>
 
         ${vehicleBaseLayer}
+        ${buildAreaLayer}
         <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#a55c15">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
 
         ${productNodes}
@@ -1439,7 +1454,12 @@
       document.getElementById('canvasTitle').textContent = `${geometry.vehicle.name} Layout Concept`;
       document.getElementById('statLength').textContent = `${geometry.vehicle.buildLength} mm`;
       document.getElementById('statWidth').textContent = `${geometry.vehicle.buildWidth} mm`;
-      document.getElementById('statScale').textContent = `${geometry.scale.toFixed(3)} px/mm`;
+      document.getElementById('statScale').textContent = `${geometry.pxPerMm.toFixed(3)} px/mm`;
+      const alignBtn = document.getElementById('alignBuildAreaBtn');
+      if (alignBtn) {
+        alignBtn.textContent = state.editingBuildArea ? 'Alignment Mode On' : 'Align Build Area';
+        alignBtn.classList.toggle('active', state.editingBuildArea);
+      }
     }
 
     function renderPlacedList() {

@@ -2181,6 +2181,7 @@ async function generateMoodboardConcept(input = {}, files = [], recordsContext =
 
 module.exports = {
   driveStatus,
+  requireDriveClient,
   syncDriveFolders,
   designLibraryReadiness,
   classifyDesignLibraryFile,

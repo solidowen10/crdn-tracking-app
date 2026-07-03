@@ -28,6 +28,7 @@ const {
 const { syncMasterCashflow } = require('./cashflowSync');
 const {
   driveStatus,
+  requireDriveClient,
   syncDriveFolders,
   designLibraryReadiness,
   normalizeVehicleResearchFileCandidates,
@@ -678,16 +679,32 @@ async function sendLayoutAgentTelegramMessage(requestId, layoutId) {
   if (!token || !chatId) return { sent: false, chatId, messageId: '', reason: 'Telegram bot token or allowed chat ID is not configured.' };
 
   const message = [
-    '🖼 CRDN Interior Render Request',
+    '🖼 CRDN Bird’s-Eye Layout Render',
+    '',
     `Request ID: ${requestId}`,
     `Layout ID: ${layoutId}`,
     '',
-    'Please generate a customer-facing top-down interior concept render.',
+    'Task:',
+    'Generate ONE polished top-down / bird’s-eye camper interior layout image.',
+    '',
+    'This is NOT a customer car photo mockup.',
+    'This is NOT exterior Photoshop.',
+    'This is a clean presentation render based on the saved 2D layout.',
     '',
     'Use CRDN Agent API:',
     `GET /api/agent/layout-render-requests/${requestId}`,
     '',
-    'Reply to this Telegram thread with the completed image and include:',
+    'Rules:',
+    '- Use the saved layout as ground truth.',
+    '- Respect all product positions, sizes, and rotations.',
+    '- Do not redesign the layout.',
+    '- Do not add products not listed.',
+    '- Use a clean white/light background.',
+    '- Make it look like a customer-facing camper layout proposal.',
+    '- Style reference: top-down van layout render with realistic floor, cabinets, bed cushions, shadows, and materials.',
+    '- Return ONE image only.',
+    '',
+    'Reply with the finished image and include:',
     `Request ID: ${requestId}`
   ].join('\n');
 
@@ -796,11 +813,33 @@ function layoutConceptVehiclesForLibrary() {
     LIMIT 200
   `).all(status).map(row => {
     const dimensions = layoutVehicleBuildDimensions(row);
+    const vehicleId = text(row.vehicle_id);
+    const topdownBase = db.prepare(`
+      SELECT drive_file_id, name, path, mime_type
+      FROM design_library_files
+      WHERE folder_type='vehicles'
+        AND is_folder=0
+        AND lower(mime_type) LIKE 'image/%'
+        AND lower(path) LIKE lower(?)
+        AND (
+          lower(name) LIKE '%topdown_base%'
+          OR lower(name) LIKE '%top-down-base%'
+          OR lower(name) LIKE '%topdown%'
+        )
+      ORDER BY
+        CASE WHEN lower(name) LIKE '%topdown_base%' THEN 0 ELSE 1 END,
+        modified_time DESC,
+        name COLLATE NOCASE
+      LIMIT 1
+    `).get(`${vehicleId}/%`);
     return {
-      key: text(row.vehicle_id),
+      key: vehicleId,
       name: layoutVehicleName(row),
       buildLength: dimensions.buildLength,
       buildWidth: dimensions.buildWidth,
+      topdownBaseImageDriveId: topdownBase?.drive_file_id || '',
+      topdownBaseImagePath: topdownBase?.path || '',
+      topdownBaseImageName: topdownBase?.name || '',
       source: 'design_ai_vehicle_records',
       status: row.status || status
     };
@@ -866,6 +905,70 @@ function layoutAgentRenderRequestDetail(id) {
     product: designProductForPlacement(placement.product_id)
   }));
 
+  const aiRenderItems = products.map(({ placement, product }) => {
+    const productWidth = positiveNumber(product?.layout_width_mm ?? product?.width_mm, 0);
+    const productDepth = positiveNumber(product?.layout_depth_mm ?? product?.depth_mm, 0);
+    const rotation = number(placement.rotation ?? 0);
+
+    return {
+      product_id: placement.product_id,
+      product_name: product?.name || placement.product_id,
+      category: product?.category || '',
+      editor_coordinates: {
+        note: 'Original 2D editor orientation: vehicle front is LEFT, rear is RIGHT.',
+        x_mm: placement.x_mm,
+        y_mm: placement.y_mm,
+        rotation_degrees: rotation
+      },
+      ai_render_coordinates: {
+        note: 'AI render orientation: vehicle front is TOP, rear is BOTTOM.',
+        front_to_rear_mm: placement.x_mm,
+        left_to_right_mm: placement.y_mm,
+        rotation_degrees: rotation,
+        placement_rule: 'Low front_to_rear_mm is near the front seats/top. High front_to_rear_mm is toward the rear/bottom.'
+      },
+      dimensions_mm: {
+        width_across_vehicle: productWidth,
+        depth_front_to_rear: productDepth,
+        height: positiveNumber(product?.layout_height_mm ?? product?.height_mm, 0)
+      },
+      visual_instruction: `${product?.name || placement.product_id} must stay at front-to-rear ${placement.x_mm} mm and left-to-right ${placement.y_mm} mm with ${rotation} degree rotation. Do not move, resize, or reinterpret this product.`
+    };
+  });
+
+  const aiRenderBrief = {
+    task: 'Generate ONE polished bird\'s-eye / top-down customer-facing camper interior layout render.',
+    workflow_type: '2D_LAYOUT_PRESENTATION_RENDER_NOT_CUSTOMER_PHOTO_MOCKUP',
+    orientation: {
+      source_editor_view: 'vehicle front is LEFT, vehicle rear is RIGHT',
+      required_ai_render_view: 'vehicle front is TOP, vehicle rear is BOTTOM',
+      coordinate_transform: 'Use editor x_mm as AI front_to_rear_mm. Use editor y_mm as AI left_to_right_mm.',
+      critical_rule: 'Do not rotate the layout randomly. Front seats/cab must appear at the TOP. Rear cargo/cabinets must appear toward the BOTTOM.'
+    },
+    vehicle_summary: {
+      vehicle_id: vehicle.vehicle_id || layoutConcept.vehicle_key || '',
+      name: vehicle.name || layoutConcept.vehicle_name || '',
+      build_length_mm: vehicle.build_length_mm || vehicle.buildLength || parsedLayout.buildLength || '',
+      build_width_mm: vehicle.build_width_mm || vehicle.buildWidth || parsedLayout.buildWidth || ''
+    },
+    layout_rules: [
+      'Use the saved layout as ground truth.',
+      'Respect every product position, product size, and product rotation.',
+      'Do not redesign the layout.',
+      'Do not add products that are not listed.',
+      'Do not move the bed to the rear if its x/front_to_rear coordinate places it behind the front seats.',
+      'Do not move rear cabinets forward if their x/front_to_rear coordinate places them toward the rear.',
+      'Use a clean white/light background.',
+      'Make it look like a polished customer-facing camper proposal, not a rough sketch.'
+    ],
+    items: aiRenderItems,
+    style_direction: {
+      view: 'top-down bird\'s-eye camper interior proposal render',
+      materials: 'realistic floor texture, cabinet surfaces, cushions, soft shadows, trim',
+      output: 'one finished image only'
+    }
+  };
+
   return {
     request: layoutAgentRenderRequestFromRow(requestRow),
     layout_concept: layoutConcept,
@@ -873,7 +976,8 @@ function layoutAgentRenderRequestDetail(id) {
     vehicle,
     products,
     notes: layoutConcept.notes || '',
-    product_placement_data: placements
+    product_placement_data: placements,
+    ai_render_brief: aiRenderBrief
   };
 }
 
@@ -2549,6 +2653,45 @@ app.get('/api/design-ai/library-files', requireAuth, (req, res) => {
       product_required: ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json']
     }
   });
+});
+
+app.get('/api/design-ai/library-image/:driveFileId', requireAuth, async (req, res) => {
+  try {
+    const fileId = text(req.params.driveFileId);
+    if (!fileId) return res.status(400).json({ error: 'Drive file id is required.' });
+
+    const row = db.prepare(`
+      SELECT drive_file_id, name, path, mime_type
+      FROM design_library_files
+      WHERE drive_file_id=?
+        AND is_folder=0
+      LIMIT 1
+    `).get(fileId);
+
+    if (!row) return res.status(404).json({ error: 'Library file not found.' });
+    if (!String(row.mime_type || '').toLowerCase().startsWith('image/')) {
+      return res.status(400).json({ error: 'Library file is not an image.' });
+    }
+
+    const drive = requireDriveClient();
+    const response = await drive.files.get(
+      {
+        fileId,
+        alt: 'media',
+        supportsAllDrives: true
+      },
+      {
+        responseType: 'stream'
+      }
+    );
+
+    res.setHeader('Content-Type', row.mime_type || 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    response.data.pipe(res);
+  } catch (err) {
+    console.warn('Design library image proxy failed:', err.message || err);
+    res.status(err.status || 502).json({ error: 'Unable to load Drive image.' });
+  }
 });
 
 app.patch('/api/design-ai/library-files/:id', requireAdmin, (req, res) => {
@@ -4934,13 +5077,24 @@ async function telegramAgentChatReply(userText) {
       name: 'list_crdn_vehicles',
       description: 'List safe CRDN vehicle records from Design AI database.',
       parameters: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      type: 'function',
+      name: 'get_crdn_layout_render_request',
+      description: 'Get a CRDN layout render request package by request id, including vehicle, layout, products, placements, rotations, and AI render brief.',
+      parameters: {
+        type: 'object',
+        properties: { id: { type: 'number' } },
+        required: ['id'],
+        additionalProperties: false
+      }
     }
   ];
 
   const system = [
     'You are CRDN Agent inside Telegram.',
     'Answer naturally and concisely.',
-    'Use CRDN tools when the user asks about projects, milestones, mockups, products, vehicles, due dates, or current status. For one specific product, use get_crdn_product before answering.',
+    'Use CRDN tools when the user asks about projects, milestones, mockups, products, vehicles, due dates, current status, or layout render requests. For one specific product, use get_crdn_product before answering. For layout render requests, use get_crdn_layout_render_request, not get_crdn_project.',
     'Do not expose secrets, customer contact info, tokens, LINE auth/session data, or private implementation details.',
     'Telegram AI chat is read-only for now. If the user asks to change data, say you cannot write yet.',
     'For mockup creation, tell the user to send a vehicle photo with /mockup and a description.'
@@ -5601,6 +5755,18 @@ function mcpToolDefinitions() {
         required: ['id'],
         additionalProperties: false
       }
+    },
+    {
+      name: 'get_crdn_layout_render_request',
+      description: 'Get a CRDN layout render request package by request id, including vehicle, layout, products, placements, rotations, and AI render brief.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', description: 'CRDN layout render request id' }
+        },
+        required: ['id'],
+        additionalProperties: false
+      }
     }
   ];
 }
@@ -5722,6 +5888,15 @@ function handleMcpToolCall(name, args = {}) {
       throw err;
     }
     return { project: detail };
+  }
+  if (name === 'get_crdn_layout_render_request') {
+    const detail = layoutAgentRenderRequestDetail(Number(args.id));
+    if (!detail) {
+      const err = new Error('Layout render request not found.');
+      err.code = -32004;
+      throw err;
+    }
+    return detail;
   }
   const err = new Error(`Unknown tool: ${name}`);
   err.code = -32601;

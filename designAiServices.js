@@ -14,8 +14,9 @@ const DIMENSION_LIKE_NAME_PARTS = ['dimension', 'size', 'measurement', 'install'
 const MAX_TEXT_FILE_BYTES = Number(process.env.DESIGN_AI_FILE_CONTENT_MAX_BYTES || 48 * 1024);
 const MAX_PROMPT_CONTENT_BYTES = Number(process.env.DESIGN_AI_PROMPT_CONTENT_MAX_BYTES || 180 * 1024);
 const MAX_PROMPT_CONTENT_FILES = 14;
-const VEHICLE_REQUIRED_FILES = ['vehicle.json', 'dimensions.csv', 'floorplan.svg'];
-const VEHICLE_OPTIONAL_FILES = ['mounting_points.csv', 'restricted_zones.csv', 'layout_constraints.json', 'buildability_report.md', 'manifest.json', 'vehicle_knowledge_sheet.pdf', 'scan.glb', 'photos/'];
+const VEHICLE_REQUIRED_FILES = ['vehicle.json', 'dimensions.csv', 'topdown_base.png'];
+const VEHICLE_OPTIONAL_FILES = ['floorplan.svg', 'mounting_points.csv', 'restricted_zones.csv', 'layout_constraints.json', 'buildability_report.md', 'manifest.json', 'vehicle_knowledge_sheet.pdf', 'scan.glb', 'photos/'];
+const VEHICLE_TOPDOWN_BASE_NAMES = ['topdown_base.png', 'topdown_base.jpg', 'topdown_base.jpeg', 'topdown.png', 'topdown.jpg', 'topdown.jpeg', 'vehicle_topdown_base.png', 'vehicle_topdown_base.jpg', 'vehicle_topdown_base.jpeg'];
 const PRODUCT_REQUIRED_FILES = ['product.json', 'dimensions.csv', 'footprint.svg', 'installation_rules.json'];
 const VEHICLE_RESEARCH_MATCH_RANK = {
   exact_preferred: 10,
@@ -27,8 +28,8 @@ const VEHICLE_RESEARCH_TYPES = {
   vehicle_record: {
     label: 'Vehicle record',
     detected_type: 'vehicle_record_json',
-    preferred: ['extracted/vehicle.json'],
-    exactNames: ['vehicle.json']
+    preferred: ['extracted/vehicle_record.json', 'extracted/vehicle.json'],
+    exactNames: ['vehicle_record.json', 'vehicle.json']
   },
   dimensions_csv: {
     label: 'Dimensions CSV',
@@ -57,11 +58,11 @@ const VEHICLE_RESEARCH_TYPES = {
   knowledge_sheet: {
     label: 'Knowledge sheet',
     detected_type: 'vehicle_knowledge_sheet',
-    preferred: ['source/vehicle_knowledge_sheet.pdf', 'source/vehicle_knowledge_sheet.png'],
-    exactNames: ['vehicle_knowledge_sheet.pdf', 'vehicle_knowledge_sheet.png']
+    preferred: ['source/vehicle_knowledge_sheet.png', 'source/vehicle_knowledge_sheet.jpg', 'source/vehicle_knowledge_sheet.pdf'],
+    exactNames: ['vehicle_knowledge_sheet.png', 'vehicle_knowledge_sheet.jpg', 'vehicle_knowledge_sheet.jpeg', 'vehicle_knowledge_sheet.pdf']
   }
 };
-const VEHICLE_RESEARCH_ORDER = ['vehicle_record', 'dimensions_csv', 'layout_constraints', 'buildability_report', 'manifest', 'knowledge_sheet'];
+const VEHICLE_RESEARCH_ORDER = ['vehicle_record', 'layout_constraints', 'dimensions_csv', 'manifest', 'buildability_report', 'knowledge_sheet'];
 const REQUIRED_MISSING_DATA = [
   'vehicle.json',
   'dimensions.csv',
@@ -153,6 +154,14 @@ function clean(value) {
   return value === undefined || value === null ? '' : String(value).trim();
 }
 
+function normalizeDrivePath(value) {
+  return clean(value).split('/').map(part => clean(part)).filter(Boolean).join('/');
+}
+
+function normalizeDrivePathSegments(segments = []) {
+  return segments.map(part => clean(part)).filter(Boolean);
+}
+
 function designAiLog(event, details = {}) {
   if (!DESIGN_AI_DEBUG_LOGS) return;
   try {
@@ -214,7 +223,7 @@ function fileExtension(name) {
 }
 
 function pathParts(file) {
-  return clean(file.path || file.name).split('/').map(part => clean(part)).filter(Boolean);
+  return normalizeDrivePath(file.path || file.name).split('/').filter(Boolean);
 }
 
 function filePath(file) {
@@ -253,6 +262,7 @@ function isReferenceOnlyFile(file) {
 
 function isStructuredLibraryFile(file) {
   const canonical = fileCanonicalName(file);
+  if (clean(file.folder_type).toLowerCase() === 'vehicles' && isTopdownBaseImage(file)) return true;
   if (clean(file.folder_type).toLowerCase() === 'vehicles' && classifyDesignLibraryFile(file).detected_type !== 'unclassified') return true;
   return VEHICLE_REQUIRED_FILES.includes(canonical) ||
     PRODUCT_REQUIRED_FILES.includes(canonical) ||
@@ -278,7 +288,7 @@ function isDimensionLikeEvidence(file, folderType) {
   const haystack = normalizeSearchText(`${filePath(file)} ${file.name}`);
   const vehicleMatch = folderType === 'vehicles' ? classifyDesignLibraryFile(file) : null;
   if (vehicleMatch && ['dimensions_csv', 'layout_constraints', 'vehicle_record'].includes(vehicleMatch.key)) return true;
-  if (folderType === 'vehicles' && ['dimensions.csv', 'floorplan.svg', 'mounting_points.csv', 'restricted_zones.csv', 'scan.glb'].includes(canonical)) {
+  if (folderType === 'vehicles' && (isTopdownBaseImage(file) || ['dimensions.csv', 'floorplan.svg', 'mounting_points.csv', 'restricted_zones.csv', 'scan.glb'].includes(canonical))) {
     return true;
   }
   if (folderType === 'products' && ['dimensions.csv', 'footprint.svg', 'installation_rules.json'].includes(canonical)) {
@@ -290,6 +300,22 @@ function isDimensionLikeEvidence(file, folderType) {
 function fileSimpleName(file) {
   const name = fileCanonicalName(file).replace(/\.[^.]+$/, '');
   return name.replace(/[^a-z0-9]+/g, '');
+}
+
+function normalizedVehicleId(value) {
+  return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function isTopdownBaseImage(file, vehicleId = '') {
+  if (isDriveFolder(file)) return false;
+  const extension = fileExtension(file.name || file.path);
+  if (!['.png', '.jpg', '.jpeg'].includes(extension)) return false;
+  const name = fileCanonicalName(file);
+  const simple = fileSimpleName(file);
+  const id = normalizedVehicleId(vehicleId || entityNameForFile(file));
+  if (VEHICLE_TOPDOWN_BASE_NAMES.includes(name)) return true;
+  if (['topdownbase', 'topdown', 'vehicletopdownbase'].includes(simple)) return true;
+  return Boolean(id && simple === `${id}topdownbase`);
 }
 
 function designLibraryFileStatus(file) {
@@ -364,7 +390,7 @@ function vehicleResearchFilenameCandidates(file) {
       out.push(vehicleResearchCandidate(file, 'buildability_report', 'fallback_pattern'));
     }
   }
-  if (['.pdf', '.png'].includes(extension)) {
+  if (['.pdf', '.png', '.jpg', '.jpeg'].includes(extension)) {
     if (simple.includes('vehiclescansheet') || simple.startsWith('knowledgesheet') || simple.startsWith('scansheet')) {
       out.push(vehicleResearchCandidate(file, 'knowledge_sheet', 'fallback_pattern'));
     }
@@ -419,12 +445,25 @@ function isLayoutConstraintsJson(content) {
   if (!parsed) return false;
   const input = parsed.layout_constraints_json || parsed.layout_constraints || parsed;
   if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
+  const flatBuildKeys = [
+    'build_origin_x_mm',
+    'build_origin_y_mm',
+    'buildable_length_mm',
+    'buildable_width_mm',
+    'buildable_height_mm',
+    'front_clearance_mm',
+    'rear_clearance_mm',
+    'left_clearance_mm',
+    'right_clearance_mm',
+    'minimum_walkway_mm'
+  ];
   return Boolean(
     input.build_area ||
     input.clearance ||
     input.restricted_zones ||
     input.mounting_points ||
-    (input.schema_version && input.metadata)
+    (input.schema_version && input.metadata) ||
+    flatBuildKeys.some(key => input[key] !== undefined)
   );
 }
 
@@ -487,9 +526,64 @@ function classifyDesignLibraryFile(file, content) {
 }
 
 function compareVehicleResearchCandidates(a, b) {
-  return a.rank - b.rank ||
+  const primaryRank = candidate => candidate.extraction_role === 'primary' ? 0 : 1;
+  const activeRank = candidate => isActiveDesignLibraryFile(candidate) ? 0 : 1;
+  const exactRank = candidate => candidate.match_type === 'exact_filename' ? 0 : candidate.match_type === 'exact_preferred' ? -1 : 1;
+  return primaryRank(a) - primaryRank(b) ||
+    activeRank(a) - activeRank(b) ||
     clean(b.modified_time).localeCompare(clean(a.modified_time)) ||
-    clean(a.path).localeCompare(clean(b.path));
+    exactRank(a) - exactRank(b) ||
+    a.rank - b.rank ||
+    normalizeDrivePath(a.path).localeCompare(normalizeDrivePath(b.path));
+}
+
+function dedupeVehicleResearchCandidates(candidates = []) {
+  const byIdentity = new Map();
+  candidates.forEach(candidate => {
+    const identity = clean(candidate.drive_file_id) || normalizeDrivePath(candidate.path).toLowerCase();
+    if (!identity) return;
+    const current = byIdentity.get(identity);
+    if (!current || compareVehicleResearchCandidates(candidate, current) < 0) {
+      byIdentity.set(identity, candidate);
+    }
+  });
+  return Array.from(byIdentity.values()).sort(compareVehicleResearchCandidates);
+}
+
+function duplicateVehicleResearchMessage(type, selected, candidates) {
+  const others = candidates.filter(candidate => candidate !== selected);
+  const selectedLabel = fileExtension(selected?.name) ? `${fileExtension(selected.name).replace('.', '').toUpperCase()} selected` : `${selected?.name || 'file'} selected`;
+  const duplicateLabels = [...new Set(others.map(candidate => {
+    const ext = fileExtension(candidate.name).replace('.', '').toUpperCase();
+    return ext || candidate.name || 'file';
+  }).filter(Boolean))];
+  const duplicateText = duplicateLabels.length ? `${duplicateLabels.join('/')} marked duplicate` : 'older files marked duplicate';
+  return `Multiple ${type.label.toLowerCase()} found: ${selectedLabel}, ${duplicateText}.`;
+}
+
+function samePriorityCandidateCount(candidates = [], selected) {
+  if (!selected) return 0;
+  return candidates.filter(candidate => (
+    candidate.rank === selected.rank &&
+    candidate.extraction_role === selected.extraction_role &&
+    designLibraryFileStatus(candidate) === designLibraryFileStatus(selected)
+  )).length;
+}
+
+function sanitizeVehicleResearchDuplicateFile(candidate, selected) {
+  const isSelected = clean(candidate.drive_file_id) && clean(candidate.drive_file_id) === clean(selected.drive_file_id)
+    ? true
+    : normalizeDrivePath(candidate.path) === normalizeDrivePath(selected.path);
+  return {
+    id: candidate.id || null,
+    name: candidate.name,
+    path: candidate.path,
+    modified_time: candidate.modified_time,
+    current_role: isSelected ? 'primary' : 'duplicate',
+    file_status: candidate.file_status || 'active',
+    match_type: candidate.match_type,
+    web_view_link: candidate.web_view_link
+  };
 }
 
 function sanitizeVehicleResearchStatus(candidate) {
@@ -534,7 +628,7 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
   const duplicates = [];
   const statuses = VEHICLE_RESEARCH_ORDER.map(key => {
     const type = VEHICLE_RESEARCH_TYPES[key];
-    const candidates = (candidatesByType[key] || []).sort(compareVehicleResearchCandidates);
+    const candidates = dedupeVehicleResearchCandidates(candidatesByType[key] || []);
     const selected = candidates[0] || null;
     if (!selected) {
       return {
@@ -552,28 +646,17 @@ function findVehicleResearchFiles(files = [], vehicleId = '', contentByFile = nu
         same_priority_count: 0
       };
     }
-    const samePriority = candidates.filter(candidate => candidate.rank === selected.rank).length;
+    const samePriority = samePriorityCandidateCount(candidates, selected);
     selected.candidate_count = candidates.length;
     selected.same_priority_count = samePriority;
     items[key] = selected;
-    if (samePriority > 1) {
-      warnings.push(`${type.label}: multiple ${selected.match_label} candidates found; using most recently modified file (${selected.path}). Consider archiving old research files to avoid confusion.`);
-    }
     if (candidates.length > 1) {
+      warnings.push(duplicateVehicleResearchMessage(type, selected, candidates));
       duplicates.push({
         key,
         label: type.label,
-        message: `Multiple ${type.label.toLowerCase()} files found. Choose the primary file or ignore old files.`,
-        files: candidates.map(candidate => ({
-          id: candidate.id || null,
-          name: candidate.name,
-          path: candidate.path,
-          modified_time: candidate.modified_time,
-          current_role: candidate.path === selected.path ? 'primary' : 'duplicate',
-          file_status: candidate.file_status || 'active',
-          match_type: candidate.match_type,
-          web_view_link: candidate.web_view_link
-        }))
+        message: duplicateVehicleResearchMessage(type, selected, candidates),
+        files: candidates.map(candidate => sanitizeVehicleResearchDuplicateFile(candidate, selected))
       });
     }
     return sanitizeVehicleResearchStatus(selected);
@@ -804,6 +887,13 @@ function designLibraryReadiness(files = [], extractionStatusByEntity = {}) {
       ? VEHICLE_OPTIONAL_FILES
       : [];
     const present = new Set(group.files.map(fileCanonicalName));
+    const topdownBase = group.folder_type === 'vehicles'
+      ? group.files.find(file => isTopdownBaseImage(file, group.entity))
+      : null;
+    if (topdownBase) {
+      group.topdown_base_file = filePath(topdownBase);
+      group.topdown_base_drive_file_id = clean(topdownBase.drive_file_id);
+    }
     const vehicleResearch = group.folder_type === 'vehicles'
       ? findVehicleResearchFiles(group.files, group.entity)
       : null;
@@ -813,12 +903,12 @@ function designLibraryReadiness(files = [], extractionStatusByEntity = {}) {
       group.required_present = [
         vehicleResearch.items.vehicle_record ? 'vehicle.json' : '',
         vehicleResearch.items.dimensions_csv ? 'dimensions.csv' : '',
-        present.has('floorplan.svg') ? 'floorplan.svg' : ''
+        topdownBase ? 'topdown_base.png' : ''
       ].filter(Boolean);
       group.required_missing = [
         vehicleResearch.items.vehicle_record ? '' : 'vehicle.json',
         vehicleResearch.items.dimensions_csv ? '' : 'dimensions.csv',
-        present.has('floorplan.svg') ? '' : 'floorplan.svg'
+        topdownBase ? '' : 'topdown_base.png'
       ].filter(Boolean);
       group.optional_present = optional.filter(name => present.has(name));
       if (vehicleResearch.items.layout_constraints && !group.optional_present.includes('layout_constraints.json')) group.optional_present.push('layout_constraints.json');
@@ -935,12 +1025,12 @@ async function listDriveFolderFiles(drive, folderId, folderType, parentPath = []
     });
     for (const file of response.data.files || []) {
       const isFolder = file.mimeType === DRIVE_FOLDER_MIME;
-      const currentPath = [...parentPath, file.name || 'Untitled'];
+      const currentPath = normalizeDrivePathSegments([...parentPath, file.name || 'Untitled']);
       files.push({
         drive_file_id: file.id,
         folder_type: folderType,
         name: file.name || '',
-        path: currentPath.join('/'),
+        path: normalizeDrivePath(currentPath.join('/')),
         parent_drive_file_id: folderId,
         mime_type: file.mimeType || '',
         web_view_link: file.webViewLink || '',
@@ -1381,13 +1471,367 @@ function confidenceRank(confidence) {
 }
 
 function sourceSummaryForField(candidate, match, value) {
+  const unit = match.field === 'payload_kg' ? 'kg' : VEHICLE_NUMERIC_FIELDS.has(match.field) ? 'mm' : '';
   return {
     value,
+    unit,
     confidence: match.confidence,
     source_file: candidate.source_file,
     original_source_field: candidate.source_field,
-    match_type: match.match_type
+    match_type: match.match_type,
+    method: match.match_type === 'direct' ? 'exact' : match.match_type === 'alias' ? 'inferred' : 'estimated',
+    notes: candidate.parser || ''
   };
+}
+
+function sourceCandidateNames(candidate) {
+  const segments = sourceFieldSegments(candidate.source_field);
+  return [
+    normalizeSourceFieldName(candidate.source_field),
+    ...segments,
+    segments.slice(-2).join('_'),
+    segments.slice(-3).join('_')
+  ].filter(Boolean);
+}
+
+function layoutSourcePriority(candidate) {
+  const path = normalizeDrivePath(candidate.source_file).toLowerCase();
+  if (path.endsWith('layout_constraints.json')) return 0;
+  if (path.endsWith('vehicle_record.json') || path.endsWith('vehicle.json')) return 1;
+  if (path.endsWith('dimensions.csv')) return 2;
+  if (path.endsWith('manifest.json')) return 3;
+  if (path.endsWith('buildability_report.md')) return 4;
+  if (path === 'openai response') return 5;
+  return 8;
+}
+
+function compareLayoutSourceCandidates(a, b) {
+  return layoutSourcePriority(a) - layoutSourcePriority(b) ||
+    normalizeDrivePath(a.source_file).localeCompare(normalizeDrivePath(b.source_file)) ||
+    clean(a.source_field).localeCompare(clean(b.source_field));
+}
+
+function layoutCandidateForAliases(candidates, aliases) {
+  const aliasSet = new Set(aliases.map(normalizeSourceFieldName).filter(Boolean));
+  return candidates
+    .filter(candidate => sourceCandidateNames(candidate).some(name => aliasSet.has(name)))
+    .sort(compareLayoutSourceCandidates)[0] || null;
+}
+
+function layoutNumberFromSources(candidates, aliases) {
+  const candidate = layoutCandidateForAliases(candidates, aliases);
+  if (!candidate) return null;
+  const value = extractNumberValue(candidate.value);
+  if (value === null) return null;
+  const priority = layoutSourcePriority(candidate);
+  return {
+    value,
+    source_file: candidate.source_file,
+    source_field: candidate.source_field,
+    method: priority <= 2 ? 'exact' : priority <= 4 ? 'inferred' : 'estimated',
+    confidence: priority <= 2 ? 'HIGH' : 'MEDIUM',
+    notes: candidate.parser || ''
+  };
+}
+
+function layoutTextFromSources(candidates, aliases) {
+  const candidate = layoutCandidateForAliases(candidates, aliases);
+  if (!candidate) return '';
+  return clean(candidate.value);
+}
+
+function layoutConstraintObjects(parsed, evidence) {
+  const out = [];
+  const addInput = (input, file) => {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return;
+    const target = input.layout_constraints_json || input.layout_constraints || input;
+    if (!target || typeof target !== 'object' || Array.isArray(target)) return;
+    if (!isLayoutConstraintsJson(JSON.stringify(target))) return;
+    out.push({ input: target, file });
+  };
+  addInput(parsed, { name: 'OpenAI response', path: 'OpenAI response', modified_time: '' });
+  (evidence?.readable_file_contents || []).forEach(file => {
+    if (fileExtension(file.name || file.path) !== '.json') return;
+    try {
+      addInput(JSON.parse(file.content || '{}'), file);
+    } catch (err) {
+      // Non-JSON text has already been handled by source candidate parsing.
+    }
+  });
+  return out.sort((a, b) => {
+    const aCandidate = { source_file: a.file?.path || a.file?.name || '' };
+    const bCandidate = { source_file: b.file?.path || b.file?.name || '' };
+    return layoutSourcePriority(aCandidate) - layoutSourcePriority(bCandidate);
+  });
+}
+
+function normalizeLayoutZoneForExtraction(zone = {}) {
+  return {
+    name: clean(zone.name || zone.zone_name || zone.zone || zone.id || 'Restricted Zone'),
+    type: clean(zone.type || 'restricted'),
+    x_mm: extractNumberValue(zone.x_mm ?? zone.x ?? zone.left_mm ?? zone.origin_x_mm),
+    y_mm: extractNumberValue(zone.y_mm ?? zone.y ?? zone.top_mm ?? zone.origin_y_mm),
+    length_mm: extractNumberValue(zone.length_mm ?? zone.length ?? zone.l_mm),
+    width_mm: extractNumberValue(zone.width_mm ?? zone.width ?? zone.depth_mm ?? zone.depth ?? zone.w_mm),
+    notes: clean(zone.notes || zone.reason || zone.description || zone.note)
+  };
+}
+
+function restrictedZonesFromLayoutInput(input = {}) {
+  const zones = input.restricted_zones || input.restrictedZones || input.no_go_zones || input.keep_clear_zones || [];
+  return Array.isArray(zones) ? zones.map(normalizeLayoutZoneForExtraction).filter(zone => (
+    zone.name || zone.x_mm !== null || zone.y_mm !== null || zone.length_mm !== null || zone.width_mm !== null
+  )) : [];
+}
+
+function mountingPointsFromLayoutInput(input = {}) {
+  return Array.isArray(input.mounting_points || input.mountingPoints)
+    ? (input.mounting_points || input.mountingPoints)
+    : [];
+}
+
+function layoutObjectMetadata(objects) {
+  const first = objects[0];
+  const input = first?.input || {};
+  const metadata = input.metadata || {};
+  return {
+    status: clean(metadata.approval_status || metadata.status || input.approval_status || input.status || 'ai_suggested'),
+    confidence: clean(metadata.confidence || input.confidence || 'MEDIUM').toUpperCase() || 'MEDIUM',
+    source_file: clean(metadata.source_file || metadata.derived_from || input.derived_from || first?.file?.name || ''),
+    source_path: clean(metadata.source_path || first?.file?.path || ''),
+    generated_at: clean(metadata.generated_at || metadata.generated_date || metadata.created_at || first?.file?.modified_time || ''),
+    notes: clean(metadata.notes || metadata.layout_notes || input.layout_notes || input.notes),
+    warnings: Array.isArray(metadata.warnings || input.warnings) ? (metadata.warnings || input.warnings).map(clean).filter(Boolean) : []
+  };
+}
+
+function detailForLayoutValue(field, value, source, unit = 'mm') {
+  if (!source || value === null || value === undefined || value === '') return null;
+  return {
+    value,
+    unit,
+    source_file: source.source_file || '',
+    source_field: source.source_field || '',
+    method: source.method || 'exact',
+    confidence: source.confidence || 'MEDIUM',
+    notes: source.notes || ''
+  };
+}
+
+function setLayoutField(target, path, fieldKey, source, details) {
+  if (!source || source.value === null || source.value === undefined) return false;
+  target[path[0]][path[1]] = source.value;
+  details[fieldKey] = detailForLayoutValue(fieldKey, source.value, source);
+  return true;
+}
+
+function estimateLayoutValue(target, path, fieldKey, value, details, estimatedFields, notes, confidence = 'MEDIUM') {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return false;
+  if (target[path[0]][path[1]] !== null && target[path[0]][path[1]] !== undefined && target[path[0]][path[1]] !== '') return false;
+  const rounded = Math.max(0, Math.round(Number(value)));
+  target[path[0]][path[1]] = rounded;
+  details[fieldKey] = detailForLayoutValue(fieldKey, rounded, {
+    source_file: 'CRDN deterministic estimate',
+    source_field: fieldKey,
+    method: 'estimated',
+    confidence,
+    notes
+  });
+  estimatedFields.push(fieldKey);
+  return true;
+}
+
+function firstPositiveNumber(...values) {
+  for (const value of values) {
+    const numeric = extractNumberValue(value);
+    if (numeric !== null && numeric > 0) return numeric;
+  }
+  return null;
+}
+
+function firstLayoutSource(details = {}) {
+  return Object.values(details).find(detail => detail?.source_file)?.source_file || '';
+}
+
+function topdownBaseFileFromEvidence(evidence, vehicleId = '') {
+  return (evidence?.source_files || []).find(file => isTopdownBaseImage(file, vehicleId)) || null;
+}
+
+function fileSourceMatch(files = [], matcher) {
+  return files.find(file => matcher(filePath(file).toLowerCase(), clean(file.name).toLowerCase())) || null;
+}
+
+function vehicleReadinessSummary(normalized, layout, evidence, estimatedFields) {
+  const files = evidence?.source_files || [];
+  const layoutDetails = layout?.metadata?.field_details || {};
+  const vehicleRecordFile = fileSourceMatch(files, (path, name) => path.endsWith('vehicle_record.json') || path.endsWith('vehicle.json') || name === 'vehicle_record.json' || name === 'vehicle.json');
+  const dimensionsFile = fileSourceMatch(files, (path, name) => path.endsWith('dimensions.csv') || name === 'dimensions.csv');
+  const floorplanFile = fileSourceMatch(files, (path, name) => path.endsWith('floorplan.svg') || name === 'floorplan.svg' || (name.endsWith('.svg') && name.includes('floorplan')));
+  const buildabilityFile = fileSourceMatch(files, (path, name) => path.endsWith('buildability_report.md') || name === 'buildability_report.md');
+  const topdownFile = topdownBaseFileFromEvidence(evidence, normalized.vehicle_id);
+  const hasVehicleRecord = Boolean(vehicleRecordFile || normalized.make || normalized.model || normalized.brand);
+  const hasDimensions = Boolean(
+    (normalized.interior_length_mm && normalized.interior_width_mm) ||
+    (normalized.overall_length_mm && normalized.overall_width_mm)
+  );
+  const buildArea = layout?.build_area || {};
+  const hasBuildArea = Boolean(buildArea.length_mm && buildArea.width_mm);
+  const hasRestrictedZones = Array.isArray(layout?.restricted_zones) && layout.restricted_zones.length > 0;
+  const hasWheelArch = Boolean(normalized.wheel_arch_width_mm || normalized.wheel_arch_height_mm);
+  const hasDoorOpenings = Boolean(normalized.side_door_width_mm || normalized.rear_door_width_mm || normalized.side_door_height_mm || normalized.rear_door_height_mm);
+  const hasMountingPoints = Array.isArray(layout?.mounting_points) && layout.mounting_points.length > 0;
+  const criticalMissing = [];
+  if (!hasVehicleRecord) criticalMissing.push('Vehicle record');
+  if (!hasDimensions) criticalMissing.push('Dimensions');
+  if (!hasBuildArea) criticalMissing.push('Buildable area');
+  if (!topdownFile) criticalMissing.push('Topdown base image');
+  const warnings = [];
+  if (!topdownFile) warnings.push('Topdown base image missing. Upload topdown_base.png to this vehicle folder.');
+  const sourceForBuild = firstLayoutSource(layoutDetails) || layout?.metadata?.source_file || '';
+  const required = [
+    { key: 'vehicle_record', label: 'Vehicle record', status: hasVehicleRecord ? 'Found' : 'Missing', confidence: hasVehicleRecord ? 'HIGH' : 'LOW', source_file: vehicleRecordFile?.path || normalized._field_sources?.model?.source_file || normalized._field_sources?.make?.source_file || '' },
+    { key: 'dimensions', label: 'Dimensions', status: hasDimensions ? 'Found' : 'Missing', confidence: hasDimensions ? 'HIGH' : 'LOW', source_file: dimensionsFile?.path || normalized._field_sources?.interior_length_mm?.source_file || normalized._field_sources?.overall_length_mm?.source_file || '' },
+    { key: 'buildable_area', label: 'Buildable area', status: hasBuildArea ? (estimatedFields.some(field => field.startsWith('buildable_') || field.startsWith('build_origin_')) ? 'Estimated' : 'Found') : 'Missing', confidence: hasBuildArea ? (estimatedFields.length ? 'MEDIUM' : (layout?.metadata?.confidence || 'HIGH')) : 'LOW', source_file: sourceForBuild },
+    { key: 'topdown_base', label: 'Topdown base image', status: topdownFile ? 'Found' : 'Missing', confidence: topdownFile ? 'HIGH' : 'LOW', source_file: topdownFile?.path || '' }
+  ];
+  const niceToHave = [
+    { key: 'floorplan', label: 'Floorplan', status: floorplanFile ? 'Found' : 'Missing', confidence: floorplanFile ? 'HIGH' : 'LOW', source_file: floorplanFile?.path || '' },
+    { key: 'wheel_arch', label: 'Wheel arch data', status: hasWheelArch ? 'Found' : 'Missing', confidence: hasWheelArch ? 'MEDIUM' : 'LOW', source_file: normalized._field_sources?.wheel_arch_width_mm?.source_file || normalized._field_sources?.wheel_arch_height_mm?.source_file || '' },
+    { key: 'restricted_zones', label: 'Restricted zones', status: hasRestrictedZones ? 'Found' : 'Missing', confidence: hasRestrictedZones ? 'MEDIUM' : 'LOW', source_file: sourceForBuild },
+    { key: 'door_openings', label: 'Door opening data', status: hasDoorOpenings ? 'Found' : 'Missing', confidence: hasDoorOpenings ? 'MEDIUM' : 'LOW', source_file: normalized._field_sources?.side_door_width_mm?.source_file || normalized._field_sources?.rear_door_width_mm?.source_file || '' },
+    { key: 'mounting_points', label: 'Mounting points', status: hasMountingPoints ? 'Found' : 'Missing', confidence: hasMountingPoints ? 'MEDIUM' : 'LOW', source_file: sourceForBuild || buildabilityFile?.path || '' }
+  ];
+  const overallScore = Math.min(100,
+    (hasVehicleRecord ? 20 : 0) +
+    (hasDimensions ? 30 : 0) +
+    (hasBuildArea ? 30 : 0) +
+    (topdownFile ? 20 : 0)
+  );
+  const layoutReady = hasVehicleRecord && hasDimensions && hasBuildArea && Boolean(topdownFile);
+  return {
+    overall_score: overallScore,
+    layout_ready: layoutReady,
+    customer_proposal_ready: layoutReady,
+    fabrication_ready: false,
+    critical_missing: criticalMissing,
+    estimated_fields: [...new Set(estimatedFields)],
+    warnings,
+    required,
+    nice_to_have: niceToHave,
+    topdown_base_image: topdownFile ? {
+      drive_file_id: topdownFile.drive_file_id || '',
+      name: topdownFile.name || '',
+      path: topdownFile.path || ''
+    } : null
+  };
+}
+
+function normalizeVehicleLayoutConstraintsFromSources(parsed, normalized, candidates, evidence) {
+  const objects = layoutConstraintObjects(parsed, evidence);
+  const metadata = layoutObjectMetadata(objects);
+  const details = {};
+  const estimatedFields = [];
+  const layout = {
+    schema_version: 1,
+    build_area: {
+      x_mm: null,
+      y_mm: null,
+      length_mm: null,
+      width_mm: null,
+      height_mm: null
+    },
+    clearance: {
+      front_mm: null,
+      rear_mm: null,
+      left_mm: null,
+      right_mm: null,
+      minimum_walkway_mm: null
+    },
+    restricted_zones: [],
+    mounting_points: [],
+    metadata: {
+      ...metadata,
+      coordinate_convention: 'Origin is the front-left of the usable cargo coordinate system. X increases toward the rear hatch/right side of the top-down layout, Y increases across vehicle width.',
+      topdown_base_requirement: 'Upload topdown_base.png: top-down orthographic, front facing left, empty cargo floor, no labels or products.'
+    }
+  };
+
+  const fieldAliases = {
+    build_origin_x_mm: ['layout_constraints_json_build_area_x_mm', 'layout_constraints_build_area_x_mm', 'build_area_x_mm', 'buildable_area_x_mm', 'build_origin_x_mm', 'origin_x_mm'],
+    build_origin_y_mm: ['layout_constraints_json_build_area_y_mm', 'layout_constraints_build_area_y_mm', 'build_area_y_mm', 'buildable_area_y_mm', 'build_origin_y_mm', 'origin_y_mm'],
+    buildable_length_mm: ['layout_constraints_json_build_area_length_mm', 'layout_constraints_build_area_length_mm', 'build_area_length_mm', 'buildable_area_length_mm', 'buildable_length_mm', 'build_length_mm', 'cargo_floor_length_mm'],
+    buildable_width_mm: ['layout_constraints_json_build_area_width_mm', 'layout_constraints_build_area_width_mm', 'build_area_width_mm', 'buildable_area_width_mm', 'buildable_width_mm', 'build_width_mm', 'cargo_floor_width_mm'],
+    buildable_height_mm: ['layout_constraints_json_build_area_height_mm', 'layout_constraints_build_area_height_mm', 'build_area_height_mm', 'buildable_area_height_mm', 'buildable_height_mm', 'build_height_mm', 'cargo_floor_height_mm'],
+    front_clearance_mm: ['layout_constraints_json_clearance_front_mm', 'layout_constraints_clearance_front_mm', 'clearance_front_mm', 'front_clearance_mm', 'front_seat_clearance_mm', 'front_seat_mm'],
+    rear_clearance_mm: ['layout_constraints_json_clearance_rear_mm', 'layout_constraints_clearance_rear_mm', 'clearance_rear_mm', 'rear_clearance_mm', 'rear_door_clearance_mm', 'rear_door_mm'],
+    left_clearance_mm: ['layout_constraints_json_clearance_left_mm', 'layout_constraints_clearance_left_mm', 'clearance_left_mm', 'left_clearance_mm', 'left_wall_clearance_mm', 'left_wall_mm'],
+    right_clearance_mm: ['layout_constraints_json_clearance_right_mm', 'layout_constraints_clearance_right_mm', 'clearance_right_mm', 'right_clearance_mm', 'right_wall_clearance_mm', 'right_wall_mm'],
+    minimum_walkway_mm: ['layout_constraints_json_clearance_minimum_walkway_mm', 'layout_constraints_clearance_minimum_walkway_mm', 'clearance_minimum_walkway_mm', 'minimum_walkway_mm', 'walkway_mm']
+  };
+
+  setLayoutField(layout, ['build_area', 'x_mm'], 'build_origin_x_mm', layoutNumberFromSources(candidates, fieldAliases.build_origin_x_mm), details);
+  setLayoutField(layout, ['build_area', 'y_mm'], 'build_origin_y_mm', layoutNumberFromSources(candidates, fieldAliases.build_origin_y_mm), details);
+  setLayoutField(layout, ['build_area', 'length_mm'], 'buildable_length_mm', layoutNumberFromSources(candidates, fieldAliases.buildable_length_mm), details);
+  setLayoutField(layout, ['build_area', 'width_mm'], 'buildable_width_mm', layoutNumberFromSources(candidates, fieldAliases.buildable_width_mm), details);
+  setLayoutField(layout, ['build_area', 'height_mm'], 'buildable_height_mm', layoutNumberFromSources(candidates, fieldAliases.buildable_height_mm), details);
+  setLayoutField(layout, ['clearance', 'front_mm'], 'front_clearance_mm', layoutNumberFromSources(candidates, fieldAliases.front_clearance_mm), details);
+  setLayoutField(layout, ['clearance', 'rear_mm'], 'rear_clearance_mm', layoutNumberFromSources(candidates, fieldAliases.rear_clearance_mm), details);
+  setLayoutField(layout, ['clearance', 'left_mm'], 'left_clearance_mm', layoutNumberFromSources(candidates, fieldAliases.left_clearance_mm), details);
+  setLayoutField(layout, ['clearance', 'right_mm'], 'right_clearance_mm', layoutNumberFromSources(candidates, fieldAliases.right_clearance_mm), details);
+  setLayoutField(layout, ['clearance', 'minimum_walkway_mm'], 'minimum_walkway_mm', layoutNumberFromSources(candidates, fieldAliases.minimum_walkway_mm), details);
+
+  for (const item of objects) {
+    if (!layout.restricted_zones.length) layout.restricted_zones = restrictedZonesFromLayoutInput(item.input);
+    if (!layout.mounting_points.length) layout.mounting_points = mountingPointsFromLayoutInput(item.input);
+  }
+
+  const interiorLength = firstPositiveNumber(normalized.interior_length_mm);
+  const interiorWidth = firstPositiveNumber(normalized.interior_width_mm);
+  const interiorHeight = firstPositiveNumber(normalized.interior_height_mm);
+  const estimatedInteriorLength = interiorLength || (normalized.overall_length_mm ? Number(normalized.overall_length_mm) * 0.45 : null);
+  const estimatedInteriorWidth = interiorWidth || (normalized.overall_width_mm ? Number(normalized.overall_width_mm) * 0.74 : null);
+  const estimatedInteriorHeight = interiorHeight || (normalized.overall_height_mm ? Number(normalized.overall_height_mm) * 0.68 : null);
+  const estimateConfidence = interiorLength && interiorWidth ? 'MEDIUM' : 'LOW';
+  const estimateNote = interiorLength && interiorWidth
+    ? 'Estimated from confirmed interior dimensions.'
+    : 'Estimated from exterior proportions because interior dimensions were incomplete.';
+  const front = layout.clearance.front_mm ?? 50;
+  const rear = layout.clearance.rear_mm ?? 50;
+  const left = layout.clearance.left_mm ?? 30;
+  const right = layout.clearance.right_mm ?? 30;
+
+  if (estimatedInteriorLength || estimatedInteriorWidth || estimatedInteriorHeight) {
+    estimateLayoutValue(layout, ['clearance', 'front_mm'], 'front_clearance_mm', front, details, estimatedFields, estimateNote, estimateConfidence);
+    estimateLayoutValue(layout, ['clearance', 'rear_mm'], 'rear_clearance_mm', rear, details, estimatedFields, estimateNote, estimateConfidence);
+    estimateLayoutValue(layout, ['clearance', 'left_mm'], 'left_clearance_mm', left, details, estimatedFields, estimateNote, estimateConfidence);
+    estimateLayoutValue(layout, ['clearance', 'right_mm'], 'right_clearance_mm', right, details, estimatedFields, estimateNote, estimateConfidence);
+    estimateLayoutValue(layout, ['clearance', 'minimum_walkway_mm'], 'minimum_walkway_mm', 400, details, estimatedFields, 'Default planning walkway until designer verifies the vehicle.', 'LOW');
+    estimateLayoutValue(layout, ['build_area', 'x_mm'], 'build_origin_x_mm', front, details, estimatedFields, estimateNote, estimateConfidence);
+    estimateLayoutValue(layout, ['build_area', 'y_mm'], 'build_origin_y_mm', left, details, estimatedFields, estimateNote, estimateConfidence);
+    if (estimatedInteriorLength) estimateLayoutValue(layout, ['build_area', 'length_mm'], 'buildable_length_mm', estimatedInteriorLength - front - rear, details, estimatedFields, estimateNote, estimateConfidence);
+    if (estimatedInteriorWidth) estimateLayoutValue(layout, ['build_area', 'width_mm'], 'buildable_width_mm', estimatedInteriorWidth - left - right, details, estimatedFields, estimateNote, estimateConfidence);
+    if (estimatedInteriorHeight) estimateLayoutValue(layout, ['build_area', 'height_mm'], 'buildable_height_mm', estimatedInteriorHeight - 30, details, estimatedFields, estimateNote, estimateConfidence);
+  }
+
+  const noteFromSources = layoutTextFromSources(candidates, ['layout_notes', 'metadata_notes', 'notes']);
+  const derivedFrom = layoutTextFromSources(candidates, ['derived_from', 'metadata_derived_from', 'source_file']);
+  if (noteFromSources && !layout.metadata.notes) layout.metadata.notes = noteFromSources;
+  if (derivedFrom && !layout.metadata.source_file) layout.metadata.source_file = derivedFrom;
+  if (!layout.metadata.source_file) layout.metadata.source_file = firstLayoutSource(details);
+  if (!layout.metadata.confidence) layout.metadata.confidence = estimatedFields.length ? estimateConfidence : 'MEDIUM';
+  layout.metadata.field_details = details;
+  layout.metadata.estimated_fields = [...new Set(estimatedFields)];
+  if (estimatedFields.length) {
+    layout.metadata.warnings = [
+      ...(layout.metadata.warnings || []),
+      'Some build area values were estimated. Designer review is required before saving as approved CRDN data.'
+    ];
+  }
+
+  const readiness = vehicleReadinessSummary(normalized, layout, evidence, estimatedFields);
+  layout.vehicle_readiness = readiness;
+  layout.metadata.vehicle_readiness = readiness;
+  return { layout, readiness };
 }
 
 function applyVehicleNormalization(entityId, parsed, evidence) {
@@ -1427,9 +1871,23 @@ function applyVehicleNormalization(entityId, parsed, evidence) {
     if (normalized[field] && !confidence[field]) confidence[field] = field === 'brand' && parsed?.brand ? 'HIGH' : 'MEDIUM';
   });
 
+  normalized._field_sources = fieldSources;
+  const layoutResult = normalizeVehicleLayoutConstraintsFromSources(parsed, normalized, candidates, evidence);
+  normalized.layout_constraints_json = layoutResult.layout;
+  normalized.vehicle_readiness = layoutResult.readiness;
+  confidence.layout_constraints_json = layoutResult.layout?.metadata?.confidence || (layoutResult.readiness?.layout_ready ? 'MEDIUM' : 'LOW');
+  fieldSources.layout_constraints_json = {
+    value: 'layout_constraints_json',
+    confidence: confidence.layout_constraints_json,
+    source_file: layoutResult.layout?.metadata?.source_file || firstLayoutSource(layoutResult.layout?.metadata?.field_details || {}),
+    original_source_field: 'layout_constraints_json',
+    match_type: layoutResult.layout?.metadata?.estimated_fields?.length ? 'estimated' : 'direct'
+  };
+
   normalized.field_confidence = confidence;
   normalized.source_evidence = Array.isArray(parsed?.source_evidence) ? parsed.source_evidence : [];
   normalized._field_sources = fieldSources;
+  normalized._field_details = layoutResult.layout?.metadata?.field_details || {};
   normalized._unmapped_source_data = dedupeSourceCandidates(unmapped, 80);
   normalized._measurement_required = VEHICLE_PHYSICAL_MEASUREMENT_FIELDS.filter(field => {
     if (field === 'mounting_point_locations') return true;
@@ -1477,10 +1935,13 @@ function extractionTemplate(entityType, entityId) {
       wheel_arch_position_x_mm: null,
       wheel_arch_position_y_mm: null,
       payload_kg: null,
+      layout_constraints_json: {},
+      vehicle_readiness: null,
       notes: '',
       field_confidence: {},
       source_evidence: [],
       _field_sources: {},
+      _field_details: {},
       _unmapped_source_data: [],
       _measurement_required: []
     };
@@ -1567,9 +2028,10 @@ function normalizeExtractionResult(entityType, entityId, parsed, evidence = null
 
 function orderedVehicleResearchFiles(research) {
   if (!research?.items) return [];
-  return ['vehicle_record', 'dimensions_csv', 'layout_constraints', 'manifest', 'buildability_report']
+  return ['vehicle_record', 'layout_constraints', 'dimensions_csv', 'manifest', 'buildability_report', 'knowledge_sheet']
     .map(key => research.items[key]?.file)
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(isTextReadableFile);
 }
 
 function uniqueFiles(files = []) {
@@ -1644,7 +2106,7 @@ async function buildExtractionEvidenceContext(files = [], entityType = '', entit
 function extractionSystemPrompt(entityType) {
   const shape = extractionTemplate(entityType, '');
   const vehicleGuidance = entityType === 'vehicle'
-    ? 'For vehicle extraction, preserve manufacturer source field names in _field_sources when possible. Map cargo/load/luggage dimensions into interior fields, door opening measurements into side/rear door fields, and keep discovered-but-unmapped values in _unmapped_source_data. Confidence labels must be HIGH for exact field matches, MEDIUM for alias matches, LOW only for clearly inferred values. Do not invent wheel arch, rear window, or mounting point dimensions.'
+    ? 'For vehicle extraction, preserve manufacturer source field names in _field_sources when possible. Search all readable evidence in this priority: vehicle_record.json, layout_constraints.json, dimensions.csv, manifest.json, buildability_report.md, then scan-sheet/image/PDF metadata only as supporting evidence. Map cargo/load/luggage dimensions into interior fields, door opening measurements into side/rear door fields, and keep discovered-but-unmapped values in _unmapped_source_data. Confidence labels must be HIGH for exact field matches, MEDIUM for alias or derived values, LOW only for clearly inferred values. Do not invent wheel arch, rear window, or mounting point dimensions. Always attempt layout_constraints_json.build_area and layout_constraints_json.clearance. Accept nested build_area/clearance or flat build_origin_x_mm/buildable_length_mm/front_clearance_mm style fields. If interior dimensions exist but build area is missing, estimate the build area from interior length/width/height minus front/rear/left/right clearances, mark estimated fields MEDIUM or LOW, and explain the coordinate convention. Include vehicle_readiness with overall_score, layout_ready, customer_proposal_ready, fabrication_ready=false, critical_missing, estimated_fields, and warnings. Require a topdown_base image for layout readiness; if missing, warn exactly: "Topdown base image missing. Upload topdown_base.png to this vehicle folder."'
     : '';
   const productGuidance = entityType === 'product'
     ? 'For product extraction, map confirmed physical dimensions separately from layout footprint dimensions when both are present. Use layout_component_type, shape_rule, orientation_options_json, allowed_zones_json, and layout_modes_json when evidence supports AI placement. Put uncertain or image-based estimates in estimated_data_json and mark confidence LOW or MEDIUM. Do not mark production_ready true unless source evidence explicitly confirms production fitment.'

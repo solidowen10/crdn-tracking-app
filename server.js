@@ -813,6 +813,11 @@ function layoutVehicleTemplateAlignment(row = {}) {
   };
 }
 
+function normalizedDesignFileName(value) {
+  const name = text(value).split('/').pop().toLowerCase().replace(/\.[a-z0-9]+$/, '');
+  return name.replace(/[^a-z0-9]+/g, '');
+}
+
 function layoutConceptVehiclesForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
@@ -827,24 +832,40 @@ function layoutConceptVehiclesForLibrary() {
     const dimensions = layoutVehicleBuildDimensions(row);
     const templateAlignment = layoutVehicleTemplateAlignment(row);
     const vehicleId = text(row.vehicle_id);
+    const normalizedVehicleId = normalizedDesignFileName(vehicleId);
     const topdownBase = db.prepare(`
       SELECT drive_file_id, name, path, mime_type
       FROM design_library_files
       WHERE folder_type='vehicles'
         AND is_folder=0
+        AND COALESCE(file_status, 'active')='active'
         AND lower(mime_type) LIKE 'image/%'
-        AND lower(path) LIKE lower(?)
+        AND lower(replace(replace(path, ' /', '/'), '/ ', '/')) LIKE lower(?)
         AND (
-          lower(name) LIKE '%topdown_base%'
-          OR lower(name) LIKE '%top-down-base%'
-          OR lower(name) LIKE '%topdown%'
+          lower(name) IN ('topdown_base.png','topdown_base.jpg','topdown_base.jpeg','topdown.png','topdown.jpg','topdown.jpeg','vehicle_topdown_base.png','vehicle_topdown_base.jpg','vehicle_topdown_base.jpeg')
+          OR lower(name)=lower(?)
+          OR lower(name)=lower(?)
+          OR lower(name)=lower(?)
+          OR lower(name)=lower(?)
+          OR lower(name)=lower(?)
+          OR lower(name)=lower(?)
+          OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='topdownbase'
+          OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='vehicletopdownbase'
         )
       ORDER BY
         CASE WHEN lower(name) LIKE '%topdown_base%' THEN 0 ELSE 1 END,
         modified_time DESC,
         name COLLATE NOCASE
       LIMIT 1
-    `).get(`${vehicleId}/%`);
+    `).get(
+      `${vehicleId}/%`,
+      `${vehicleId}_topdown_base.png`,
+      `${vehicleId}_topdown_base.jpg`,
+      `${vehicleId}_topdown_base.jpeg`,
+      `${normalizedVehicleId}_topdown_base.png`,
+      `${normalizedVehicleId}_topdown_base.jpg`,
+      `${normalizedVehicleId}_topdown_base.jpeg`
+    );
     return {
       key: vehicleId,
       name: layoutVehicleName(row),
@@ -1152,10 +1173,24 @@ function designFolderType(entityType) {
   return designEntityType(entityType) === 'vehicle' ? 'vehicles' : 'products';
 }
 
+function normalizeDesignLibraryPath(value) {
+  return text(value).split('/').map(part => text(part)).filter(Boolean).join('/');
+}
+
+function repairDesignLibraryFilePaths() {
+  return db.prepare(`
+    UPDATE design_library_files
+    SET path=replace(replace(path, ' /', '/'), '/ ', '/'),
+      updated_at=CURRENT_TIMESTAMP
+    WHERE path LIKE '% /%' OR path LIKE '%/ %'
+  `).run();
+}
+
 function designEntityFolderFiles(entityType, folderPath, entityId) {
   const folderType = designFolderType(entityType);
-  const folder = text(folderPath || entityId);
+  const folder = normalizeDesignLibraryPath(folderPath || entityId);
   if (!folder) return [];
+  const legacyChild = `${folder} /%`;
   return db.prepare(`
     SELECT *
     FROM design_library_files
@@ -1164,10 +1199,19 @@ function designEntityFolderFiles(entityType, folderPath, entityId) {
       AND (
         path=?
         OR path LIKE ?
+        OR path LIKE ?
+        OR replace(replace(path, ' /', '/'), '/ ', '/')=?
+        OR replace(replace(path, ' /', '/'), '/ ', '/') LIKE ?
         OR lower(name)=lower(?)
       )
     ORDER BY is_folder DESC, path COLLATE NOCASE, modified_time DESC
-  `).all(folderType, folder, `${folder}/%`, folder);
+  `).all(folderType, folder, `${folder}/%`, legacyChild, folder, `${folder}/%`, folder);
+}
+
+try {
+  repairDesignLibraryFilePaths();
+} catch (err) {
+  console.warn('Design library path repair skipped:', err.message);
 }
 
 function uniqueDesignLibraryFiles(files = []) {
@@ -1206,6 +1250,14 @@ function vehicleResearchFilesForRecord(vehicle) {
 
 function vehicleResearchStatusesWithFloorplan(research, files = []) {
   const statuses = Array.isArray(research?.statuses) ? [...research.statuses] : [];
+  const isTopdownBase = file => {
+    const name = text(file.name || file.path).toLowerCase();
+    const simple = normalizedDesignFileName(name);
+    const entity = normalizedDesignFileName((text(file.path).split('/')[0] || ''));
+    return ['topdown_base.png', 'topdown_base.jpg', 'topdown_base.jpeg', 'topdown.png', 'topdown.jpg', 'topdown.jpeg', 'vehicle_topdown_base.png', 'vehicle_topdown_base.jpg', 'vehicle_topdown_base.jpeg'].includes(name) ||
+      ['topdownbase', 'topdown', 'vehicletopdownbase'].includes(simple) ||
+      Boolean(entity && simple === `${entity}topdownbase`);
+  };
   const floorplan = files
     .filter(file => Number(file.is_folder) !== 1)
     .find(file => {
@@ -1213,6 +1265,9 @@ function vehicleResearchStatusesWithFloorplan(research, files = []) {
       const pathValue = text(file.path).toLowerCase();
       return name === 'floorplan.svg' || pathValue.endsWith('/floorplan.svg') || (name.endsWith('.svg') && name.includes('floorplan'));
     });
+  const topdownBase = files
+    .filter(file => Number(file.is_folder) !== 1)
+    .find(file => text(file.mime_type).toLowerCase().startsWith('image/') && isTopdownBase(file));
   const floorplanStatus = {
     id: floorplan?.id || null,
     key: 'floorplan',
@@ -1231,9 +1286,30 @@ function vehicleResearchStatusesWithFloorplan(research, files = []) {
     candidate_count: floorplan ? 1 : 0,
     same_priority_count: floorplan ? 1 : 0
   };
+  const topdownStatus = {
+    id: topdownBase?.id || null,
+    key: 'topdown_base',
+    label: 'Topdown Base Image',
+    found: Boolean(topdownBase),
+    detected_type: topdownBase ? 'topdown_base_image' : 'topdown_base_image',
+    original_filename: topdownBase?.name || '',
+    path: topdownBase?.path || '',
+    match_type: topdownBase ? 'exact_filename' : '',
+    match_label: topdownBase ? 'exact filename' : '',
+    current_role: topdownBase?.extraction_role === 'primary' ? 'primary' : '',
+    file_status: topdownBase?.file_status || 'active',
+    extraction_role: topdownBase?.extraction_role || '',
+    modified_time: topdownBase?.modified_time || '',
+    web_view_link: topdownBase?.web_view_link || '',
+    candidate_count: topdownBase ? 1 : 0,
+    same_priority_count: topdownBase ? 1 : 0
+  };
   const manifestIndex = statuses.findIndex(item => item?.key === 'manifest');
   if (manifestIndex >= 0) statuses.splice(manifestIndex, 0, floorplanStatus);
   else statuses.push(floorplanStatus);
+  const floorplanIndex = statuses.findIndex(item => item?.key === 'floorplan');
+  if (floorplanIndex >= 0) statuses.splice(floorplanIndex + 1, 0, topdownStatus);
+  else statuses.push(topdownStatus);
   return statuses;
 }
 
@@ -1351,10 +1427,11 @@ function designExtractionStatusLookup() {
 }
 
 function vehicleFileLookupClauses(vehicleId) {
-  const id = text(vehicleId);
+  const id = normalizeDesignLibraryPath(vehicleId);
   return {
     exact: id,
     child: `${id}/%`,
+    legacyChild: `${id} /%`,
     loose: `%${id.toLowerCase()}%`
   };
 }
@@ -1369,10 +1446,12 @@ function designVehicleLibraryFiles(vehicleId, { activeOnly = false } = {}) {
       AND (
         path=?
         OR path LIKE ?
+        OR path LIKE ?
+        OR lower(replace(replace(path, ' /', '/'), '/ ', '/')) LIKE lower(?)
         OR lower(path) LIKE ?
       )
     ORDER BY modified_time DESC, path COLLATE NOCASE
-  `).all(parts.exact, parts.child, parts.loose);
+  `).all(parts.exact, parts.child, parts.legacyChild, parts.child, parts.loose);
 }
 
 function upsertDesignLibraryFiles(files = []) {
@@ -1392,16 +1471,13 @@ function upsertDesignLibraryFiles(files = []) {
       modified_time=excluded.modified_time,
       size=excluded.size,
       is_folder=excluded.is_folder,
-      file_status=CASE
-        WHEN design_library_files.file_status='reset_pending' THEN 'active'
-        ELSE COALESCE(design_library_files.file_status, 'active')
-      END,
+      file_status='active',
       extraction_role=CASE
         WHEN design_library_files.file_status='reset_pending' THEN ''
         ELSE COALESCE(design_library_files.extraction_role, '')
       END,
-      ignored_at=CASE WHEN design_library_files.file_status='reset_pending' THEN NULL ELSE design_library_files.ignored_at END,
-      archived_at=CASE WHEN design_library_files.file_status='reset_pending' THEN NULL ELSE design_library_files.archived_at END,
+      ignored_at=NULL,
+      archived_at=NULL,
       updated_at=CURRENT_TIMESTAMP
   `);
   const tx = db.transaction(rows => {
@@ -1409,7 +1485,7 @@ function upsertDesignLibraryFiles(files = []) {
       text(file.drive_file_id),
       text(file.folder_type),
       text(file.name),
-      text(file.path),
+      normalizeDesignLibraryPath(file.path || file.name),
       text(file.parent_drive_file_id),
       text(file.mime_type),
       text(file.web_view_link),
@@ -2632,8 +2708,10 @@ app.post('/api/design-ai/settings', requireAuth, (req, res) => {
 
 app.post('/api/design-ai/sync-drive', requireAuth, async (req, res) => {
   try {
+    repairDesignLibraryFilePaths();
     const result = await syncDriveFolders(designAiSettings());
     upsertDesignLibraryFiles(result.files);
+    repairDesignLibraryFilePaths();
     setDesignSetting('last_sync_at', result.synced_at);
     setDesignSetting('last_sync_error', '');
     res.json({
@@ -2798,8 +2876,10 @@ app.post('/api/design-ai/vehicles/:vehicleId/rebuild', requireAdmin, async (req,
       DELETE FROM design_ai_extraction_drafts
       WHERE entity_type='vehicle' AND lower(entity_id)=lower(?)
     `).run(vehicleId).changes;
+    repairDesignLibraryFilePaths();
     const syncResult = await syncDriveFolders(designAiSettings());
     upsertDesignLibraryFiles(syncResult.files);
+    repairDesignLibraryFilePaths();
     setDesignSetting('last_sync_at', syncResult.synced_at);
     setDesignSetting('last_sync_error', '');
     const files = designEntityFolderFiles('vehicle', vehicleId, vehicleId);

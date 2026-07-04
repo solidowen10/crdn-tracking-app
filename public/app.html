@@ -2722,8 +2722,8 @@ async function setDesignAiFolder(folder){
   await renderDesignAiLibrary(folder);
 }
 function designAiChecklistHtml(){
-  const vehicleRequired=['vehicle.json','dimensions.csv','floorplan.svg'];
-  const vehicleOptional=['mounting_points.csv','restricted_zones.csv','layout_constraints.json','buildability_report.md','manifest.json','vehicle_knowledge_sheet.pdf','scan.glb','photos/'];
+  const vehicleRequired=['vehicle.json','dimensions.csv','topdown_base.png'];
+  const vehicleOptional=['floorplan.svg','mounting_points.csv','restricted_zones.csv','layout_constraints.json','buildability_report.md','manifest.json','vehicle_knowledge_sheet.pdf','scan.glb','photos/'];
   const productRequired=['product.json','dimensions.csv','footprint.svg','installation_rules.json'];
   return `<div class="dai-panel">
     <div class="dai-panel-title">Required Library Checklist</div>
@@ -2760,6 +2760,7 @@ function designAiResearchChecklistHtml(group){
   const checks=[
     designAiResearchItem(items,'vehicle_record','Vehicle Record',present.has('vehicle.json')),
     designAiResearchItem(items,'dimensions_csv','Dimensions',present.has('dimensions.csv')),
+    {key:'topdown_base',label:'Topdown Base Image',found:present.has('topdown_base.png')||Boolean(group.topdown_base_file)},
     {key:'floorplan',label:'Floorplan',found:present.has('floorplan.svg')},
     designAiResearchItem(items,'knowledge_sheet','Knowledge Sheet',present.has('vehicle_knowledge_sheet.pdf')),
     designAiResearchItem(items,'layout_constraints','Layout Constraints',present.has('layout_constraints.json')),
@@ -2995,11 +2996,95 @@ function designAiVehicleLayoutConstraints(record){
     clearance,
     restricted_zones:Array.isArray(c.restricted_zones)?c.restricted_zones:[],
     mounting_points:Array.isArray(c.mounting_points)?c.mounting_points:[],
-    metadata
+    metadata,
+    vehicle_readiness:c.vehicle_readiness||metadata.vehicle_readiness||record?.vehicle_readiness||null
   };
 }
 function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
   return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(value===undefined||value===null?'':value)}" placeholder="${esc(placeholder)}"></div>`;
+}
+function designAiCompletenessStatusPill(status='Missing'){
+  const value=String(status||'Missing');
+  const cls=value==='Found'?'done':value==='Estimated'?'work':'error';
+  return `<span class="dai-pill ${cls}">${esc(value)}</span>`;
+}
+function designAiVehicleCompletenessFallback(record,c){
+  const area=c?.build_area||{};
+  const clearance=c?.clearance||{};
+  const estimated=Array.isArray(c?.metadata?.estimated_fields)?c.metadata.estimated_fields:[];
+  const buildFound=Boolean(area.length_mm&&area.width_mm);
+  const dimFound=Boolean((record?.interior_length_mm&&record?.interior_width_mm)||(record?.overall_length_mm&&record?.overall_width_mm));
+  const source=c?.metadata?.source_path||c?.metadata?.source_file||c?.metadata?.derived_from||'';
+  return {
+    overall_score:(record?.vehicle_id?20:0)+(dimFound?30:0)+(buildFound?30:0),
+    layout_ready:false,
+    customer_proposal_ready:false,
+    fabrication_ready:false,
+    critical_missing:[
+      record?.vehicle_id?'':'Vehicle record',
+      dimFound?'':'Dimensions',
+      buildFound?'':'Buildable area',
+      'Topdown base image'
+    ].filter(Boolean),
+    estimated_fields:estimated,
+    warnings:['Topdown base image missing. Upload topdown_base.png to this vehicle folder.'],
+    required:[
+      {key:'vehicle_record',label:'Vehicle record',status:record?.vehicle_id?'Found':'Missing',confidence:record?.vehicle_id?'MEDIUM':'LOW',source_file:''},
+      {key:'dimensions',label:'Dimensions',status:dimFound?'Found':'Missing',confidence:dimFound?'MEDIUM':'LOW',source_file:''},
+      {key:'buildable_area',label:'Buildable area',status:buildFound?(estimated.length?'Estimated':'Found'):'Missing',confidence:buildFound?(c?.metadata?.confidence||'MEDIUM'):'LOW',source_file:source},
+      {key:'topdown_base',label:'Topdown base image',status:'Missing',confidence:'LOW',source_file:''}
+    ],
+    nice_to_have:[
+      {key:'floorplan',label:'Floorplan',status:'Missing',confidence:'LOW',source_file:''},
+      {key:'wheel_arch',label:'Wheel arch data',status:(record?.wheel_arch_width_mm||record?.wheel_arch_height_mm)?'Found':'Missing',confidence:(record?.wheel_arch_width_mm||record?.wheel_arch_height_mm)?'MEDIUM':'LOW',source_file:''},
+      {key:'restricted_zones',label:'Restricted zones',status:Array.isArray(c?.restricted_zones)&&c.restricted_zones.length?'Found':'Missing',confidence:Array.isArray(c?.restricted_zones)&&c.restricted_zones.length?'MEDIUM':'LOW',source_file:source},
+      {key:'door_openings',label:'Door opening data',status:(record?.side_door_width_mm||record?.rear_door_width_mm)?'Found':'Missing',confidence:(record?.side_door_width_mm||record?.rear_door_width_mm)?'MEDIUM':'LOW',source_file:''},
+      {key:'mounting_points',label:'Mounting points',status:Array.isArray(c?.mounting_points)&&c.mounting_points.length?'Found':'Missing',confidence:Array.isArray(c?.mounting_points)&&c.mounting_points.length?'MEDIUM':'LOW',source_file:source}
+    ]
+  };
+}
+function designAiVehicleCompletenessRows(rows=[]){
+  return rows.map(row=>`
+    <tr>
+      <td><strong>${esc(row.label||row.key||'Item')}</strong></td>
+      <td>${designAiCompletenessStatusPill(row.status||'Missing')}</td>
+      <td>${designAiConfidencePill(row.confidence||'')}</td>
+      <td class="dai-path">${esc(row.source_file||'—')}</td>
+    </tr>
+  `).join('');
+}
+function designAiVehicleCompletenessHtml(record,c){
+  const fallback=designAiVehicleCompletenessFallback(record,c);
+  const readiness=c?.vehicle_readiness||c?.metadata?.vehicle_readiness||record?.vehicle_readiness||fallback;
+  const required=Array.isArray(readiness.required)&&readiness.required.length?readiness.required:fallback.required;
+  const nice=Array.isArray(readiness.nice_to_have)&&readiness.nice_to_have.length?readiness.nice_to_have:fallback.nice_to_have;
+  const warnings=Array.isArray(readiness.warnings)?readiness.warnings:[];
+  return `
+    <div class="dai-panel" style="margin-bottom:12px">
+      <div class="dai-panel-title">Vehicle Data Completeness</div>
+      <div class="dai-review-row" style="grid-template-columns:1fr auto auto">
+        <div>
+          <strong>${Number(readiness.overall_score||0)} / 100</strong>
+          <div class="pc-s">Layout ready: ${readiness.layout_ready?'Yes':'No'} · Customer proposal ready: ${readiness.customer_proposal_ready?'Yes':'No'} · Fabrication ready: ${readiness.fabrication_ready?'Yes':'No'}</div>
+        </div>
+        <div>${designAiReadinessPill(readiness.layout_ready?'Ready':'Missing Evidence')}</div>
+        <div class="pc-s">${Array.isArray(readiness.estimated_fields)&&readiness.estimated_fields.length?`${readiness.estimated_fields.length} estimated field${readiness.estimated_fields.length===1?'':'s'}`:'No estimated fields'}</div>
+      </div>
+      <div class="dai-table-wrap" style="margin-top:12px">
+        <table class="dai-table" style="min-width:760px">
+          <thead><tr><th>Required</th><th>Status</th><th>Confidence</th><th>Source file</th></tr></thead>
+          <tbody>${designAiVehicleCompletenessRows(required)}</tbody>
+        </table>
+      </div>
+      <div class="dai-table-wrap" style="margin-top:12px">
+        <table class="dai-table" style="min-width:760px">
+          <thead><tr><th>Nice to have</th><th>Status</th><th>Confidence</th><th>Source file</th></tr></thead>
+          <tbody>${designAiVehicleCompletenessRows(nice)}</tbody>
+        </table>
+      </div>
+      ${warnings.length?`<div class="dai-warning" style="margin-top:12px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}
+    </div>
+  `;
 }
 function designAiVehicleSuggestionPanelHtml(){
   return `
@@ -3132,6 +3217,7 @@ function designAiGeometrySuggestionHtml(data){
 function designAiVehicleBuildAreaHtml(prefix,record){
   const c=designAiVehicleLayoutConstraints(record);
   return `
+    ${designAiVehicleCompletenessHtml(record,c)}
     <div class="dai-panel">
       <div class="dai-panel-title">🟩 Build Area</div>
       <div class="dai-warning">

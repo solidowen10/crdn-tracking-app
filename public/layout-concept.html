@@ -28,6 +28,7 @@
       --r:10px;
       --rs:6px;
       --sh:0 1px 4px rgba(0,0,0,.07);
+      --shm:0 8px 24px rgba(0,0,0,.12);
       --fs:16px;
       --sm:15px;
       --xs:14px;
@@ -35,11 +36,12 @@
       --xxxs:12px;
     }
     *{box-sizing:border-box}
+    html,body{width:100%;max-width:100%;overflow-x:hidden}
     body{margin:0;background:var(--g50);color:var(--black);font-family:'Noto Sans TC',ui-sans-serif,system-ui,sans-serif;font-size:var(--fs)}
     button,input,select{font:inherit}
     button{cursor:pointer}
     .app{min-height:100vh;display:flex;flex-direction:column}
-    .topbar{height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--w);border-bottom:1px solid var(--g200);padding:0 18px;box-shadow:var(--sh);flex-shrink:0;position:sticky;top:0;z-index:50}
+    .topbar{height:56px;background:var(--w);border-bottom:1px solid var(--g200);display:flex;align-items:center;padding:0 18px;gap:12px;box-shadow:var(--sh);flex-shrink:0;position:sticky;top:0;z-index:50}
     .brand{display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;color:inherit}
     .brand img{width:34px;height:34px;border-radius:7px;object-fit:cover}
     .brand-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;line-height:1}
@@ -90,6 +92,8 @@
     .placed-meta{font-size:var(--xxxs);color:var(--g500);line-height:1.45}
     .move-pad{display:grid;grid-template-columns:34px 34px 34px;gap:5px;width:max-content;margin:8px 0}
     .move-pad .btn{width:34px;height:30px;padding:0;font-size:var(--xxs)}
+    .rotate-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}
+    .rotate-actions .btn{min-height:36px}
     .row-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
     .small{font-size:var(--xxxs);padding:6px 8px}
     .empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:16px;text-align:center;color:var(--g500);font-size:var(--xxs);line-height:1.5}
@@ -101,48 +105,19 @@
     @media(max-width:1100px){
       .layout{grid-template-columns:1fr}
       .layout>aside:first-child,.layout>section.canvas-card,.layout>aside:last-child{position:static;max-height:none;overflow:visible;display:block}
-      .topbar{height:auto;min-height:64px;align-items:flex-start;padding:13px 14px;flex-direction:column}
-      .top-actions{justify-content:flex-start}
-      .svg-wrap{min-width:680px}
+      .svg-wrap{min-width:0}
     }
 
     @media(max-width:720px){
-      html,body,.app{
-        width:100%;
-        max-width:100%;
-        overflow-x:hidden;
-      }
-
-      .topbar{
-        position:sticky;
-        top:0;
-        z-index:100;
-        width:100%;
-        max-width:100%;
-        padding:10px 12px;
-        gap:10px;
-      }
-
-      .brand img{width:30px;height:30px}
-      .brand-title{font-size:20px}
-
-      .top-actions{
-        width:100%;
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:8px;
-      }
-
-      .top-actions .btn{
-        width:100%;
-        padding:9px 10px;
-        font-size:13px;
-      }
-
-      .top-actions .btn.primary{
-        grid-column:1 / -1;
-      }
-
+      .topbar{height:64px;padding:0 14px;gap:10px}
+      .tlogo{gap:12px;min-width:0}
+      .tlogo img{width:38px;height:38px}
+      .tlogo-name{font-size:18px;letter-spacing:.055em;line-height:1;white-space:normal;max-width:152px}
+      .tright{gap:9px}
+      .upill{display:none}
+      .menu-btn{width:38px;height:38px}
+      .nav-menu{top:46px}
+      .hide-sm,.desktop-timeline-btn,.tright>.btn-dark{display:none !important}
       .layout{
         display:flex;
         flex-direction:column;
@@ -152,31 +127,8 @@
         gap:10px;
         overflow:visible;
       }
-
-      .layout>section.canvas-card{
-        order:-1;
-        position:sticky;
-        top:150px;
-        z-index:70;
-        width:100%;
-        max-width:100%;
-        max-height:58vh;
-        overflow:hidden;
-        background:var(--w);
-      }
-
-      .layout>aside:first-child{
-        order:1;
-        width:100%;
-        max-width:100%;
-      }
-
-      .layout>aside:last-child{
-        order:2;
-        width:100%;
-        max-width:100%;
-      }
-
+      .layout>section.canvas-card{order:-1;width:100%;max-width:100%;overflow:hidden;background:var(--w)}
+      .layout>aside:first-child,.layout>aside:last-child{width:100%;max-width:100%}
       .panel,.canvas-card{
         width:100%;
         max-width:100%;
@@ -204,17 +156,10 @@
         width:100%;
         max-width:100%;
         min-width:0;
-        overflow-x:auto;
+        overflow:hidden;
         -webkit-overflow-scrolling:touch;
       }
-
-      #layoutSvg{
-        width:96vw;
-        max-width:96vw;
-        min-width:96vw;
-        height:auto;
-      }
-
+      #layoutSvg{width:100%;max-width:100%;min-width:0;height:auto;touch-action:none}
       .stats{grid-template-columns:repeat(3,1fr);gap:6px}
       .stat{padding:7px}
       .stat strong{font-size:19px}
@@ -224,81 +169,9 @@
       .placed-head{flex-direction:column}
       .row-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
       .row-actions .btn{width:100%}
-      .move-pad{grid-template-columns:repeat(3,38px)}
-      .move-pad .btn{width:38px;height:34px}
-    }
-
-  
-
-  
-    /* mobile fixed header + fixed canvas */
-    @media(max-width:720px){
-      :root{
-        --mobile-header-h:132px;
-        --mobile-canvas-h:330px;
-      }
-
-      .topbar{
-        position:fixed !important;
-        top:0 !important;
-        left:0 !important;
-        right:0 !important;
-        z-index:200 !important;
-        width:100% !important;
-        max-width:100% !important;
-      }
-
-      .layout{
-        display:flex !important;
-        flex-direction:column !important;
-        padding-top:calc(var(--mobile-header-h) + var(--mobile-canvas-h) + 18px) !important;
-        overflow:visible !important;
-      }
-
-      .layout>section.canvas-card{
-        position:fixed !important;
-        top:var(--mobile-header-h) !important;
-        left:10px !important;
-        right:10px !important;
-        z-index:150 !important;
-        height:var(--mobile-canvas-h) !important;
-        max-height:var(--mobile-canvas-h) !important;
-        overflow:hidden !important;
-        background:var(--w) !important;
-      }
-
-      .layout>aside:first-child{
-        order:1 !important;
-      }
-
-      .layout>aside:last-child{
-        order:2 !important;
-      }
-
-      .canvas-head{
-        margin-bottom:6px !important;
-      }
-
-      .canvas-title{
-        font-size:22px !important;
-      }
-
-      .canvas-sub{
-        display:none !important;
-      }
-
-      .svg-wrap{
-        height:245px !important;
-        overflow:auto !important;
-        -webkit-overflow-scrolling:touch;
-      }
-
-      #layoutSvg{
-        width:96vw !important;
-        max-width:96vw !important;
-        min-width:96vw !important;
-        height:auto !important;
-      }
+      .move-pad{grid-template-columns:repeat(3,44px)}
+      .move-pad .btn{width:44px;height:44px}
+      .rotate-actions .btn,.row-actions .btn,.product-grid .btn,.saved-actions .btn,.preset-grid .btn{min-height:44px}
     }
 
   
@@ -332,6 +205,7 @@
     .nav-menu.open{display:flex;flex-direction:column;gap:3px}
     .nav-menu a,.nav-menu button{border:none;background:transparent;color:var(--black);font-size:var(--sm);font-weight:600;text-align:left;padding:9px 10px;border-radius:var(--rs);cursor:pointer;text-decoration:none}
     .nav-menu a:hover,.nav-menu button:hover{background:var(--brand-f);color:var(--brand)}
+    .menu-status{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--g100);font-size:var(--xxs);color:var(--g500);margin-bottom:3px}
     .upill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--g100);border-radius:99px;font-size:var(--xxs);font-weight:500}
     .udot{width:7px;height:7px;border-radius:50%;background:#22c55e}
 
@@ -357,6 +231,14 @@
   width:100%;
 }
 
+@media(max-width:420px){
+  .saved-actions,
+  .rotate-actions,
+  .row-actions{
+    grid-template-columns:1fr !important;
+  }
+}
+
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Noto+Sans+TC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
 </head>
@@ -379,6 +261,7 @@
             <span></span><span></span><span></span>
           </button>
           <div class="nav-menu" id="layout-nav-menu">
+            <div class="menu-status"><div class="udot"></div><span>Owen Lu ・ 呂信誠</span></div>
             <a href="/">Projects</a>
             <a href="/#timeline">Timeline</a>
             <a href="/#mockups">Mockup</a>
@@ -798,23 +681,42 @@
       return Number(value || 0);
     }
 
+    function normalizeRotation(value) {
+      const raw = Number(value || 0);
+      if (!Number.isFinite(raw)) return 0;
+      return ((Math.round(raw / 90) * 90) % 360 + 360) % 360;
+    }
+
+    function isQuarterTurn(rotation) {
+      return normalizeRotation(rotation) % 180 === 90;
+    }
+
+    function productFootprint(product, rotation = 0) {
+      const length = positiveNumber(product?.length, 520);
+      const width = positiveNumber(product?.width, 330);
+      return isQuarterTurn(rotation)
+        ? { length: width, width: length, baseLength: length, baseWidth: width }
+        : { length, width, baseLength: length, baseWidth: width };
+    }
+
     function clampItem(item) {
       const vehicle = currentVehicle();
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
       if (!product) return item;
-      const productLength = positiveNumber(product.length, 520);
-      const productWidth = positiveNumber(product.width, 330);
-      item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - productLength));
-      item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - productWidth));
+      item.rotation = normalizeRotation(item.rotation);
+      const footprint = productFootprint(product, item.rotation);
+      item.x = clamp(Number(item.x || 0), 0, Math.max(0, vehicle.buildLength - footprint.length));
+      item.y = clamp(Number(item.y || 0), 0, Math.max(0, vehicle.buildWidth - footprint.width));
       return item;
     }
 
-    function createItem(productKey, x = 0, y = 0) {
+    function createItem(productKey, x = 0, y = 0, rotation = 0) {
       const product = products[productKey] || ensureProductForKey(productKey);
       if (!product || product.missingDimensions) return null;
       const item = {
         id: state.nextId++,
         productKey,
+        rotation: normalizeRotation(rotation),
         x: resolveCoordinate(product, x, 'x'),
         y: resolveCoordinate(product, y, 'y')
       };
@@ -856,6 +758,7 @@
         placed: state.placed.map(item => ({
           id: item.id,
           productKey: item.productKey,
+          rotation: normalizeRotation(item.rotation),
           x: Math.round(Number(item.x || 0)),
           y: Math.round(Number(item.y || 0))
         })),
@@ -887,6 +790,7 @@
           return clampItem({
             id: Number(item.id || state.nextId++),
             productKey: item.productKey,
+            rotation: normalizeRotation(item.rotation),
             x: Number(item.x || 0),
             y: Number(item.y || 0)
           });
@@ -1216,6 +1120,21 @@
       render();
     }
 
+    function rotateItem(id, direction) {
+      const item = state.placed.find(entry => entry.id === id);
+      if (!item) return;
+      const product = products[item.productKey] || ensureProductForKey(item.productKey);
+      const before = productFootprint(product, item.rotation);
+      const centerX = Number(item.x || 0) + before.length / 2;
+      const centerY = Number(item.y || 0) + before.width / 2;
+      item.rotation = normalizeRotation(Number(item.rotation || 0) + direction * 90);
+      const after = productFootprint(product, item.rotation);
+      item.x = centerX - after.length / 2;
+      item.y = centerY - after.width / 2;
+      clampItem(item);
+      render();
+    }
+
     function removeItem(id) {
       state.placed = state.placed.filter(item => item.id !== id);
       render();
@@ -1318,11 +1237,12 @@
 
     function productRect(item, geometry) {
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
+      const footprint = productFootprint(product, item.rotation);
       const x = geometry.x + item.x * geometry.pxPerMm;
       const y = geometry.y + item.y * geometry.pxPerMm;
-      const width = positiveNumber(product.length, 520) * geometry.pxPerMm;
-      const height = positiveNumber(product.width, 330) * geometry.pxPerMm;
-      return { product, x, y, width, height };
+      const width = footprint.length * geometry.pxPerMm;
+      const height = footprint.width * geometry.pxPerMm;
+      return { product, footprint, rotation: normalizeRotation(item.rotation), x, y, width, height };
     }
 
     function truncateSvgText(value, maxChars) {
@@ -1382,8 +1302,8 @@
 
       const productNodes = state.placed.map(item => {
         const rect = productRect(clampItem(item), geometry);
-        const productLength = positiveNumber(rect.product.length, 520);
-        const productWidth = positiveNumber(rect.product.width, 330);
+        const productLength = positiveNumber(rect.footprint.length, 520);
+        const productWidth = positiveNumber(rect.footprint.width, 330);
         const label = productLabel(rect, rect.product.name, `${productLength} × ${productWidth} mm`);
         const clipId = `productClip${Number(item.id || 0)}`;
         return `
@@ -1484,8 +1404,12 @@
       }
       wrap.innerHTML = state.placed.map(item => {
         const product = products[item.productKey] || ensureProductForKey(item.productKey);
-        const productLength = positiveNumber(product.length, 520);
-        const productWidth = positiveNumber(product.width, 330);
+        const rotation = normalizeRotation(item.rotation);
+        const footprint = productFootprint(product, rotation);
+        const baseLength = positiveNumber(footprint.baseLength, 520);
+        const baseWidth = positiveNumber(footprint.baseWidth, 330);
+        const productLength = positiveNumber(footprint.length, 520);
+        const productWidth = positiveNumber(footprint.width, 330);
         const sourceLabel = product.source === 'design_ai_product_records'
           ? `${product.status || 'record'} · Real Library Data`
           : product.source === 'demo_fallback'
@@ -1496,11 +1420,15 @@
             <div class="placed-head">
               <div>
                 <div class="placed-name">${esc(product.name)}</div>
-                <div class="placed-meta">Size: ${productLength} × ${productWidth} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm<br>${esc(sourceLabel)}</div>
+                <div class="placed-meta">Size: ${baseLength} × ${baseWidth} mm · Footprint: ${productLength} × ${productWidth} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm · Rotation: ${rotation}°<br>${esc(sourceLabel)}</div>
               </div>
               <button class="btn small danger" type="button" onclick="removeItem(${item.id})">Remove</button>
             </div>
-            <div class="move-pad" aria-label="Move ${product.name}">
+            <div class="rotate-actions" aria-label="Rotate ${esc(product.name)}">
+              <button class="btn" type="button" onclick="rotateItem(${item.id},-1)">↺ Rotate Left 90°</button>
+              <button class="btn" type="button" onclick="rotateItem(${item.id},1)">↻ Rotate Right 90°</button>
+            </div>
+            <div class="move-pad" aria-label="Move ${esc(product.name)}">
               <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,-1)">↑</button><span></span>
               <button class="btn" type="button" onclick="moveItem(${item.id},-1,0)">←</button><span></span><button class="btn" type="button" onclick="moveItem(${item.id},1,0)">→</button>
               <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,1)">↓</button><span></span>

@@ -822,10 +822,18 @@ function normalizedLibraryPathExpression() {
   return "lower(replace(replace(path, ' /', '/'), '/ ', '/'))";
 }
 
-function designTopdownBaseImageForVehicle(vehicleId) {
-  const id = text(vehicleId);
+function designTopdownBaseImageForVehicle(vehicleId, row = {}) {
+  const id = text(vehicleId || row.vehicle_id);
   if (!id) return null;
   const normalizedId = normalizedDesignFileName(id);
+  const normalizedModel = normalizedDesignFileName(row.model || '');
+  const compactVehicleId = normalizedId.replace(/transporter|volkswagen|vw/g, '');
+  const pathNeedles = [...new Set([normalizedId, normalizedModel, compactVehicleId].filter(value => value && value.length >= 3))];
+  const compactPathExpression = "replace(replace(replace(lower(path), '_', ''), '-', ''), ' ', '')";
+  const pathClauses = [
+    `${normalizedLibraryPathExpression()} LIKE lower(?)`,
+    ...pathNeedles.map(() => `${compactPathExpression} LIKE '%' || ? || '%'`)
+  ];
   return db.prepare(`
     SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
     FROM design_library_files
@@ -833,7 +841,7 @@ function designTopdownBaseImageForVehicle(vehicleId) {
       AND is_folder=0
       AND COALESCE(file_status, 'active')='active'
       AND lower(mime_type) LIKE 'image/%'
-      AND ${normalizedLibraryPathExpression()} LIKE lower(?)
+      AND (${pathClauses.join(' OR ')})
       AND (
         lower(name) IN ('topdown_base.png','topdown_base.jpg','topdown_base.jpeg','topdown.png','topdown.jpg','topdown.jpeg','vehicle_topdown_base.png','vehicle_topdown_base.jpg','vehicle_topdown_base.jpeg')
         OR lower(name)=lower(?)
@@ -842,7 +850,9 @@ function designTopdownBaseImageForVehicle(vehicleId) {
         OR lower(name)=lower(?)
         OR lower(name)=lower(?)
         OR lower(name)=lower(?)
+        OR lower(name) LIKE '%topdown_base%'
         OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='topdownbase'
+        OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '') LIKE '%topdownbase%'
         OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='vehicletopdownbase'
       )
     ORDER BY
@@ -852,6 +862,7 @@ function designTopdownBaseImageForVehicle(vehicleId) {
     LIMIT 1
   `).get(
     `${id}/%`,
+    ...pathNeedles,
     `${id}_topdown_base.png`,
     `${id}_topdown_base.jpg`,
     `${id}_topdown_base.jpeg`,
@@ -935,7 +946,7 @@ function layoutConceptVehiclesForLibrary() {
     const dimensions = layoutVehicleBuildDimensions(row);
     const templateAlignment = layoutVehicleTemplateAlignment(row);
     const vehicleId = text(row.vehicle_id);
-    const topdownBase = designTopdownBaseImageForVehicle(vehicleId);
+    const topdownBase = designTopdownBaseImageForVehicle(vehicleId, row);
     return {
       key: vehicleId,
       name: layoutVehicleName(row),
@@ -1583,7 +1594,7 @@ function designExtractionFromRow(row) {
 
 function designVehicleRecordFromRow(row) {
   if (!row) return null;
-  const topdownBase = designTopdownBaseImageForVehicle(row.vehicle_id);
+  const topdownBase = designTopdownBaseImageForVehicle(row.vehicle_id, row);
   return {
     ...row,
     floor_plan_notes: row.floor_plan_notes || row.notes || '',

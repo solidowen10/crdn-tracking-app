@@ -81,7 +81,7 @@
     .canvas-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;line-height:1}
     .canvas-sub{font-size:var(--xxxs);color:var(--g500);margin-top:2px}
     .svg-wrap{min-width:760px}
-    #layoutSvg{width:100%;height:auto;display:block;background:var(--w);border:1px solid var(--g100);border-radius:var(--r)}
+    #layoutSvg{width:100%;height:auto;display:block;background:transparent;border:0;border-radius:0}
     .product-grid{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
     .saved-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
     .preset-grid{display:grid;grid-template-columns:1fr;gap:8px}
@@ -295,7 +295,9 @@
 .panel.collapsed>.panel-title::after{content:"+"}
 .panel.collapsed>*:not(.panel-title){display:none!important}
 
-  </style>
+  .action-divider{height:1px;background:var(--g200);margin:14px 0 12px}.action-section-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--g400);margin:8px 0 8px}
+.alignment-advanced-controls{display:none;grid-template-columns:1fr;gap:8px}.alignment-advanced-controls.show{display:grid}
+</style>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Noto+Sans+TC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
 </head>
 <body>
@@ -401,16 +403,27 @@
       <aside>
         <section class="panel">
           <div class="panel-title">Layout Actions</div>
+          <div class="action-section-label">Export</div>
           <div class="preset-grid">
             <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
             <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
-            <button class="btn" id="alignBuildAreaBtn" type="button" onclick="toggleBuildAreaEditor()">Align Build Area</button>
-            <button class="btn" type="button" onclick="scaleBuildArea(0.98)">Scale -</button>
-            <button class="btn" type="button" onclick="scaleBuildArea(1.02)">Scale +</button>
-            <button class="btn primary" type="button" onclick="saveBuildAreaAlignment()">Save Alignment</button>
-            <button class="btn" type="button" onclick="resetBuildAreaAlignment()">Reset Alignment</button>
           </div>
-          <div class="preset-grid" style="margin-top:10px">
+
+          <div class="action-divider"></div>
+          <div class="action-section-label">Alignment</div>
+          <div class="preset-grid">
+            <button class="btn" id="alignBuildAreaBtn" type="button" onclick="toggleBuildAreaEditor()">Align Build Area</button>
+            <div id="alignmentAdvancedControls" class="alignment-advanced-controls">
+              <button class="btn" type="button" onclick="scaleBuildArea(0.98)">Scale -</button>
+              <button class="btn" type="button" onclick="scaleBuildArea(1.02)">Scale +</button>
+              <button class="btn primary" id="saveAlignmentBtn" type="button" onclick="saveBuildAreaAlignment()">Save Alignment</button>
+              <button class="btn" type="button" onclick="resetBuildAreaAlignment()">Reset Alignment</button>
+            </div>
+          </div>
+
+          <div class="action-divider"></div>
+          <div class="action-section-label">Agent</div>
+          <div class="preset-grid">
             <button class="btn primary" id="sendAgentBtn" type="button" onclick="sendLayoutToAgent()">Send to Agent</button>
           </div>
           <p class="hint">Sends this saved layout ID to the CRDN AI Agent so it can render a customer-facing interior concept. No image API is called by the app.</p>
@@ -446,7 +459,7 @@
 
     const VIEWBOX = { width: 980, height: 560 };
     const cargoZone = { x: 354, y: 114, width: 526, height: 330 };
-    const vehicleImageBox = { x: 66, y: 92, width: 848, height: 374 };
+    const vehicleImageBox = { x: 6, y: 42, width: 968, height: 456 };
 
     const demoVehicles = {
       townace: { name: 'Toyota TownAce', buildLength: 1900, buildWidth: 1340 },
@@ -808,6 +821,16 @@
       if (!btn) return;
       btn.disabled = Boolean(isSaving);
       btn.textContent = isSaving ? 'Saving...' : 'Save Layout';
+    }
+
+    function updateAlignmentControls() {
+      const advanced = document.getElementById('alignmentAdvancedControls');
+      const btn = document.getElementById('alignBuildAreaBtn');
+      if (advanced) advanced.classList.toggle('show', Boolean(state.editingBuildArea));
+      if (btn) {
+        btn.classList.toggle('active', Boolean(state.editingBuildArea));
+        btn.textContent = state.editingBuildArea ? 'Done Aligning' : 'Align Build Area';
+      }
     }
 
     function layoutSnapshot() {
@@ -1257,6 +1280,7 @@
     function toggleBuildAreaEditor() {
       state.editingBuildArea = !state.editingBuildArea;
       ensureTemplateAlignment();
+      updateAlignmentControls();
       render();
       setStatus(state.editingBuildArea ? 'Buildable area alignment mode on. Drag the orange box to align it.' : 'Buildable area alignment mode off.', '');
     }
@@ -1279,18 +1303,33 @@
     async function saveBuildAreaAlignment() {
       const vehicle = currentVehicle();
       const alignment = ensureTemplateAlignment();
+      const btn = document.getElementById('saveAlignmentBtn');
+      const originalText = btn ? btn.textContent : 'Save Alignment';
       try {
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
+        }
+        setStatus('Saving buildable area alignment...', 'warn');
+
         const data = await apiJson(`/api/layout-concepts/vehicles/${encodeURIComponent(state.vehicleKey)}/template-alignment`, {
           method: 'PATCH',
           body: JSON.stringify({ build_area: alignment })
         });
+
         if (data.vehicle) vehicles[state.vehicleKey] = {
           ...vehicles[state.vehicleKey],
           ...normalizeLibraryVehicle(data.vehicle)
         };
+
         setStatus('Buildable area alignment saved.', 'ok');
       } catch (err) {
         setStatus(`Alignment save failed: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
       }
     }
 
@@ -1338,7 +1377,6 @@
 
       const vehicleBaseLayer = baseImageUrl
         ? `
-          <rect x="${vehicleImageBox.x}" y="${vehicleImageBox.y}" width="${vehicleImageBox.width}" height="${vehicleImageBox.height}" rx="22" fill="#fbfaf7" stroke="#e2e2de" stroke-width="1"/>
           <image href="${esc(baseImageUrl)}"
             x="${vehicleImageBox.x}"
             y="${vehicleImageBox.y}"
@@ -1415,17 +1453,12 @@
         </defs>
 
         <rect x="0" y="0" width="${VIEWBOX.width}" height="${VIEWBOX.height}" fill="#ffffff"/>
-        <text x="34" y="42" font-family="Bebas Neue, Arial Narrow, sans-serif" font-size="24" letter-spacing="1.2" fill="#111">CRDN 2D Layout Concept</text>
-        <text x="34" y="66" font-size="12" fill="#6b6b68">Concept Layout Only · Generic van outline · Buildable area changes per vehicle</text>
-
         ${vehicleBaseLayer}
         ${buildAreaLayer}
-        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#a55c15">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
+        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#CA741F">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
 
         ${productNodes}
 
-        <line x1="84" y1="484" x2="898" y2="484" stroke="#dededa" stroke-width="1"/>
-        <text x="84" y="508" font-size="11" fill="#777">Presales concept. Product rectangles are approximate footprints clamped inside the centered buildable area.</text>
       `;
     }
 

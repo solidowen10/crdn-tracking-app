@@ -828,7 +828,12 @@ function designTopdownBaseImageForVehicle(vehicleId, row = {}) {
   const normalizedId = normalizedDesignFileName(id);
   const normalizedModel = normalizedDesignFileName(row.model || '');
   const compactVehicleId = normalizedId.replace(/transporter|volkswagen|vw/g, '');
-  const pathNeedles = [...new Set([normalizedId, normalizedModel, compactVehicleId].filter(value => value && value.length >= 3))];
+  const vehicleTokens = String(`${id} ${row.brand || ''} ${row.make || ''} ${row.model || ''}`)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map(value => value.trim())
+    .filter(value => value && (value.length >= 3 || /\d/.test(value)));
+  const pathNeedles = [...new Set([normalizedId, normalizedModel, compactVehicleId, ...vehicleTokens].filter(value => value && (value.length >= 3 || /\d/.test(value))))];
   const compactPathExpression = "replace(replace(replace(lower(path), '_', ''), '-', ''), ' ', '')";
   const pathClauses = [
     `${normalizedLibraryPathExpression()} LIKE lower(?)`,
@@ -840,7 +845,7 @@ function designTopdownBaseImageForVehicle(vehicleId, row = {}) {
     WHERE folder_type='vehicles'
       AND is_folder=0
       AND COALESCE(file_status, 'active')='active'
-      AND lower(mime_type) LIKE 'image/%'
+      AND (lower(COALESCE(mime_type,'')) LIKE 'image/%' OR lower(name) LIKE '%.png' OR lower(name) LIKE '%.jpg' OR lower(name) LIKE '%.jpeg' OR lower(name) LIKE '%.webp')
       AND (${pathClauses.join(' OR ')})
       AND (
         lower(name) IN ('topdown_base.png','topdown_base.jpg','topdown_base.jpeg','topdown.png','topdown.jpg','topdown.jpeg','vehicle_topdown_base.png','vehicle_topdown_base.jpg','vehicle_topdown_base.jpeg')

@@ -917,13 +917,15 @@ function designProductPngForProduct(productId, row = {}) {
         OR lower(name) LIKE '%product%'
         OR lower(name) LIKE '%preview%'
         OR lower(name) LIKE '%footprint%'
+        OR lower(path) LIKE '%/colors/%.png'
       )
     ORDER BY
       CASE
         WHEN lower(name) IN (${exactNamePlaceholders || "''"}) THEN 0
         WHEN replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '') IN (${normalizedNamePlaceholders || "''"}) THEN 1
         WHEN lower(name)='product.png' THEN 2
-        ELSE 3
+        WHEN lower(path) LIKE '%/colors/%.png' THEN 3
+        ELSE 4
       END,
       modified_time DESC,
       name COLLATE NOCASE
@@ -935,6 +937,52 @@ function designProductPngForProduct(productId, row = {}) {
     ...exactNames,
     ...normalizedCandidates
   ) || null;
+}
+
+function designProductVariantsForProduct(productId, row = {}) {
+  const candidates = [
+    productId,
+    row.product_id,
+    row.sku,
+    row.name
+  ].map(text).filter(Boolean);
+
+  if (!candidates.length) return [];
+
+  const folderPatterns = [...new Set([
+    ...candidates.map(value => `${value}/colors/%`),
+    ...candidates.map(value => `%/${value}/colors/%`),
+    ...candidates.map(value => `%${value}%/colors/%`)
+  ])];
+
+  const pathClauses = folderPatterns
+    .map(() => `${normalizedLibraryPathExpression()} LIKE lower(?)`)
+    .join(' OR ');
+
+  return db.prepare(`
+    SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
+    FROM design_library_files
+    WHERE folder_type='products'
+      AND is_folder=0
+      AND COALESCE(file_status, 'active')='active'
+      AND lower(mime_type)='image/png'
+      AND (${pathClauses || '1=0'})
+      AND lower(path) LIKE '%/colors/%.png'
+    ORDER BY name COLLATE NOCASE
+    LIMIT 50
+  `).all(...folderPatterns).map(file => {
+    const variantId = text(file.name).replace(/\.[^.]+$/, '');
+    return {
+      variant_id: variantId,
+      label: variantId.replace(/[-_]+/g, ' '),
+      type: 'color',
+      product_image_drive_id: file.drive_file_id,
+      drive_file_id: file.drive_file_id,
+      name: file.name,
+      path: file.path,
+      status: 'available'
+    };
+  });
 }
 
 function layoutConceptVehiclesForLibrary() {
@@ -982,6 +1030,7 @@ function layoutConceptProductsForLibrary() {
     const depth = positiveNumber(row.layout_depth_mm ?? row.depth_mm, 0);
     const height = positiveNumber(row.layout_height_mm ?? row.height_mm, 0);
     const productImage = designProductPngForProduct(row.product_id, row);
+    const productVariants = designProductVariantsForProduct(row.product_id, row);
     return {
       id: text(row.product_id),
       name: text(row.name || row.product_id || 'CRDN Product'),
@@ -993,6 +1042,7 @@ function layoutConceptProductsForLibrary() {
       productImageDriveId: productImage?.drive_file_id || '',
       productImagePath: productImage?.path || '',
       productImageName: productImage?.name || '',
+      productVariants,
       source: 'design_ai_product_records',
       status: row.status || status,
       missing_dimensions: !width || !depth

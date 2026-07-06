@@ -317,7 +317,7 @@
         <a class="btn btn-out btn-sm hide-sm" href="/#mockups">🖼 Mockup</a>
         <a class="btn btn-out btn-sm hide-sm" href="/#cashflow">📊 Cashflow</a>
         <a class="btn btn-out btn-sm hide-sm" href="/layout-concept">🧭 2D Layout</a>
-        <a class="btn btn-out btn-sm hide-sm" href="/#designai">🤖 AI Design</a>
+        <a class="btn btn-out btn-sm hide-sm" href="/#designai">🗄 Database</a>
         <a class="btn btn-dark btn-sm" href="/">+ New Project</a>
         <div class="menu-wrap">
           <button class="menu-btn" onclick="toggleLayoutNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
@@ -329,7 +329,7 @@
             <a href="/#timeline">Timeline</a>
             <a href="/#mockups">Mockup</a>
             <a href="/layout-concept">2D Layout</a>
-            <a href="/#designai">AI Design</a>
+            <a href="/#designai">Database</a>
             <a href="/#cashflow">Cashflow</a>
           </div>
         </div>
@@ -711,17 +711,17 @@
           if (normalized) nextProducts[product.id] = normalized;
         });
         if (!Object.keys(nextVehicles).length || !Object.keys(nextProducts).length) {
-          useDemoLibraryData('No complete Design AI vehicle/product library records found yet');
+          useDemoLibraryData('No complete Database vehicle/product records found yet');
           return;
         }
         vehicles = nextVehicles;
         products = nextProducts;
         state.libraryMode = 'real';
-        setLibraryBadge('Real Library Data', false);
+        setLibraryBadge('Real Database Data', false);
         const hint = document.getElementById('productLibraryHint');
-        if (hint) hint.textContent = 'Products come from Design AI records. Items missing footprint dimensions cannot be placed yet.';
+        if (hint) hint.textContent = 'Products come from Database records. Items missing footprint dimensions cannot be placed yet.';
       } catch (err) {
-        useDemoLibraryData(`Library data unavailable: ${err.message}`);
+        useDemoLibraryData(`Database data unavailable: ${err.message}`);
       }
     }
 
@@ -1579,7 +1579,7 @@ productSelect.addEventListener('change', populateProductVariants);
         const productLength = positiveNumber(footprint.length, 520);
         const productWidth = positiveNumber(footprint.width, 330);
         const sourceLabel = product.source === 'design_ai_product_records'
-          ? `${product.status || 'record'} · Real Library Data · ${productImageUrl(product)?'PNG mode':'Rectangle mode'}`
+          ? `${product.status || 'record'} · Real Database Data · ${productImageUrl(product)?'PNG mode':'Rectangle mode'}`
           : product.source === 'demo_fallback'
             ? 'Demo Fallback Data'
             : 'Saved fallback';

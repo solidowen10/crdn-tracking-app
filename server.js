@@ -1666,6 +1666,7 @@ function designVehicleRecordFromRow(row) {
 function designProductRecordFromRow(row) {
   if (!row) return null;
   const productImage = designProductPngForProduct(row.product_id, row);
+  const productVariants = designProductVariantsForProduct(row.product_id, row);
   return {
     ...row,
     requires_drilling: Boolean(row.requires_drilling),
@@ -1685,6 +1686,7 @@ function designProductRecordFromRow(row) {
     productImageDriveId: productImage?.drive_file_id || '',
     productImagePath: productImage?.path || '',
     productImageName: productImage?.name || '',
+    productVariants,
     source_summary: parseJson(row.source_summary_json, {})
   };
 }

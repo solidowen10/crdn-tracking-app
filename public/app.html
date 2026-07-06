@@ -841,6 +841,12 @@ button{cursor:pointer}
 .dai-product-image-preview{width:150px;aspect-ratio:1.5/1;border:1px solid var(--g200);border-radius:var(--rs);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .dai-product-image-preview img{max-width:100%;max-height:100%;object-fit:contain}
 .dai-product-image-empty{font-size:var(--xxs);color:var(--g500);text-align:center;padding:10px}
+.dai-variant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.dai-variant-card{border:1px solid var(--g200);border-radius:var(--r);background:var(--w);padding:10px;display:grid;gap:8px}
+.dai-variant-thumb{height:118px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--g50);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.dai-variant-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.dai-variant-title{font-weight:900;line-height:1.25}
+.dai-variant-path{font-size:var(--xxxs);color:var(--g500);line-height:1.35;overflow-wrap:anywhere}
 .dai-emphasis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
 .dai-emphasis-card{border:1px solid #fed7aa;background:var(--brand-f);border-radius:var(--r);padding:12px}
 .dai-emphasis-card label{display:block;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin-bottom:5px}
@@ -901,7 +907,7 @@ button{cursor:pointer}
     <button class="btn btn-out btn-sm hide-sm" onclick="openMockups()">🖼 Mockup</button>
     <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
     <button class="btn btn-out btn-sm hide-sm" onclick="openLayoutConcept()">🧭 2D Layout</button>
-    <button class="btn btn-out btn-sm hide-sm" onclick="openDesignAI()">🤖 AI Design</button>
+    <button class="btn btn-out btn-sm hide-sm" onclick="openDesignAI()">🗄 Database</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
       <button class="menu-btn" onclick="toggleNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
@@ -913,7 +919,7 @@ button{cursor:pointer}
         <button onclick="openGarageTimeline();closeNavMenu()">Timeline</button>
         <button onclick="openMockups();closeNavMenu()">Mockup</button>
         <button onclick="openLayoutConcept();closeNavMenu()">2D Layout</button>
-        <button onclick="openDesignAI();closeNavMenu()">AI Design</button>
+        <button onclick="openDesignAI();closeNavMenu()">Database</button>
         <button id="nav-mastercf" style="display:none" onclick="openMasterCF();closeNavMenu()">Cashflow</button>
         <button onclick="showView('settings');closeNavMenu()">Settings <span id="pending-badge" class="pending-badge"></span></button>
         <button onclick="logout()">Logout</button>
@@ -2449,21 +2455,17 @@ async function renderWaitingPartsOverview(){
 }
 
 // ══════════════════════════════════════
-// DESIGN AI
+// DATABASE
 // ══════════════════════════════════════
 const DESIGN_AI_FOLDERS=[
   {key:'all',label:'All'},
   {key:'vehicles',label:'Vehicles'},
-  {key:'products',label:'Products'},
-  {key:'styles',label:'Styles'},
-  {key:'templates',label:'Templates'}
+  {key:'products',label:'Products'}
 ];
 const DESIGN_AI_SETTING_FIELDS=[
   ['google_drive_root_folder_id','Google Drive Root Folder ID'],
   ['vehicles_folder_id','Vehicles Folder ID'],
-  ['products_folder_id','Products Folder ID'],
-  ['styles_folder_id','Styles Folder ID'],
-  ['templates_folder_id','Templates Folder ID']
+  ['products_folder_id','Products Folder ID']
 ];
 const DESIGN_AI_VEHICLE_RECORD_FIELDS=[
   ['brand','Brand'],['make','Make'],['model','Model'],['generation','Generation'],['market','Market'],['body_type','Body Type'],['year_range','Year Range'],
@@ -2491,9 +2493,11 @@ const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
   ['back_panel_depth_mm','Back Panel Depth mm'],['optional_extension_depth_mm','Optional Extension Depth mm']
 ];
 const DESIGN_AI_PRODUCT_FIELD_SECTIONS=[
-  ['Basic Information',[['product_id','Product ID'],['name','Product Name'],['category','Category'],['weight_kg','Weight kg'],['description','Description'],['status','Status']]],
-  ['Dimensions',[['layout_depth_mm','Length'],['layout_width_mm','Width'],['layout_height_mm','Height']]],
-  ['Product Image',[]]
+  ['Overview',[['product_id','Product ID'],['name','Product Name'],['sku','SKU'],['category','Category'],['weight_kg','Weight kg'],['description','Description'],['status','Status']]],
+  ['Footprint',[['layout_depth_mm','Length'],['layout_width_mm','Width'],['layout_height_mm','Height']]],
+  ['Variants',[]],
+  ['Compatible Vehicles',[['compatible_vehicles','Compatible Vehicles'],['fitment_confidence','Fitment Confidence'],['fitment_reason','Fitment Reason'],['production_warning','Production Warning'],['production_ready','Production Ready']]],
+  ['Research Files',[['reference_files_json','Reference Files'],['source_summary_json','Source Summary'],['source_notes','Source Notes']]]
 ];
 const DESIGN_AI_STYLE_RECORD_FIELDS=[
   ['name','Name'],['description','Description'],['colors_json','Colors'],['materials_json','Materials'],
@@ -2557,13 +2561,13 @@ function openDesignAI(page='dashboard',opts={},skipHistory=false){
 }
 function designAiHeader(title,sub='',actions=''){
   return `<div class="dai-head">
-    <div><div class="dai-kicker">Internal AI Design</div><div class="dai-title">${esc(title)}</div>${sub?`<div class="dai-sub">${sub}</div>`:''}</div>
+    <div><div class="dai-kicker">Internal Database</div><div class="dai-title">${esc(title)}</div>${sub?`<div class="dai-sub">${sub}</div>`:''}</div>
     <div class="dai-actions">${actions}</div>
   </div>`;
 }
-function designAiLoading(title='AI Design Library'){
+function designAiLoading(title='Database'){
   const el=designAiBody();if(!el)return;
-  el.innerHTML=designAiHeader(title,'Loading library data…','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+  el.innerHTML=designAiHeader(title,'Loading database records…','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
     '<div class="dai-empty">Loading…</div>';
 }
 function designAiStatusHtml(status={}){
@@ -2606,37 +2610,30 @@ async function renderDesignAI(){
 async function renderDesignAiDashboard(){
   designAiLoading();
   try{
-    const [settings,requests]=await Promise.all([loadDesignAiStatus(),GET('/api/design-ai/requests')]);
-    DESIGN_AI.requests=requests.requests||[];
+    const settings=await loadDesignAiStatus();
+    DESIGN_AI.requests=[];
     const el=designAiBody();
-    el.innerHTML=designAiHeader('AI Design Library','Guided workspace for customer design planning, 2D layout previews, and CRDN Design Director briefs.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+    el.innerHTML=designAiHeader('Database','CRDN source of truth for vehicles, products, and synced Google Drive files.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
       designAiStatusHtml(settings.status)+
-      `<div class="dai-panel"><div class="dai-panel-title">Primary Workflow</div><div class="dai-grid">
-        <div class="dai-card" onclick="openDesignAI('start')"><strong>Start Design</strong><span>Guided flow: vehicle, products, style, notes, then workspace.</span></div>
-        <div class="dai-card" onclick="openDesignAI('workspaces')"><strong>Design Workspaces</strong><span>Continue layout previews, agent briefs, proposal/moodboard results, and saved work.</span></div>
-        <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicle Database</strong><span>Approved vehicle dimensions used for layout and proposals.</span></div>
-        <div class="dai-card" onclick="openDesignAI('products')"><strong>Product Database</strong><span>Approved product dimensions and installation data.</span></div>
-      </div></div>
-      <div class="dai-panel"><div class="dai-panel-title">Secondary Tools</div><div class="dai-grid">
-        <div class="dai-card" onclick="openDesignAI('styles')"><strong>Style Database</strong><span>Approved CRDN color, material, and moodboard directions.</span></div>
-        <div class="dai-card" onclick="DESIGN_AI.folder='all';openDesignAI('library')"><strong>Library Files</strong><span>Drive evidence, extraction readiness, and source files.</span></div>
-        <div class="dai-card" onclick="openDesignAI('requests')"><strong>Request History</strong><span>${commas(DESIGN_AI.requests.length)} saved legacy design request${DESIGN_AI.requests.length===1?'':'s'}.</span></div>
-        <div class="dai-card" onclick="openDesignAI('settings')"><strong>Settings</strong><span>Drive folder IDs, metadata sync, and service status.</span></div>
+      `<div class="dai-panel"><div class="dai-panel-title">Database</div><div class="dai-grid">
+        <div class="dai-card" onclick="openDesignAI('vehicles')"><strong>Vehicles</strong><span>Dimensions, build area, top-down references, and extraction approval.</span></div>
+        <div class="dai-card" onclick="openDesignAI('products')"><strong>Products</strong><span>Footprints, variants, compatible vehicles, and product source files.</span></div>
+        <div class="dai-card" onclick="DESIGN_AI.folder='all';openDesignAI('library')"><strong>Files</strong><span>Google Drive sync status, source files, missing assets, and duplicates.</span></div>
       </div></div>
       ${Number(settings.status?.total_indexed_files||0)?'':
-        '<div class="dai-empty"><strong>No library files indexed yet.</strong><br>Paste the Google Drive folder IDs in Settings, share folders with the service account, then run Sync Google Drive Library. Empty folders are fine for Phase 1.</div>'}`;
+        '<div class="dai-empty"><strong>No files indexed yet.</strong><br>Paste the Google Drive folder IDs in Settings, share folders with the service account, then run Sync Google Drive Files. Empty folders are fine.</div>'}`;
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('AI Design Library','Could not load the Design AI dashboard.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
+    designAiBody().innerHTML=designAiHeader('Database','Could not load the Database dashboard.','<button class="btn btn-out btn-sm" onclick="goHome()">← Projects</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
 async function renderDesignAiSettings(){
-  designAiLoading('AI Design Settings');
+  designAiLoading('Database Settings');
   try{
     const data=await loadDesignAiStatus();
     const s=data.settings||{};
     const el=designAiBody();
-    el.innerHTML=designAiHeader('AI Design Settings','Paste folder IDs from Google Drive URLs. Credentials stay server-side only.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    el.innerHTML=designAiHeader('Database Settings','Paste folder IDs from Google Drive URLs. Credentials stay server-side only.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button>')+
       designAiStatusHtml(data.status)+
       `<div class="dai-panel">
         <div class="dai-panel-title">Google Drive Folders</div>
@@ -2645,12 +2642,12 @@ async function renderDesignAiSettings(){
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
           <button class="btn btn-brand btn-sm" onclick="saveDesignAiSettings()">Save Settings</button>
-          <button class="btn btn-out btn-sm" onclick="syncDesignAiDrive(this)">Sync Google Drive Library</button>
+          <button class="btn btn-out btn-sm" onclick="syncDesignAiDrive(this)">Sync Google Drive Files</button>
         </div>
       </div>
       <div class="dai-empty">Share each Google Drive folder with the service account email shown above. This MVP stores metadata only and does not parse GLB, OBJ, FBX, STEP, PLY, LAS, or E57 files.</div>`;
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('AI Design Settings','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    designAiBody().innerHTML=designAiHeader('Database Settings','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
@@ -2659,7 +2656,7 @@ async function saveDesignAiSettings(){
   DESIGN_AI_SETTING_FIELDS.forEach(([key])=>payload[key]=document.getElementById('dai-'+key)?.value||'');
   try{
     await POST('/api/design-ai/settings',payload);
-    toast('Design AI settings saved ✓');
+    toast('Database settings saved ✓');
     renderDesignAiSettings();
   }catch(e){
     toast(`Settings save failed: ${errMsg(e)}`,4500);
@@ -2717,17 +2714,20 @@ async function designAiFileAction(fileId,action,button){
   }
 }
 async function syncDesignAiDrive(button){
+  const currentPage=designAiRoute().page;
   try{
     await designAiRunButton(button,'Syncing...',async()=>{
-    toast('Syncing Drive library…');
+    toast('Syncing Google Drive files…');
     const res=await POST('/api/design-ai/sync-drive',{});
     DESIGN_AI.status=res.status||DESIGN_AI.status;
     toast(`Drive sync complete: ${commas(res.indexed_count||0)} file${res.indexed_count===1?'':'s'} indexed`);
     });
-    renderDesignAiSettings();
+    if(currentPage==='library')renderDesignAiLibrary(DESIGN_AI.folder||'all');
+    else renderDesignAiSettings();
   }catch(e){
     toast(`Drive sync failed: ${errMsg(e)}`,6500);
-    renderDesignAiSettings();
+    if(currentPage==='library')renderDesignAiLibrary(DESIGN_AI.folder||'all');
+    else renderDesignAiSettings();
   }
 }
 function designAiFolderTabs(active='all'){
@@ -2742,7 +2742,7 @@ function designAiChecklistHtml(){
   const vehicleOptional=['floorplan.svg','mounting_points.csv','restricted_zones.csv','layout_constraints.json','buildability_report.md','manifest.json','vehicle_knowledge_sheet.pdf','scan.glb','photos/'];
   const productRequired=['product.json','dimensions.csv','footprint.svg','installation_rules.json'];
   return `<div class="dai-panel">
-    <div class="dai-panel-title">Required Library Checklist</div>
+    <div class="dai-panel-title">Required File Checklist</div>
     <div class="dai-checklist">
       <div><strong>Vehicle required</strong><ul>${vehicleRequired.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><strong>Vehicle optional</strong><ul>${vehicleOptional.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
       <div><strong>Product required</strong><ul>${productRequired.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
@@ -2796,7 +2796,7 @@ function designAiJsArg(value=''){
 function designAiReadinessHtml(readiness){
   const groups=readiness?.groups||[];
   if(!groups.length){
-    return '<div class="dai-empty"><strong>No library readiness data yet.</strong><br>Sync Google Drive Library after adding vehicle or product folders. Empty folders can still be used while the AI falls back to missing-data warnings.</div>';
+    return '<div class="dai-empty"><strong>No file readiness data yet.</strong><br>Sync Google Drive Files after adding vehicle or product folders. Empty folders can still be used while records are filled manually.</div>';
   }
   const rows=groups.map(group=>{
     const evidence=(group.evidence_files||[]).slice(0,3).join(', ');
@@ -2805,7 +2805,7 @@ function designAiReadinessHtml(readiness){
     const entityType=group.folder_type==='vehicles'?'vehicle':'product';
     const warnings=Array.isArray(group.vehicle_research_warnings)?group.vehicle_research_warnings:[];
     return `<div class="dai-row dai-readiness-row">
-      <div><strong>${esc(group.entity||'Library item')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div>${designAiResearchChecklistHtml(group)}${warnings.length?`<div class="dai-warning" style="margin-top:10px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}</div>
+      <div><strong>${esc(group.entity||'File group')}</strong><div class="pc-s">${esc(group.folder_type||'')} · ${commas(group.evidence_files_count||0)} evidence · ${commas(group.dimension_evidence_count||0)} dimension-like</div>${designAiResearchChecklistHtml(group)}${warnings.length?`<div class="dai-warning" style="margin-top:10px;margin-bottom:0">${warnings.map(esc).join(' ')}</div>`:''}</div>
       <div>${designAiReadinessPill(group.status)}<div class="pc-s">${esc(group.extraction_status||'No extraction yet')}</div></div>
       <div class="dai-path">${esc(missing)}${evidence?`<br>${esc(evidence)}`:''}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2814,7 +2814,7 @@ ${entityType==='vehicle'?`<button class="btn btn-danger btn-sm" onclick="(async(
 </div>
     </div>`;
   }).join('');
-  return `<div class="dai-panel"><div class="dai-panel-title">Library Readiness</div><div class="dai-list">${rows}</div></div>`;
+  return `<div class="dai-panel"><div class="dai-panel-title">File Readiness</div><div class="dai-list">${rows}</div></div>`;
 }
 function designAiExtractionProgressHtml(folderPath,step=0,state='running',message=''){
   const stages=['Reading Google Drive files','Detecting vehicle research files','Reading JSON / CSV evidence','Building extraction draft'];
@@ -2866,7 +2866,7 @@ async function extractDesignAiFolder(entityType,folderPath,button){
   }
 }
 async function renderDesignAiLibrary(folder='all'){
-  designAiLoading('Design Library');
+  designAiLoading('Files');
   try{
     const data=await GET(`/api/design-ai/library-files?folder_type=${encodeURIComponent(folder)}`);
     DESIGN_AI.files=data.files||[];
@@ -2879,14 +2879,14 @@ async function renderDesignAiLibrary(folder='all'){
         <td>${file.modified_time?esc(new Date(file.modified_time).toLocaleString('zh-TW')):'—'}</td>
         <td>${file.web_view_link?`<a href="${esc(file.web_view_link)}" target="_blank" rel="noopener">Open</a>`:'—'}</td>
       </tr>`).join('');
-    designAiBody().innerHTML=designAiHeader('Design Library','Indexed Google Drive metadata for vehicles, products, styles, and templates.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-brand btn-sm" onclick="openDesignAI(\'settings\')">Settings</button>')+
+    designAiBody().innerHTML=designAiHeader('Files','Google Drive sync status, vehicle files, product files, missing assets, duplicates, and import/source files.','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button><button class="btn btn-brand btn-sm" onclick="syncDesignAiDrive(this)">Sync Google Drive Files</button><button class="btn btn-out btn-sm" onclick="openDesignAI(\'settings\')">Settings</button>')+
       designAiStatusHtml(data.status)+designAiFolderTabs(folder)+
       designAiReadinessHtml(data.readiness||data.status?.readiness)+
       (rows?`<div class="dai-table-wrap"><table class="dai-table"><thead><tr><th>Name</th><th>Folder Type</th><th>MIME Type</th><th>Modified</th><th>Drive Link</th></tr></thead><tbody>${rows}</tbody></table></div>`:
-        '<div class="dai-empty"><strong>No files indexed for this filter yet.</strong><br>Folders can be empty in Phase 1. Add files to Drive, share the folders with the service account, then sync from Settings.</div>')+
+        '<div class="dai-empty"><strong>No files indexed for this filter yet.</strong><br>Add files to Drive, share the folders with the service account, then sync from Settings.</div>')+
       designAiChecklistHtml();
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('Design Library','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    designAiBody().innerHTML=designAiHeader('Files','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
@@ -3215,7 +3215,7 @@ function designAiVehicleResearchFilesHtml(data){
   if(!rows.length)return `
     <div class="dai-panel" style="margin-top:12px">
       <div class="dai-panel-title">Files Found in Google Drive</div>
-      <div class="dai-empty">No indexed vehicle research files found yet. Sync Google Drive Library after the Agent uploads files.</div>
+      <div class="dai-empty">No indexed vehicle research files found yet. Sync Google Drive Files after the Agent uploads files.</div>
     </div>
   `;
   const duplicateTables=duplicates.map(group=>{
@@ -3893,9 +3893,9 @@ function designAiVehicleEditorSection(prefix,title,fields,record){
   `;
 }
 function designAiRecordConfig(kind='products'){
-  if(kind==='vehicles')return {kind,idKey:'vehicle_id',entityType:'vehicle',title:'Vehicle Database',single:'Vehicle',route:'vehicle',library:'vehicles',fields:designAiEntityFields('vehicle'),columns:['Vehicle ID','Brand','Model','Status','Version','Updated']};
-  if(kind==='styles')return {kind,idKey:'style_id',entityType:'style',title:'Style Database',single:'Style',route:'style',library:'styles',fields:designAiEntityFields('style'),columns:['Style ID','Name','Status','Version','Updated']};
-  return {kind,idKey:'product_id',entityType:'product',title:'Product Database',single:'Product',route:'product',library:'products',fields:designAiEntityFields('product'),columns:['Product','Length × Width','PNG','Status','Updated']};
+  if(kind==='vehicles')return {kind,idKey:'vehicle_id',entityType:'vehicle',title:'Vehicles',single:'Vehicle',route:'vehicle',library:'vehicles',fields:designAiEntityFields('vehicle'),columns:['Vehicle ID','Brand','Model','Status','Version','Updated']};
+  if(kind==='styles')return {kind,idKey:'style_id',entityType:'style',title:'Style Records',single:'Style',route:'style',library:'styles',fields:designAiEntityFields('style'),columns:['Style ID','Name','Status','Version','Updated']};
+  return {kind,idKey:'product_id',entityType:'product',title:'Products',single:'Product',route:'product',library:'products',fields:designAiEntityFields('product'),columns:['Product','Length × Width','Variants','Status','Updated']};
 }
 function designAiFieldValue(value){
   if(Array.isArray(value))return value.join(', ');
@@ -4059,7 +4059,7 @@ function designAiVehicleToolsHtml(vehicleId){
   return `<div class="dai-panel">
     <div class="dai-panel-title">Vehicle Tools</div>
     <div class="dai-warning">
-      These tools affect only CRDN's synced/extracted Design AI data for this vehicle. They do not delete files from Google Drive.
+      These tools affect only CRDN's synced/extracted database data for this vehicle. They do not delete files from Google Drive.
     </div>
     <div class="dai-progress">
       <strong>Rebuild Vehicle Data</strong>
@@ -4159,7 +4159,7 @@ async function renderDesignAiExtraction(id){
       ? `<details class="dai-details"><summary>Data Found But Not Used (${commas(unmapped.length)} fields)</summary><div class="dai-details-body">${designAiUnmappedSourceHtml(unmapped)}</div></details>`
       : `<div class="dai-panel"><div class="dai-panel-title">Data Found But Not Used</div>${designAiUnmappedSourceHtml(unmapped)}</div>`;
     const vehicleTools=draft.entity_type==='vehicle'?designAiVehicleToolsHtml(draft.entity_id):'';
-    designAiBody().innerHTML=designAiHeader('Extraction Review',`${esc(draft.entity_type||'entity')} · ${esc(draft.entity_id||'')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
+    designAiBody().innerHTML=designAiHeader('Extraction Review',`${esc(draft.entity_type||'entity')} · ${esc(draft.entity_id||'')}`,'<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Files</button>')+
       `${warnings.length?`<div class="dai-warning"><strong>Partial extraction:</strong> ${warnings.map(esc).join(' ')}</div>`:''}
       <div class="dai-result-grid">
         <div>
@@ -4183,7 +4183,7 @@ async function renderDesignAiExtraction(id){
       </div>
       <div id="dai-raw" style="display:none"></div>`;
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('Extraction Review','','<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Library</button>')+
+    designAiBody().innerHTML=designAiHeader('Extraction Review','','<button class="btn btn-out btn-sm" onclick="openDesignAI(\'library\')">← Files</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
@@ -4209,7 +4209,7 @@ async function approveDesignAiExtraction(id,button){
       const saved=await PATCH(`/api/design-ai/extractions/${id}`,{extracted,status:'draft'});
       DESIGN_AI.extractionDraft=saved.draft;
       const res=await POST(`/api/design-ai/extractions/${id}/approve`,{});
-      toast('Approved to Design AI database ✓');
+      toast('Approved to database ✓');
       openDesignAI(res.draft?.entity_type==='vehicle'?'vehicles':'products');
     });
   }catch(e){toast(`Approval failed: ${errMsg(e)}`,6500);}
@@ -4245,9 +4245,10 @@ async function renderDesignAiRecords(kind='products'){
     const archivedToggle = kind === 'products'
       ? `<button class="btn btn-out btn-sm" onclick="DESIGN_AI.showArchivedProducts=!DESIGN_AI.showArchivedProducts;renderDesignAiRecords('products')">${includeArchived?'Hide Archived':'Show Archived'}</button>`
       : '';
-    const actions=`<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button><button class="btn btn-out btn-sm" onclick="DESIGN_AI.folder='${cfg.library}';openDesignAI('library')">Library</button>${archivedToggle}<button class="btn btn-brand btn-sm" onclick="openDesignAI('${cfg.route}',{id:'new'})">New ${cfg.single}</button>`;
+    const actions=`<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button><button class="btn btn-out btn-sm" onclick="DESIGN_AI.folder='${cfg.library}';openDesignAI('library')">Files</button>${archivedToggle}<button class="btn btn-brand btn-sm" onclick="openDesignAI('${cfg.route}',{id:'new'})">New ${cfg.single}</button>`;
     const headers=cfg.columns;
     const body=records.map(record=>{
+      const productVariantCount=cfg.kind==='products'?designAiProductVariantList(record).length:0;
       const cells=cfg.kind==='vehicles'
         ? [record.vehicle_id,record.brand,record.model,designAiStatusPill(record.status),record.version,record.updated_at?new Date(record.updated_at).toLocaleString('zh-TW'):'—']
         : cfg.kind==='styles'
@@ -4255,7 +4256,9 @@ async function renderDesignAiRecords(kind='products'){
           : [
               record.name || record.sku || record.product_id,
               [record.layout_depth_mm||record.depth_mm,record.layout_width_mm||record.width_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ') || '—',
-              record.productImageDriveId?'<span class="dai-pill done">PNG</span>':'<span class="dai-pill">Rectangle</span>',
+              productVariantCount
+                ? `<span class="dai-pill done">${productVariantCount} variant${productVariantCount===1?'':'s'}</span>`
+                : (record.productImageDriveId?'<span class="dai-pill done">Default PNG</span>':'<span class="dai-pill">Rectangle</span>'),
               designAiStatusPill(record.status),
               record.updated_at?new Date(record.updated_at).toLocaleString('zh-TW'):'—'
             ];
@@ -4263,9 +4266,9 @@ async function renderDesignAiRecords(kind='products'){
     }).join('');
     designAiBody().innerHTML=designAiHeader(cfg.title,'Google Drive stores evidence files. CRDN approved database stores the values used for layout and proposals.',actions)+
       (body?`<div class="dai-table-wrap"><table class="dai-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`:
-        `<div class="dai-empty"><strong>No ${cfg.single.toLowerCase()} records yet.</strong><br>Create a draft manually, or use Library extraction and approve evidence into the database.</div>`);
+        `<div class="dai-empty"><strong>No ${cfg.single.toLowerCase()} records yet.</strong><br>Create a draft manually, or use Files extraction and approve evidence into the database.</div>`);
   }catch(e){
-    designAiBody().innerHTML=designAiHeader('Design AI Database','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    designAiBody().innerHTML=designAiHeader('Database','','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
@@ -4276,22 +4279,70 @@ function designAiProductFieldValue(record,field){
 function designAiProductImageValue(record){
   return record?.productImageDriveId||record?.product_image?.drive_file_id||'';
 }
-function designAiProductImageHtml(record){
-  const driveId=designAiProductImageValue(record);
-  const name=record?.productImageName||record?.product_image?.name||'Product PNG';
-  const path=record?.productImagePath||record?.product_image?.path||'';
+function designAiProductVariantLabel(variant={},fallback='Variant'){
+  return variant.label||variant.name||variant.variant_id||variant.id||variant.value||variant.color||variant.material||variant.option||variant.side||fallback;
+}
+function designAiProductVariantDriveId(variant={}){
+  return variant.drive_file_id||variant.product_image_drive_id||variant.productImageDriveId||variant.image_drive_file_id||'';
+}
+function designAiProductVariantPath(variant={}){
+  return variant.path||variant.drive_path||variant.productImagePath||variant.product_image_path||variant.file_path||'';
+}
+function designAiProductVariantList(record={}){
+  const out=[];
+  const seen=new Set();
+  const pushVariant=(variant={},source='saved')=>{
+    const driveId=designAiProductVariantDriveId(variant);
+    const label=designAiProductVariantLabel(variant,source==='default'?'Default / Original':'Variant');
+    const key=driveId||`${source}:${String(label).toLowerCase()}`;
+    if(seen.has(key))return;
+    seen.add(key);
+    out.push({
+      ...variant,
+      label,
+      drive_file_id:driveId,
+      path:designAiProductVariantPath(variant),
+      status:variant.status||variant.file_status||(driveId?'available':'saved'),
+      source
+    });
+  };
+  const defaultDriveId=designAiProductImageValue(record);
+  if(defaultDriveId){
+    pushVariant({
+      label:'Default / Original',
+      drive_file_id:defaultDriveId,
+      name:record.productImageName||record.product_image?.name||'Product PNG',
+      path:record.productImagePath||record.product_image?.path||'',
+      status:'available'
+    },'default');
+  }
+  (Array.isArray(record.productVariants)?record.productVariants:[]).forEach(variant=>pushVariant(variant,'drive'));
+  const defaultVariant=record.default_variant&&typeof record.default_variant==='object'?record.default_variant:null;
+  if(defaultVariant&&Object.keys(defaultVariant).length)pushVariant(defaultVariant,'saved');
+  (Array.isArray(record.variants)?record.variants:[]).forEach((variant,index)=>{
+    if(typeof variant==='string')pushVariant({label:variant,status:'saved'},'saved');
+    else if(variant&&typeof variant==='object')pushVariant({...variant,label:designAiProductVariantLabel(variant,`Variant ${index+1}`)},'saved');
+  });
+  return out;
+}
+function designAiProductVariantsHtml(record){
+  const variants=designAiProductVariantList(record);
   return `<div class="dai-panel">
-    <div class="dai-panel-title">Product PNG</div>
-    <div class="dai-product-image-card">
-      <div class="dai-product-image-preview">
-        ${driveId?`<img src="/api/design-ai/library-image/${encodeURIComponent(driveId)}" alt="${esc(name)}">`:'<div class="dai-product-image-empty">No approved PNG found yet.</div>'}
-      </div>
-      <div>
-        <strong>${driveId?'Approved PNG Preview':'Product PNG Missing'}</strong>
-        <div class="pc-s" style="margin-top:5px">${driveId?esc(path||name):'Add a transparent PNG such as window-rack-01.png to this product folder, then sync Google Drive.'}</div>
-        <div class="pc-s" style="margin-top:8px">The 2D Layout editor automatically uses this PNG when available and falls back to rectangle mode when it is missing.</div>
-      </div>
-    </div>
+    <div class="dai-panel-title">Product Variants</div>
+    ${variants.length?`<div class="dai-variant-grid">${variants.map(variant=>{
+      const driveId=designAiProductVariantDriveId(variant);
+      const label=designAiProductVariantLabel(variant);
+      const path=designAiProductVariantPath(variant);
+      return `<div class="dai-variant-card">
+        <div class="dai-variant-thumb">
+          ${driveId?`<img src="/api/design-ai/library-image/${encodeURIComponent(driveId)}" alt="${esc(label)}">`:'<div class="dai-product-image-empty">No image</div>'}
+        </div>
+        <div class="dai-variant-title">${esc(label)}</div>
+        <div>${designAiStatusPill(variant.status||'saved')}</div>
+        <div class="dai-variant-path">${esc(path||variant.name||'Saved variant metadata')}</div>
+      </div>`;
+    }).join('')}</div>`:'<div class="dai-empty">No product variants found yet. Add PNG options under this product folder, for example colors/black.png or colors/leather-brown.png, then sync Google Drive Files.</div>'}
+    <div class="pc-s" style="margin-top:10px">2D Layout uses the selected variant PNG when available and falls back to the default PNG or rectangle footprint when no image exists.</div>
   </div>`;
 }
 function designAiProductDimensionsHtml(prefix,record){
@@ -4299,7 +4350,7 @@ function designAiProductDimensionsHtml(prefix,record){
   const widthValue=record.layout_width_mm??record.width_mm??'';
   const heightValue=record.layout_height_mm??record.height_mm??'';
   return `<div class="dai-panel">
-    <div class="dai-panel-title">Dimensions</div>
+    <div class="dai-panel-title">Footprint</div>
     <div class="dai-emphasis-grid">
       <div class="dai-emphasis-card"><label>Length used by 2D Layout</label><input id="${esc(prefix+'layout_depth_mm')}" value="${esc(designAiFieldValue(lengthValue))}" placeholder="Length mm"></div>
       <div class="dai-emphasis-card"><label>Width used by 2D Layout</label><input id="${esc(prefix+'layout_width_mm')}" value="${esc(designAiFieldValue(widthValue))}" placeholder="Width mm"></div>
@@ -4314,8 +4365,8 @@ function designAiProductDimensionsHtml(prefix,record){
   </div>`;
 }
 function designAiProductEditorSection(prefix,title,fields,record){
-  if(String(title).includes('Product Image'))return designAiProductImageHtml(record);
-  if(String(title).includes('Dimensions'))return designAiProductDimensionsHtml(prefix,record);
+  if(String(title).includes('Variants'))return designAiProductVariantsHtml(record);
+  if(String(title).includes('Footprint'))return designAiProductDimensionsHtml(prefix,record);
   return `<div class="dai-panel">
     <div class="dai-panel-title">${esc(title)}</div>
     <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,designAiProductFieldValue(record,field),{})).join('')}</div>
@@ -4335,7 +4386,7 @@ function designAiProductEditorHtml(record,isNew){
       </div>
       <div class="dai-record-savebar-actions">
         <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save Product</button>
-        <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Product Database</button>
+        <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Products</button>
         ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
       </div>
     </div>
@@ -4344,7 +4395,7 @@ function designAiProductEditorHtml(record,isNew){
     ${DESIGN_AI_PRODUCT_FIELD_SECTIONS.map(([title,fields])=>designAiProductEditorSection(prefix,title,fields,record)).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save Product</button>
-      <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Product Database</button>
+      <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Products</button>
       ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
     </div>`;
 }
@@ -4361,7 +4412,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     const prefix='dai-rec-';
     const helper=kind==='vehicles'?'Approved vehicle dimensions are used by layout generation.':kind==='products'?'Approved product dimensions are used by layout generation.':'Approved style records are used by moodboards and proposals.';
     if(kind==='products'){
-      designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">← Product Database</button>`)+
+      designAiBody().innerHTML=designAiHeader(`${isNew?'New ':''}${cfg.single}`,`${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}` ,`<button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">← Products</button>`)+
         designAiProductEditorHtml(record,isNew);
       setTimeout(bindDesignAiProductDirtyTracking,0);
       return;
@@ -4371,7 +4422,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
     designAiHeader(
       `${isNew?'New ':''}${cfg.single}`,
       `${esc(record[cfg.idKey]||'Draft')} · ${esc(record.status||'draft')}`,
-      `<button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">← Vehicle Database</button>`
+      `<button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">← Vehicles</button>`
     ) +
 
     DESIGN_AI_VEHICLE_FIELD_SECTIONS.map(([title,fields]) =>
@@ -4386,7 +4437,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
       </button>
 
       <button class="btn btn-out btn-sm" onclick="openDesignAI('vehicles')">
-        Back to Vehicle Database
+        Back to Vehicles
       </button>
     </div>
     `;
@@ -4407,7 +4458,7 @@ async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
         </div>
       </div>`;
   }catch(e){
-    designAiBody().innerHTML=designAiHeader(cfg.single,'','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← AI Dashboard</button>')+
+    designAiBody().innerHTML=designAiHeader(cfg.single,'','<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button>')+
       `<div class="dai-empty">${esc(errMsg(e))}</div>`;
   }
 }
@@ -4453,7 +4504,7 @@ async function saveDesignAiRecord(button){
       else await PATCH(`/api/design-ai/${cfg.kind}/${encodeURIComponent(ctx.recordKey)}`,payload);
       DESIGN_AI.choices=null;
       clearDesignAiRecordDirty();
-      toast('Design AI record saved ✓');
+      toast('Database record saved ✓');
       openDesignAI(cfg.route,{id});
     });
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}

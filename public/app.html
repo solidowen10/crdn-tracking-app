@@ -193,6 +193,11 @@ button{cursor:pointer}
 .dai-mini-check b{color:var(--ink);font-weight:800}
 .dai-mini-check .mark{width:17px;height:17px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;font-size:10px;font-weight:900;background:#f0fdf4;color:#15803d}
 .dai-mini-check.missing .mark{background:#fef2f2;color:#dc2626}
+.dai-mini-item{border:1px solid var(--g200);border-radius:var(--rs);padding:9px 10px;background:var(--g50);display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:var(--xxs);line-height:1.25}
+.dai-mini-item strong{min-width:0;overflow-wrap:anywhere}
+.dai-mini-item span{font-weight:900;letter-spacing:.04em}
+.dai-mini-item.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.dai-mini-item.miss{background:#fef2f2;border-color:#fecaca;color:#991b1b}
 .dai-list{display:flex;flex-direction:column;gap:10px}
 .dai-row{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) 130px 130px;gap:12px;align-items:center}
 .dai-row.dai-readiness-row{grid-template-columns:minmax(0,1fr) 130px minmax(130px,.8fr) auto}
@@ -811,21 +816,36 @@ button{cursor:pointer}
 .dai-panel.is-collapsed .dai-panel-title::before{content:'▸'}
 .dai-panel.is-collapsed > *:not(.dai-panel-title){display:none!important}
 .crdn-print-sheet{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:14px;overflow:auto}
-.vehicle-sheet-page{background:#fff;color:#111;min-width:980px}
+.vehicle-sheet-page{background:#fff;color:#111;min-width:760px}
 .vehicle-sheet-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:3px solid #111;padding-bottom:10px;margin-bottom:12px}
-.vehicle-sheet-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.06em;line-height:1}
+.vehicle-sheet-brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.vehicle-sheet-brand img{width:34px;height:34px;border-radius:7px;object-fit:cover}
+.vehicle-sheet-brand strong{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.06em;line-height:1}
+.vehicle-sheet-brand span{color:var(--brand)}
+.vehicle-sheet-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.06em;line-height:1}
 .vehicle-sheet-sub{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#6b6b68;margin-top:4px}
 .vehicle-sheet-id{text-align:right;font-weight:900;font-size:18px;color:#ca741f}
-.vehicle-sheet-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.vehicle-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .vehicle-sheet-section{border:1px solid #d8d8d2;border-radius:8px;padding:10px;min-height:118px}
-.vehicle-sheet-section.wide{grid-column:span 3;min-height:72px}
+.vehicle-sheet-section.wide{grid-column:span 2;min-height:72px}
 .vehicle-sheet-section h4{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b6b68}
 .vehicle-sheet-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;border-top:1px solid #f0f0ec;padding:5px 0;font-size:13px}
 .vehicle-sheet-row:first-of-type{border-top:none}
 .vehicle-sheet-row span:first-child{color:#6b6b68}
 .vehicle-sheet-row strong{text-align:right;overflow-wrap:anywhere}
+.vehicle-sheet-row.key{background:var(--brand-f);border:1px solid #fed7aa;border-radius:7px;margin:4px 0;padding:7px 8px}
+.vehicle-sheet-row.key span:first-child,.vehicle-sheet-row.key strong{color:var(--brand);font-weight:900}
 .vehicle-sheet-note{font-size:13px;line-height:1.55;color:#111;white-space:pre-wrap}
 .birdseye-wrap{max-width:760px;margin:0 auto}
+.dai-product-image-card{border:1px solid var(--g200);border-radius:var(--r);background:var(--g50);padding:14px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;align-items:center}
+.dai-product-image-preview{width:150px;aspect-ratio:1.5/1;border:1px solid var(--g200);border-radius:var(--rs);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.dai-product-image-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.dai-product-image-empty{font-size:var(--xxs);color:var(--g500);text-align:center;padding:10px}
+.dai-emphasis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.dai-emphasis-card{border:1px solid #fed7aa;background:var(--brand-f);border-radius:var(--r);padding:12px}
+.dai-emphasis-card label{display:block;font-size:var(--xxxs);font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin-bottom:5px}
+.dai-emphasis-card input{width:100%;border:1px solid #fed7aa;border-radius:var(--rs);padding:9px 10px;background:#fff;color:var(--black);font-weight:900}
+@media(max-width:760px){.dai-product-image-card,.dai-emphasis-grid{grid-template-columns:1fr}.dai-product-image-preview{width:100%;max-width:220px}.vehicle-sheet-page{min-width:0}.vehicle-sheet-grid{grid-template-columns:1fr}.vehicle-sheet-section.wide{grid-column:span 1}}
 
 
 /* Product Database table polish */
@@ -2455,7 +2475,7 @@ const DESIGN_AI_VEHICLE_RECORD_FIELDS=[
   ['wheel_arch_position_y_mm','Wheel Arch Position Y mm'],['payload_kg','Payload kg'],['floor_plan_notes','Floor Plan Notes'],['reference_files_json','Reference Files'],['status','Status']
 ];
 const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
-  ['sku','SKU'],['name','Name'],['category','Category'],['status','Status'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
+  ['sku','SKU'],['name','Name'],['category','Category'],['description','Description'],['status','Status'],['width_mm','Width mm'],['depth_mm','Depth mm'],['height_mm','Height mm'],
   ['weight_kg','Weight kg'],['material','Material'],['color','Color'],['price','Price'],['dimension_confidence','Dimension Confidence'],
   ['layout_component_type','Layout Component Type'],['shape_rule','Shape Rule'],['layout_width_mm','Layout Width mm'],['layout_depth_mm','Layout Depth mm'],
   ['layout_height_mm','Layout Height mm'],['allowed_zones_json','Allowed Zones'],['orientation_options_json','Orientation Options'],['layout_modes_json','Layout Modes'],
@@ -2471,13 +2491,9 @@ const DESIGN_AI_PRODUCT_RECORD_FIELDS=[
   ['back_panel_depth_mm','Back Panel Depth mm'],['optional_extension_depth_mm','Optional Extension Depth mm']
 ];
 const DESIGN_AI_PRODUCT_FIELD_SECTIONS=[
-  ['Basic Info',[['product_id','Product ID'],['sku','SKU'],['name','Name'],['category','Category'],['status','Status']]],
-  ['Physical Dimensions',[['width_mm','Width'],['depth_mm','Depth'],['height_mm','Height'],['weight_kg','Weight'],['material','Material'],['color','Color'],['price','Price'],['dimension_confidence','Dimension Confidence']]],
-  ['Layout / AI Placement',[['layout_component_type','Layout Component Type'],['shape_rule','Shape Rule'],['layout_width_mm','Layout Width'],['layout_depth_mm','Layout Depth'],['layout_height_mm','Layout Height'],['allowed_zones_json','Allowed Zones'],['orientation_options_json','Orientation Options'],['layout_modes_json','Layout Modes'],['clearance_notes','Clearance Notes'],['mounting_notes','Mounting Notes'],['installation_notes','Installation Notes']]],
-  ['Configurable Dimensions',[['is_configurable','Configurable Product'],['configurable_dimensions_json','Default / Min / Max / Step'],['default_variant_json','Default Variant JSON'],['variants_json','Variants JSON']]],
-  ['Convertible Modes',[['seat_mode_width_mm','Seat Mode Width'],['seat_mode_depth_mm','Seat Mode Depth'],['bed_mode_width_mm','Bed Mode Width'],['bed_mode_depth_mm','Bed Mode Depth'],['extended_bed_mode_width_mm','Extended Bed Mode Width'],['extended_bed_mode_depth_mm','Extended Bed Mode Depth'],['seat_panel_depth_mm','Seat Panel Depth'],['back_panel_depth_mm','Back Panel Depth'],['optional_extension_depth_mm','Optional Extension Depth']]],
-  ['Fitment / Production Confidence',[['compatible_vehicles','Compatible Vehicles'],['fitment_confidence','Fitment Confidence'],['fitment_reason','Fitment Reason'],['confirmed_data_json','Confirmed Data'],['estimated_data_json','Estimated Data'],['production_warning','Production Warning'],['production_ready','Production Ready']]],
-  ['Google Drive / Source Evidence',[['source_drive_folder_id','Source Folder ID'],['reference_files_json','Reference Files'],['source_summary_json','Source Summary'],['source_notes','Source Notes']]]
+  ['Basic Information',[['product_id','Product ID'],['name','Product Name'],['category','Category'],['weight_kg','Weight kg'],['description','Description'],['status','Status']]],
+  ['Dimensions',[['layout_depth_mm','Length'],['layout_width_mm','Width'],['layout_height_mm','Height']]],
+  ['Product Image',[]]
 ];
 const DESIGN_AI_STYLE_RECORD_FIELDS=[
   ['name','Name'],['description','Description'],['colors_json','Colors'],['materials_json','Materials'],
@@ -3014,25 +3030,30 @@ function designAiVehicleCompletenessFallback(record,c){
   const estimated=Array.isArray(c?.metadata?.estimated_fields)?c.metadata.estimated_fields:[];
   const buildFound=Boolean(area.length_mm&&area.width_mm);
   const dimFound=Boolean((record?.interior_length_mm&&record?.interior_width_mm)||(record?.overall_length_mm&&record?.overall_width_mm));
+  const topdownFound=Boolean(record?.topdownBaseImageDriveId||record?.topdown_base_image?.drive_file_id);
+  const dataLayoutReady=Boolean(record?.vehicle_id&&dimFound&&buildFound);
+  const visualLayoutReady=Boolean(dataLayoutReady&&topdownFound);
   const source=c?.metadata?.source_path||c?.metadata?.source_file||c?.metadata?.derived_from||'';
   return {
-    overall_score:(record?.vehicle_id?20:0)+(dimFound?30:0)+(buildFound?30:0),
-    layout_ready:false,
+    overall_score:(record?.vehicle_id?20:0)+(dimFound?30:0)+(buildFound?30:0)+(topdownFound?20:0),
+    data_layout_ready:dataLayoutReady,
+    visual_layout_ready:visualLayoutReady,
+    layout_ready:visualLayoutReady,
     customer_proposal_ready:false,
     fabrication_ready:false,
     critical_missing:[
       record?.vehicle_id?'':'Vehicle record',
       dimFound?'':'Dimensions',
       buildFound?'':'Buildable area',
-      'Topdown base image'
+      topdownFound?'':'Topdown base image'
     ].filter(Boolean),
     estimated_fields:estimated,
-    warnings:['Topdown base image missing. Upload topdown_base.png to this vehicle folder.'],
+    warnings:topdownFound?[]:['Topdown base image missing. Upload topdown_base.png to this vehicle folder.'],
     required:[
       {key:'vehicle_record',label:'Vehicle record',status:record?.vehicle_id?'Found':'Missing',confidence:record?.vehicle_id?'MEDIUM':'LOW',source_file:''},
       {key:'dimensions',label:'Dimensions',status:dimFound?'Found':'Missing',confidence:dimFound?'MEDIUM':'LOW',source_file:''},
       {key:'buildable_area',label:'Buildable area',status:buildFound?(estimated.length?'Estimated':'Found'):'Missing',confidence:buildFound?(c?.metadata?.confidence||'MEDIUM'):'LOW',source_file:source},
-      {key:'topdown_base',label:'Topdown base image',status:'Missing',confidence:'LOW',source_file:''}
+      {key:'topdown_base',label:'Topdown base image',status:topdownFound?'Found':'Missing',confidence:topdownFound?'HIGH':'LOW',source_file:record?.topdownBaseImagePath||record?.topdown_base_image?.path||''}
     ],
     nice_to_have:[
       {key:'floorplan',label:'Floorplan',status:'Missing',confidence:'LOW',source_file:''},
@@ -3042,6 +3063,21 @@ function designAiVehicleCompletenessFallback(record,c){
       {key:'mounting_points',label:'Mounting points',status:Array.isArray(c?.mounting_points)&&c.mounting_points.length?'Found':'Missing',confidence:Array.isArray(c?.mounting_points)&&c.mounting_points.length?'MEDIUM':'LOW',source_file:source}
     ]
   };
+}
+function designAiVehicleReadinessFlags(record,c,readiness){
+  const area=c?.build_area||{};
+  const dimFound=Boolean((record?.interior_length_mm&&record?.interior_width_mm)||(record?.overall_length_mm&&record?.overall_width_mm));
+  const buildFound=Boolean(area.length_mm&&area.width_mm);
+  const topdownFound=Boolean(record?.topdownBaseImageDriveId||record?.topdown_base_image?.drive_file_id||readiness?.topdown_base_image?.drive_file_id);
+  const dataLayoutReady=Boolean(readiness?.data_layout_ready ?? (record?.vehicle_id&&dimFound&&buildFound));
+  const visualLayoutReady=Boolean(readiness?.visual_layout_ready ?? (dataLayoutReady&&topdownFound));
+  const status=String(c?.metadata?.status||c?.status||'').toLowerCase();
+  const approvedGeometry=status==='approved';
+  const required=Array.isArray(readiness?.required)?readiness.required:[];
+  const requiredComplete=required.length?required.every(item=>String(item.status||'').toLowerCase()!=='missing'):true;
+  const customerProposalReady=Boolean(readiness?.customer_proposal_ready ?? (visualLayoutReady&&approvedGeometry&&requiredComplete));
+  const fabricationReady=Boolean(readiness?.fabrication_ready);
+  return {dataLayoutReady,visualLayoutReady,customerProposalReady,fabricationReady,topdownFound,approvedGeometry};
 }
 function designAiVehicleCompletenessRows(rows=[]){
   return rows.map(row=>`
@@ -3059,16 +3095,22 @@ function designAiVehicleCompletenessHtml(record,c){
   const required=Array.isArray(readiness.required)&&readiness.required.length?readiness.required:fallback.required;
   const nice=Array.isArray(readiness.nice_to_have)&&readiness.nice_to_have.length?readiness.nice_to_have:fallback.nice_to_have;
   const warnings=Array.isArray(readiness.warnings)?readiness.warnings:[];
+  const flags=designAiVehicleReadinessFlags(record,c,readiness);
   return `
     <div class="dai-panel" style="margin-bottom:12px">
       <div class="dai-panel-title">Vehicle Data Completeness</div>
-      <div class="dai-review-row" style="grid-template-columns:1fr auto auto">
+      <div class="dai-review-row" style="grid-template-columns:1fr auto">
         <div>
           <strong>${Number(readiness.overall_score||0)} / 100</strong>
-          <div class="pc-s">Layout ready: ${readiness.layout_ready?'Yes':'No'} · Customer proposal ready: ${readiness.customer_proposal_ready?'Yes':'No'} · Fabrication ready: ${readiness.fabrication_ready?'Yes':'No'}</div>
+          <div class="pc-s">Single source of truth: saved CRDN vehicle record + approved layout constraints.</div>
         </div>
-        <div>${designAiReadinessPill(readiness.layout_ready?'Ready':'Missing Evidence')}</div>
         <div class="pc-s">${Array.isArray(readiness.estimated_fields)&&readiness.estimated_fields.length?`${readiness.estimated_fields.length} estimated field${readiness.estimated_fields.length===1?'':'s'}`:'No estimated fields'}</div>
+      </div>
+      <div class="dai-mini-checklist" style="margin-top:12px">
+        <div class="dai-mini-item ${flags.dataLayoutReady?'ok':'miss'}"><strong>Data Layout Ready</strong><span>${flags.dataLayoutReady?'TRUE':'FALSE'}</span></div>
+        <div class="dai-mini-item ${flags.visualLayoutReady?'ok':'miss'}"><strong>Visual Layout Ready</strong><span>${flags.visualLayoutReady?'TRUE':'FALSE'}</span></div>
+        <div class="dai-mini-item ${flags.customerProposalReady?'ok':'miss'}"><strong>Customer Proposal Ready</strong><span>${flags.customerProposalReady?'TRUE':'FALSE'}</span></div>
+        <div class="dai-mini-item ${flags.fabricationReady?'ok':'miss'}"><strong>Fabrication Ready</strong><span>${flags.fabricationReady?'TRUE':'FALSE'}</span></div>
       </div>
       <div class="dai-table-wrap" style="margin-top:12px">
         <table class="dai-table" style="min-width:760px">
@@ -3110,6 +3152,52 @@ function designAiSuggestionHasMappedBuildArea(s){
     area.x_mm,area.y_mm,area.length_mm,area.width_mm,area.height_mm,
     clearance.front_mm,clearance.rear_mm,clearance.left_mm,clearance.right_mm,clearance.minimum_walkway_mm
   ].some(value=>value!==undefined&&value!==null&&String(value).trim()!=='');
+}
+function designAiHasBuildAreaGeometry(c){
+  const area=c?.build_area||{};
+  return Boolean(area.length_mm&&area.width_mm);
+}
+function designAiGeometryPreferSaved(savedValue,suggestionValue){
+  return savedValue!==undefined&&savedValue!==null&&String(savedValue).trim()!==''?savedValue:suggestionValue;
+}
+function designAiGeometryForLoad(data){
+  const saved=designAiVehicleLayoutConstraints(DESIGN_AI.currentRecord||{});
+  const suggestion=data?.suggestion?designAiVehicleLayoutConstraints({layout_constraints_json:data.suggestion}):null;
+  const source=suggestion||{};
+  const savedArea=saved.build_area||{};
+  const sourceArea=source.build_area||{};
+  const savedClearance=saved.clearance||{};
+  const sourceClearance=source.clearance||{};
+  const merged={
+    schema_version:source.schema_version||saved.schema_version||1,
+    build_area:{
+      x_mm:designAiGeometryPreferSaved(savedArea.x_mm,sourceArea.x_mm),
+      y_mm:designAiGeometryPreferSaved(savedArea.y_mm,sourceArea.y_mm),
+      length_mm:designAiGeometryPreferSaved(savedArea.length_mm,sourceArea.length_mm),
+      width_mm:designAiGeometryPreferSaved(savedArea.width_mm,sourceArea.width_mm),
+      height_mm:designAiGeometryPreferSaved(savedArea.height_mm,sourceArea.height_mm)
+    },
+    clearance:{
+      front_mm:designAiGeometryPreferSaved(savedClearance.front_mm,sourceClearance.front_mm),
+      rear_mm:designAiGeometryPreferSaved(savedClearance.rear_mm,sourceClearance.rear_mm),
+      left_mm:designAiGeometryPreferSaved(savedClearance.left_mm,sourceClearance.left_mm),
+      right_mm:designAiGeometryPreferSaved(savedClearance.right_mm,sourceClearance.right_mm),
+      minimum_walkway_mm:designAiGeometryPreferSaved(savedClearance.minimum_walkway_mm,sourceClearance.minimum_walkway_mm)
+    },
+    restricted_zones:Array.isArray(saved.restricted_zones)&&saved.restricted_zones.length?saved.restricted_zones:(source.restricted_zones||[]),
+    mounting_points:Array.isArray(saved.mounting_points)&&saved.mounting_points.length?saved.mounting_points:(source.mounting_points||[]),
+    metadata:{
+      ...(source.metadata||{}),
+      ...(saved.metadata||{}),
+      status:(saved.metadata?.status||saved.status||source.metadata?.status||source.status||'ai_suggested'),
+      source_file:saved.metadata?.source_file||saved.metadata?.derived_from||source.metadata?.source_file||data?.file?.name||'layout_constraints.json',
+      derived_from:saved.metadata?.derived_from||source.metadata?.derived_from||source.metadata?.source_file||data?.file?.name||'layout_constraints.json',
+      notes:saved.metadata?.notes||source.metadata?.notes||'',
+      warnings:Array.isArray(source.metadata?.warnings)?source.metadata.warnings:[]
+    },
+    vehicle_readiness:saved.vehicle_readiness||source.vehicle_readiness||null
+  };
+  return merged;
 }
 function designAiBuildAreaFormHasValues(prefix='dai-rec-'){
   return [
@@ -3181,7 +3269,15 @@ function designAiGeometrySuggestionHtml(data){
   const warnings=Array.isArray(summary.warnings)?summary.warnings:[];
   const hasSuggestion=Boolean(data?.suggestion);
   const hasMappedBuildArea=hasSuggestion&&designAiSuggestionHasMappedBuildArea(data.suggestion);
-  const missingMessage=!hasSuggestion?`
+  const saved=designAiVehicleLayoutConstraints(DESIGN_AI.currentRecord||{});
+  const savedHasBuildArea=designAiHasBuildAreaGeometry(saved);
+  const missingMessage=!hasSuggestion?(savedHasBuildArea?`
+    <div class="dai-empty" style="text-align:left;margin-bottom:12px">
+      <strong>Saved build area found.</strong><br>
+      Source: ${esc(saved.metadata?.source_file||saved.metadata?.derived_from||'Saved vehicle record')}<br>
+      Build Area: ${esc(saved.build_area.length_mm)} × ${esc(saved.build_area.width_mm)}
+    </div>
+  `:`
     <div class="dai-empty" style="text-align:left;margin-bottom:12px">
       <strong>No geometry suggestion found.</strong><br>
       Vehicle research files were checked, but no layout constraints file was found yet.<br><br>
@@ -3190,8 +3286,8 @@ function designAiGeometrySuggestionHtml(data){
       - or fallback file containing build_area / restricted_zones<br><br>
       Ask the Vehicle Research Agent to generate layout_constraints.json and buildability_report.md.
     </div>
-  `:'';
-  const mappingWarning=hasSuggestion&&!hasMappedBuildArea?`
+  `):'';
+  const mappingWarning=hasSuggestion&&!hasMappedBuildArea&&!savedHasBuildArea?`
     <div class="dai-warning">
       Layout constraints file found, but no build area fields were mapped. Check parser mapping.
     </div>
@@ -3209,7 +3305,7 @@ function designAiGeometrySuggestionHtml(data){
     </div>
     ${designAiVehicleResearchFilesHtml(data)}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion(this)" ${hasSuggestion?'':'disabled'}>Load Suggestion</button>
+      <button class="btn btn-brand btn-sm" onclick="loadDesignAiGeometrySuggestion(this)" ${(hasSuggestion||savedHasBuildArea)?'':'disabled'}>Load Suggestion</button>
       <button class="btn btn-out btn-sm" onclick="refreshDesignAiGeometrySuggestion(this)">Refresh</button>
     </div>
   `;
@@ -3425,8 +3521,8 @@ function designAiGeometrySetField(id,value){
   if(el)el.value=value===undefined||value===null?'':value;
 }
 function designAiApplyGeometrySuggestion(data,opts={}){
-  const s=data?.suggestion;
-  if(!s)return false;
+  const s=designAiGeometryForLoad(data||{});
+  if(!designAiSuggestionHasMappedBuildArea(s))return false;
   const zones=Array.isArray(s.restricted_zones)?s.restricted_zones:[];
   DESIGN_AI.vehicleGeometryZoneCount=Math.max(12,zones.length);
   DESIGN_AI.currentRecord={...(DESIGN_AI.currentRecord||{}),layout_constraints_json:s};
@@ -3443,7 +3539,7 @@ function designAiApplyGeometrySuggestion(data,opts={}){
   designAiGeometrySetField(p+'left_clearance_mm',s.clearance?.left_mm);
   designAiGeometrySetField(p+'right_clearance_mm',s.clearance?.right_mm);
   designAiGeometrySetField(p+'minimum_walkway_mm',s.clearance?.minimum_walkway_mm);
-  designAiGeometrySetField(p+'derived_from',s.metadata?.derived_from||s.metadata?.source_file||data.file?.name||'layout_constraints.json');
+  designAiGeometrySetField(p+'derived_from',s.metadata?.derived_from||s.metadata?.source_file||data?.file?.name||'layout_constraints.json');
   designAiGeometrySetField(p+'layout_notes',s.metadata?.layout_notes||s.metadata?.notes||'');
   const count=Math.max(12,zones.length);
   for(let i=0;i<count;i+=1){
@@ -3469,7 +3565,8 @@ async function loadDesignAiGeometrySuggestion(button){
   try{
     await designAiRunButton(button,'Loading...',async()=>{
       let data=DESIGN_AI.geometrySuggestion;
-      if(!data?.suggestion){
+      const savedHasBuildArea=designAiHasBuildAreaGeometry(designAiVehicleLayoutConstraints(DESIGN_AI.currentRecord||{}));
+      if(!data?.suggestion&&!savedHasBuildArea){
         data=await GET(`/api/design-ai/vehicles/${encodeURIComponent(ctx.recordKey)}/geometry-suggestion`);
         DESIGN_AI.geometrySuggestion=data;
       }
@@ -3539,8 +3636,8 @@ function buildVehicleSheetData(record){
   };
 }
 function renderVehicleSheetRows(rows=[]){
-  return rows.map(([label,value,unit])=>`
-    <div class="vehicle-sheet-row">
+  return rows.map(([label,value,unit,kind])=>`
+    <div class="vehicle-sheet-row ${kind==='key'?'key':''}">
       <span>${esc(label)}</span>
       <strong>${esc(designAiVehicleValue(value,unit||''))}</strong>
     </div>
@@ -3561,71 +3658,38 @@ function renderVehicleMasterSheetHtml(record){
     <div class="vehicle-sheet-page">
       <div class="vehicle-sheet-head">
         <div>
-          <div class="vehicle-sheet-title">CRDN Vehicle Scan Sheet</div>
+          <div class="vehicle-sheet-brand">
+            <img src="https://www.creativeden.studio/wp-content/uploads/2023/09/CRDN-Square.png" alt="Creative Den Studio">
+            <strong>CREATIVE DEN <span>STUDIO</span></strong>
+          </div>
+          <div class="vehicle-sheet-title">Vehicle Scan Sheet</div>
           <div class="vehicle-sheet-sub">Confirmed database values only · customer discussion and layout planning</div>
         </div>
         <div class="vehicle-sheet-id">${esc(d.vehicle.id||'Vehicle')}</div>
       </div>
       <div class="vehicle-sheet-grid">
         ${renderVehicleSheetSection('Vehicle Information',[
-          ['Vehicle',vehicleName],
-          ['Year / Range',d.vehicle.year],
-          ['Market',d.vehicle.market],
-          ['Body Type',d.vehicle.body_type],
-          ['Status',d.vehicle.status]
-        ])}
-        ${renderVehicleSheetSection('Exterior Dimensions',[
-          ['Overall Length',d.exterior.length,'mm'],
-          ['Overall Width',d.exterior.width,'mm'],
-          ['Overall Height',d.exterior.height,'mm'],
-          ['Wheelbase',d.vehicle.wheelbase_mm,'mm'],
-          ['Payload',d.payload,'kg']
-        ])}
-        ${renderVehicleSheetSection('Interior Envelope',[
+          ['Vehicle ID',d.vehicle.id],
+          ['Brand',d.vehicle.brand||d.vehicle.make],
+          ['Model',d.vehicle.model||vehicleName],
+          ['Status',d.vehicle.status],
           ['Interior Length',d.interior.length,'mm'],
           ['Interior Width',d.interior.width,'mm'],
           ['Interior Height',d.interior.height,'mm']
         ])}
-        ${renderVehicleSheetSection('Door Openings',[
-          ['Side Door Width',d.doors.side_width,'mm'],
-          ['Side Door Height',d.doors.side_height,'mm'],
-          ['Rear Door Width',d.doors.rear_width,'mm'],
-          ['Rear Door Height',d.doors.rear_height,'mm'],
-          ['Rear Window Width',d.doors.rear_window_width,'mm'],
-          ['Rear Window Height',d.doors.rear_window_height,'mm']
-        ])}
         ${renderVehicleSheetSection('Build Area',[
+          ['Buildable Length',d.build_area.length_mm,'mm','key'],
+          ['Buildable Width',d.build_area.width_mm,'mm','key'],
+          ['Buildable Height',d.build_area.height_mm,'mm'],
           ['Origin X',d.build_area.x_mm,'mm'],
           ['Origin Y',d.build_area.y_mm,'mm'],
-          ['Buildable Length',d.build_area.length_mm,'mm'],
-          ['Buildable Width',d.build_area.width_mm,'mm'],
-          ['Buildable Height',d.build_area.height_mm,'mm']
-        ])}
-        ${renderVehicleSheetSection('Clearances',[
           ['Front Seat Clearance',d.clearance.front_mm,'mm'],
           ['Rear Door Clearance',d.clearance.rear_mm,'mm'],
           ['Left Wall Clearance',d.clearance.left_mm,'mm'],
           ['Right Wall Clearance',d.clearance.right_mm,'mm'],
           ['Minimum Walkway',d.clearance.minimum_walkway_mm,'mm']
         ])}
-        ${renderVehicleSheetSection('Wheel Arch',[
-          ['Arch Width',d.wheel_arch.width,'mm'],
-          ['Arch Height',d.wheel_arch.height,'mm'],
-          ['Position X',d.wheel_arch.x,'mm'],
-          ['Position Y',d.wheel_arch.y,'mm']
-        ])}
-        ${renderVehicleSheetSection('Packaging Limits',[
-          ['Max Product Length',d.build_area.length_mm,'mm'],
-          ['Max Product Width',d.build_area.width_mm,'mm'],
-          ['Max Product Height',d.build_area.height_mm,'mm'],
-          ['Walkway Target',d.clearance.minimum_walkway_mm,'mm']
-        ])}
-        ${renderVehicleSheetSection('Status / Warnings',[
-          ['Layout Status',d.metadata.status],
-          ['Confidence',d.metadata.confidence],
-          ['Derived From',d.metadata.derived_from||d.metadata.source_file],
-          ['Fabrication Status','Not approved for fabrication']
-        ],`${renderVehicleSheetRows([
+        ${renderVehicleSheetSection('Status / Warnings',[],`${renderVehicleSheetRows([
           ['Layout Status',d.metadata.status],
           ['Confidence',d.metadata.confidence],
           ['Derived From',d.metadata.derived_from||d.metadata.source_file],
@@ -3663,17 +3727,23 @@ function printDesignAiVehicleSheet(){
           .crdn-print-sheet{background:#fff!important;border:none!important;border-radius:0!important;padding:0!important;box-shadow:none!important;overflow:visible!important}
           .vehicle-sheet-page{width:100%;min-width:0;background:#fff;color:#111}
           .vehicle-sheet-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:3px solid #111;padding-bottom:8px;margin-bottom:10px}
-          .vehicle-sheet-title{font-size:28px;font-weight:900;letter-spacing:.05em;line-height:1;text-transform:uppercase}
+          .vehicle-sheet-brand{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+          .vehicle-sheet-brand img{width:30px;height:30px;border-radius:6px;object-fit:cover}
+          .vehicle-sheet-brand strong{font-size:23px;font-weight:900;letter-spacing:.06em;line-height:1;text-transform:uppercase}
+          .vehicle-sheet-brand span{color:#ca741f}
+          .vehicle-sheet-title{font-size:25px;font-weight:900;letter-spacing:.05em;line-height:1;text-transform:uppercase}
           .vehicle-sheet-sub{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#666;margin-top:4px}
           .vehicle-sheet-id{text-align:right;font-weight:900;font-size:17px;color:#ca741f}
-          .vehicle-sheet-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+          .vehicle-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
           .vehicle-sheet-section{border:1px solid #d8d8d2;border-radius:7px;padding:8px;min-height:95px;break-inside:avoid}
-          .vehicle-sheet-section.wide{grid-column:span 3;min-height:62px}
+          .vehicle-sheet-section.wide{grid-column:span 2;min-height:62px}
           .vehicle-sheet-section h4{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#666}
           .vehicle-sheet-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;border-top:1px solid #eee;padding:3px 0;font-size:11px}
           .vehicle-sheet-row:first-of-type{border-top:none}
           .vehicle-sheet-row span:first-child{color:#666}
           .vehicle-sheet-row strong{text-align:right;overflow-wrap:anywhere}
+          .vehicle-sheet-row.key{background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;margin:3px 0;padding:5px 6px}
+          .vehicle-sheet-row.key span:first-child,.vehicle-sheet-row.key strong{color:#ca741f;font-weight:900}
           .vehicle-sheet-note{font-size:11px;line-height:1.45;white-space:pre-wrap}
           @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
         </style>
@@ -3698,44 +3768,29 @@ function renderVehicleBirdseyeLayoutSvg(record){
   const originX=Number(area.x_mm||0);
   const originY=Number(area.y_mm||0);
   const show=v=>v===undefined||v===null||v===''?'Unknown':esc(v);
+  const topdownDriveId=record?.topdownBaseImageDriveId||record?.topdown_base_image?.drive_file_id||'';
+  const topdownPath=record?.topdownBaseImagePath||record?.topdown_base_image?.path||'';
 
+  if(!topdownDriveId){
+    return `<div class="dai-empty"><strong>Topdown base image missing.</strong><br>Upload topdown_base.png to enable layout preview.</div>`;
+  }
   if(!length||!width){
     return `<div class="dai-empty">No buildable length/width found. Load suggestion or save Build Area first.</div>`;
   }
 
   const canvasW=720;
   const canvasH=430;
-  const plotX=86;
-  const plotY=58;
-  const plotW=440;
-  const plotH=260;
-  const scale=Math.min(plotW/length,plotH/width);
+  const imageX=42;
+  const imageY=70;
+  const imageW=512;
+  const imageH=260;
+  const sourceLength=Number(record?.interior_length_mm||record?.overall_length_mm||originX+length||length);
+  const sourceWidth=Number(record?.interior_width_mm||record?.overall_width_mm||originY+width||width);
+  const scale=Math.min(imageW/sourceLength,imageH/sourceWidth);
   const drawW=length*scale;
   const drawH=width*scale;
-  const ox=plotX+(plotW-drawW)/2;
-  const oy=plotY+(plotH-drawH)/2;
-  const stepFor=max=>max<=1200?250:max<=2800?500:1000;
-  const xStep=stepFor(length);
-  const yStep=stepFor(width);
-  const grid=[];
-  for(let x=0;x<=length;x+=xStep){
-    const px=ox+x*scale;
-    grid.push(`<line x1="${px.toFixed(1)}" y1="${oy.toFixed(1)}" x2="${px.toFixed(1)}" y2="${(oy+drawH).toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>`);
-    grid.push(`<text x="${px.toFixed(1)}" y="${(oy+drawH+18).toFixed(1)}" font-size="9" fill="#777" text-anchor="middle">${x}</text>`);
-  }
-  if(length%xStep!==0){
-    const px=ox+drawW;
-    grid.push(`<text x="${px.toFixed(1)}" y="${(oy+drawH+18).toFixed(1)}" font-size="9" fill="#777" text-anchor="middle">${Math.round(length)}</text>`);
-  }
-  for(let y=0;y<=width;y+=yStep){
-    const py=oy+drawH-y*scale;
-    grid.push(`<line x1="${ox.toFixed(1)}" y1="${py.toFixed(1)}" x2="${(ox+drawW).toFixed(1)}" y2="${py.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>`);
-    grid.push(`<text x="${(ox-12).toFixed(1)}" y="${(py+3).toFixed(1)}" font-size="9" fill="#777" text-anchor="end">${y}</text>`);
-  }
-  if(width%yStep!==0){
-    const py=oy;
-    grid.push(`<text x="${(ox-12).toFixed(1)}" y="${(py+3).toFixed(1)}" font-size="9" fill="#777" text-anchor="end">${Math.round(width)}</text>`);
-  }
+  const ox=imageX+originX*scale;
+  const oy=imageY+originY*scale;
   const restricted=designAiVehicleRestrictedZones(record).map(z=>{
     const x=Number(z.x_mm||0);
     const y=Number(z.y_mm||0);
@@ -3743,7 +3798,7 @@ function renderVehicleBirdseyeLayoutSvg(record){
     const w=Number(z.width_mm||0);
     if(!l||!w)return '';
     const rx=ox+x*scale;
-    const ry=oy+drawH-(y+w)*scale;
+    const ry=oy+y*scale;
     const rw=l*scale;
     const rh=w*scale;
     return `<rect x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" rx="4" fill="rgba(198,40,40,.14)" stroke="#c62828" stroke-width="1.4"/>`;
@@ -3759,15 +3814,15 @@ function renderVehicleBirdseyeLayoutSvg(record){
   return `
     <svg viewBox="0 0 ${canvasW} ${canvasH}" width="100%" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border:1px solid #ddd;border-radius:14px;display:block;margin:0 auto;max-height:420px">
       <rect x="0" y="0" width="${canvasW}" height="${canvasH}" fill="#fff"/>
-      <text x="22" y="30" font-size="17" font-weight="800">2D BIRDSEYE LAYOUT CANVAS</text>
-      <text x="22" y="50" font-size="11" fill="#666">Current editor values · unit: mm · data canvas only</text>
+      <text x="22" y="30" font-size="17" font-weight="800">2D BIRDSEYE LAYOUT PREVIEW</text>
+      <text x="22" y="50" font-size="11" fill="#666">Saved geometry overlay · topdown_base reference image · unit: mm</text>
 
-      ${grid.join('')}
-
-      <rect x="${ox.toFixed(1)}" y="${oy.toFixed(1)}" width="${drawW.toFixed(1)}" height="${drawH.toFixed(1)}" rx="8" fill="#eef8ec" stroke="#188038" stroke-width="2.4"/>
+      <rect x="${imageX}" y="${imageY}" width="${imageW}" height="${imageH}" rx="14" fill="#fbfaf7" stroke="#e2e2de"/>
+      <image href="/api/design-ai/library-image/${encodeURIComponent(topdownDriveId)}" x="${imageX}" y="${imageY}" width="${imageW}" height="${imageH}" preserveAspectRatio="xMidYMid meet"/>
+      <rect x="${ox.toFixed(1)}" y="${oy.toFixed(1)}" width="${drawW.toFixed(1)}" height="${drawH.toFixed(1)}" rx="8" fill="#CA741F" fill-opacity=".16" stroke="#CA741F" stroke-width="2.8"/>
       ${restricted}
-      <text x="${(ox+drawW/2).toFixed(1)}" y="${(oy+drawH/2-4).toFixed(1)}" font-size="17" font-weight="800" text-anchor="middle" fill="#188038">BUILDABLE RECTANGLE</text>
-      <text x="${(ox+drawW/2).toFixed(1)}" y="${(oy+drawH/2+18).toFixed(1)}" font-size="12" text-anchor="middle" fill="#188038">${show(length)} L × ${show(width)} W</text>
+      <text x="${(ox+drawW/2).toFixed(1)}" y="${Math.max(68,oy-10).toFixed(1)}" font-size="12" font-weight="900" text-anchor="middle" fill="#CA741F">BUILDABLE AREA</text>
+      <text x="${(ox+drawW/2).toFixed(1)}" y="${(oy+drawH+18).toFixed(1)}" font-size="11" text-anchor="middle" fill="#a55c15">${show(length)} L × ${show(width)} W</text>
 
       <circle cx="${ox.toFixed(1)}" cy="${(oy+drawH).toFixed(1)}" r="5" fill="#CA741F"/>
       <text x="${(ox+10).toFixed(1)}" y="${(oy+drawH-8).toFixed(1)}" font-size="11" font-weight="800" fill="#CA741F">origin 0,0</text>
@@ -3783,12 +3838,13 @@ function renderVehicleBirdseyeLayoutSvg(record){
       <line x1="${(ox+drawW+22).toFixed(1)}" y1="${(oy+drawH).toFixed(1)}" x2="${(ox+drawW+34).toFixed(1)}" y2="${(oy+drawH).toFixed(1)}" stroke="#111" stroke-width="1.5"/>
       <text x="${(ox+drawW+48).toFixed(1)}" y="${(oy+drawH/2).toFixed(1)}" font-size="12" font-weight="800" transform="rotate(90 ${(ox+drawW+48).toFixed(1)} ${(oy+drawH/2).toFixed(1)})" text-anchor="middle">width ${show(width)} mm</text>
 
-      <rect x="556" y="82" width="140" height="156" rx="10" fill="#fafaf7" stroke="#dededa"/>
-      <text x="570" y="108" font-size="12" font-weight="900">Clearances</text>
-      ${clearSummary.map((row,index)=>`<text x="570" y="${132+index*21}" font-size="11" fill="#555">${esc(row[0])}: ${show(row[1])} mm</text>`).join('')}
-      <rect x="556" y="258" width="140" height="72" rx="10" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="570" y="284" font-size="11" font-weight="900" fill="#9a3412">Reference only</text>
-      <text x="570" y="304" font-size="10" fill="#9a3412">Not production CAD</text>
+      <rect x="572" y="82" width="126" height="156" rx="10" fill="#fafaf7" stroke="#dededa"/>
+      <text x="586" y="108" font-size="12" font-weight="900">Clearances</text>
+      ${clearSummary.map((row,index)=>`<text x="586" y="${132+index*21}" font-size="11" fill="#555">${esc(row[0])}: ${show(row[1])} mm</text>`).join('')}
+      <rect x="572" y="258" width="126" height="88" rx="10" fill="#fff7ed" stroke="#fed7aa"/>
+      <text x="586" y="284" font-size="11" font-weight="900" fill="#9a3412">Reference only</text>
+      <text x="586" y="304" font-size="10" fill="#9a3412">Not production CAD</text>
+      <text x="586" y="324" font-size="9" fill="#9a3412">${esc(topdownPath||'topdown_base')}</text>
     </svg>
   `;
 }
@@ -3839,7 +3895,7 @@ function designAiVehicleEditorSection(prefix,title,fields,record){
 function designAiRecordConfig(kind='products'){
   if(kind==='vehicles')return {kind,idKey:'vehicle_id',entityType:'vehicle',title:'Vehicle Database',single:'Vehicle',route:'vehicle',library:'vehicles',fields:designAiEntityFields('vehicle'),columns:['Vehicle ID','Brand','Model','Status','Version','Updated']};
   if(kind==='styles')return {kind,idKey:'style_id',entityType:'style',title:'Style Database',single:'Style',route:'style',library:'styles',fields:designAiEntityFields('style'),columns:['Style ID','Name','Status','Version','Updated']};
-  return {kind,idKey:'product_id',entityType:'product',title:'Product Database',single:'Product',route:'product',library:'products',fields:designAiEntityFields('product'),columns:['Name','Physical Size','Layout Footprint','Status','Version','Updated']};
+  return {kind,idKey:'product_id',entityType:'product',title:'Product Database',single:'Product',route:'product',library:'products',fields:designAiEntityFields('product'),columns:['Product','Length × Width','PNG','Status','Updated']};
 }
 function designAiFieldValue(value){
   if(Array.isArray(value))return value.join(', ');
@@ -4198,10 +4254,9 @@ async function renderDesignAiRecords(kind='products'){
           ? [record.style_id,record.name,designAiStatusPill(record.status),record.version,record.updated_at?new Date(record.updated_at).toLocaleString('zh-TW'):'—']
           : [
               record.name || record.sku || record.product_id,
-              [record.width_mm,record.depth_mm,record.height_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ') || '—',
-              [record.layout_width_mm,record.layout_depth_mm,record.layout_height_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ') || '—',
+              [record.layout_depth_mm||record.depth_mm,record.layout_width_mm||record.width_mm].filter(v=>v!==null&&v!==undefined&&v!=='').join(' × ') || '—',
+              record.productImageDriveId?'<span class="dai-pill done">PNG</span>':'<span class="dai-pill">Rectangle</span>',
               designAiStatusPill(record.status),
-              record.version || '—',
               record.updated_at?new Date(record.updated_at).toLocaleString('zh-TW'):'—'
             ];
       return `<tr onclick="openDesignAI('${cfg.route}',{id:'${designAiJsArg(record[cfg.idKey])}'})" style="cursor:pointer">${cells.map(cell=>`<td>${typeof cell==='string'&&cell.includes('dai-pill')?cell:esc(cell||'—')}</td>`).join('')}</tr>`;
@@ -4218,7 +4273,49 @@ function designAiProductFieldValue(record,field){
   if(field==='compatible_vehicles')return record.compatible_vehicles||[];
   return record[field];
 }
+function designAiProductImageValue(record){
+  return record?.productImageDriveId||record?.product_image?.drive_file_id||'';
+}
+function designAiProductImageHtml(record){
+  const driveId=designAiProductImageValue(record);
+  const name=record?.productImageName||record?.product_image?.name||'Product PNG';
+  const path=record?.productImagePath||record?.product_image?.path||'';
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">Product PNG</div>
+    <div class="dai-product-image-card">
+      <div class="dai-product-image-preview">
+        ${driveId?`<img src="/api/design-ai/library-image/${encodeURIComponent(driveId)}" alt="${esc(name)}">`:'<div class="dai-product-image-empty">No approved PNG found yet.</div>'}
+      </div>
+      <div>
+        <strong>${driveId?'Approved PNG Preview':'Product PNG Missing'}</strong>
+        <div class="pc-s" style="margin-top:5px">${driveId?esc(path||name):'Add a transparent PNG such as window-rack-01.png to this product folder, then sync Google Drive.'}</div>
+        <div class="pc-s" style="margin-top:8px">The 2D Layout editor automatically uses this PNG when available and falls back to rectangle mode when it is missing.</div>
+      </div>
+    </div>
+  </div>`;
+}
+function designAiProductDimensionsHtml(prefix,record){
+  const lengthValue=record.layout_depth_mm??record.depth_mm??'';
+  const widthValue=record.layout_width_mm??record.width_mm??'';
+  const heightValue=record.layout_height_mm??record.height_mm??'';
+  return `<div class="dai-panel">
+    <div class="dai-panel-title">Dimensions</div>
+    <div class="dai-emphasis-grid">
+      <div class="dai-emphasis-card"><label>Length used by 2D Layout</label><input id="${esc(prefix+'layout_depth_mm')}" value="${esc(designAiFieldValue(lengthValue))}" placeholder="Length mm"></div>
+      <div class="dai-emphasis-card"><label>Width used by 2D Layout</label><input id="${esc(prefix+'layout_width_mm')}" value="${esc(designAiFieldValue(widthValue))}" placeholder="Width mm"></div>
+    </div>
+    <div class="dai-form-grid">
+      ${designAiFieldInput(prefix,'layout_height_mm','Height',heightValue,{})}
+      ${designAiFieldInput(prefix,'dimension_confidence','Dimension Confidence',record.dimension_confidence,{})}
+      ${designAiFieldInput(prefix,'material','Material',record.material,{})}
+      ${designAiFieldInput(prefix,'color','Color',record.color,{})}
+    </div>
+    <div class="pc-s" style="margin-top:10px">Length and Width are the footprint used by the 2D layout engine. Height is shown for fitment context.</div>
+  </div>`;
+}
 function designAiProductEditorSection(prefix,title,fields,record){
+  if(String(title).includes('Product Image'))return designAiProductImageHtml(record);
+  if(String(title).includes('Dimensions'))return designAiProductDimensionsHtml(prefix,record);
   return `<div class="dai-panel">
     <div class="dai-panel-title">${esc(title)}</div>
     <div class="dai-form-grid">${fields.map(([field,label])=>designAiFieldInput(prefix,field,label,designAiProductFieldValue(record,field),{})).join('')}</div>

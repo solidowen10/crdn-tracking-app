@@ -604,6 +604,9 @@
         length: missingDimensions ? 0 : depth,
         width: missingDimensions ? 0 : width,
         height: positiveNumber(product.height, 0),
+        productImageDriveId: product.productImageDriveId || product.product_image_drive_id || '',
+        productImagePath: product.productImagePath || product.product_image_path || '',
+        productImageName: product.productImageName || product.product_image_name || '',
         fill: style.fill,
         stroke: style.stroke,
         source: product.source || 'design_ai_product_records',
@@ -1245,6 +1248,11 @@
       return { product, footprint, rotation: normalizeRotation(item.rotation), x, y, width, height };
     }
 
+    function productImageUrl(product) {
+      const driveId = product?.productImageDriveId || product?.product_image?.drive_file_id || '';
+      return driveId ? `/api/design-ai/library-image/${encodeURIComponent(driveId)}` : '';
+    }
+
     function truncateSvgText(value, maxChars) {
       const clean = String(value || '').trim();
       if (clean.length <= maxChars) return clean;
@@ -1306,6 +1314,31 @@
         const productWidth = positiveNumber(rect.footprint.width, 330);
         const label = productLabel(rect, rect.product.name, `${productLength} × ${productWidth} mm`);
         const clipId = `productClip${Number(item.id || 0)}`;
+        const imageUrl = productImageUrl(rect.product);
+        const centerX = rect.x + rect.width / 2;
+        const centerY = rect.y + rect.height / 2;
+        const baseImageWidth = positiveNumber(rect.footprint.baseLength, productLength) * geometry.pxPerMm;
+        const baseImageHeight = positiveNumber(rect.footprint.baseWidth, productWidth) * geometry.pxPerMm;
+        const imageX = centerX - baseImageWidth / 2;
+        const imageY = centerY - baseImageHeight / 2;
+        const productVisual = imageUrl
+          ? `
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="#ffffff" fill-opacity=".72" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <g clip-path="url(#${clipId})">
+              <g transform="rotate(${rect.rotation} ${centerX.toFixed(1)} ${centerY.toFixed(1)})">
+                <image href="${esc(imageUrl)}" x="${imageX.toFixed(1)}" y="${imageY.toFixed(1)}" width="${baseImageWidth.toFixed(1)}" height="${baseImageHeight.toFixed(1)}" preserveAspectRatio="xMidYMid meet"/>
+              </g>
+              <rect x="${(rect.x+4).toFixed(1)}" y="${(rect.y+rect.height-20).toFixed(1)}" width="${Math.max(0,rect.width-8).toFixed(1)}" height="16" rx="5" fill="#ffffff" fill-opacity=".82"/>
+              <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y+rect.height-8).toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
+            </g>
+          `
+          : `
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <g clip-path="url(#${clipId})">
+              <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.nameY.toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
+              ${label.showDimensions ? `<text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.dimensionsY.toFixed(1)}" text-anchor="middle" font-size="9" fill="#555">${esc(label.dimensions)}</text>` : ''}
+            </g>
+          `;
         return `
           <g>
             <defs>
@@ -1313,11 +1346,7 @@
                 <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6"/>
               </clipPath>
             </defs>
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
-            <g clip-path="url(#${clipId})">
-              <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.nameY.toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
-              ${label.showDimensions ? `<text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.dimensionsY.toFixed(1)}" text-anchor="middle" font-size="9" fill="#555">${esc(label.dimensions)}</text>` : ''}
-            </g>
+            ${productVisual}
           </g>
         `;
       }).join('');
@@ -1411,7 +1440,7 @@
         const productLength = positiveNumber(footprint.length, 520);
         const productWidth = positiveNumber(footprint.width, 330);
         const sourceLabel = product.source === 'design_ai_product_records'
-          ? `${product.status || 'record'} · Real Library Data`
+          ? `${product.status || 'record'} · Real Library Data · ${productImageUrl(product)?'PNG mode':'Rectangle mode'}`
           : product.source === 'demo_fallback'
             ? 'Demo Fallback Data'
             : 'Saved fallback';

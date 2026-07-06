@@ -456,6 +456,7 @@ function migrate() {
       sku TEXT,
       name TEXT,
       category TEXT,
+      description TEXT,
       unit TEXT DEFAULT 'mm',
       width_mm REAL,
       depth_mm REAL,
@@ -658,6 +659,7 @@ function migrate() {
   addColumn('design_ai_product_records', 'mounting_notes', 'TEXT');
   addColumn('design_ai_product_records', 'installation_notes', 'TEXT');
   addColumn('design_ai_product_records', 'reference_files_json', 'TEXT');
+  addColumn('design_ai_product_records', 'description', 'TEXT');
   addColumn('design_ai_product_records', 'dimension_confidence', 'TEXT');
   addColumn('design_ai_product_records', 'material', 'TEXT');
   addColumn('design_ai_product_records', 'color', 'TEXT');

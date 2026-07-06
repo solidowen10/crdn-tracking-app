@@ -818,6 +818,109 @@ function normalizedDesignFileName(value) {
   return name.replace(/[^a-z0-9]+/g, '');
 }
 
+function normalizedLibraryPathExpression() {
+  return "lower(replace(replace(path, ' /', '/'), '/ ', '/'))";
+}
+
+function designTopdownBaseImageForVehicle(vehicleId) {
+  const id = text(vehicleId);
+  if (!id) return null;
+  const normalizedId = normalizedDesignFileName(id);
+  return db.prepare(`
+    SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
+    FROM design_library_files
+    WHERE folder_type='vehicles'
+      AND is_folder=0
+      AND COALESCE(file_status, 'active')='active'
+      AND lower(mime_type) LIKE 'image/%'
+      AND ${normalizedLibraryPathExpression()} LIKE lower(?)
+      AND (
+        lower(name) IN ('topdown_base.png','topdown_base.jpg','topdown_base.jpeg','topdown.png','topdown.jpg','topdown.jpeg','vehicle_topdown_base.png','vehicle_topdown_base.jpg','vehicle_topdown_base.jpeg')
+        OR lower(name)=lower(?)
+        OR lower(name)=lower(?)
+        OR lower(name)=lower(?)
+        OR lower(name)=lower(?)
+        OR lower(name)=lower(?)
+        OR lower(name)=lower(?)
+        OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='topdownbase'
+        OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='vehicletopdownbase'
+      )
+    ORDER BY
+      CASE WHEN lower(name) LIKE '%topdown_base%' THEN 0 ELSE 1 END,
+      modified_time DESC,
+      name COLLATE NOCASE
+    LIMIT 1
+  `).get(
+    `${id}/%`,
+    `${id}_topdown_base.png`,
+    `${id}_topdown_base.jpg`,
+    `${id}_topdown_base.jpeg`,
+    `${normalizedId}_topdown_base.png`,
+    `${normalizedId}_topdown_base.jpg`,
+    `${normalizedId}_topdown_base.jpeg`
+  ) || null;
+}
+
+function designProductPngForProduct(productId, row = {}) {
+  const candidates = [
+    productId,
+    row.product_id,
+    row.sku,
+    row.name
+  ].map(text).filter(Boolean);
+  const id = candidates[0] || '';
+  if (!id) return null;
+  const folderPatterns = [...new Set([
+    ...candidates.map(value => `${value}/%`),
+    ...candidates.map(value => `%/${value}/%`),
+    ...candidates.map(value => `%${value}%`)
+  ])];
+  const normalizedCandidates = [...new Set(candidates.map(normalizedDesignFileName).filter(Boolean))];
+  const exactNames = [...new Set([
+    ...candidates.map(value => `${value}.png`),
+    'product.png',
+    'product_preview.png',
+    'preview.png',
+    'footprint.png',
+    'layout.png'
+  ].map(value => text(value).toLowerCase()).filter(Boolean))];
+  const pathClauses = folderPatterns.map(() => `${normalizedLibraryPathExpression()} LIKE lower(?)`).join(' OR ');
+  const exactNamePlaceholders = exactNames.map(() => '?').join(',');
+  const normalizedNamePlaceholders = normalizedCandidates.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
+    FROM design_library_files
+    WHERE folder_type='products'
+      AND is_folder=0
+      AND COALESCE(file_status, 'active')='active'
+      AND lower(mime_type)='image/png'
+      AND (${pathClauses || '1=0'})
+      AND (
+        lower(name) IN (${exactNamePlaceholders || "''"})
+        OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '') IN (${normalizedNamePlaceholders || "''"})
+        OR lower(name) LIKE '%product%'
+        OR lower(name) LIKE '%preview%'
+        OR lower(name) LIKE '%footprint%'
+      )
+    ORDER BY
+      CASE
+        WHEN lower(name) IN (${exactNamePlaceholders || "''"}) THEN 0
+        WHEN replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '') IN (${normalizedNamePlaceholders || "''"}) THEN 1
+        WHEN lower(name)='product.png' THEN 2
+        ELSE 3
+      END,
+      modified_time DESC,
+      name COLLATE NOCASE
+    LIMIT 1
+  `).get(
+    ...folderPatterns,
+    ...exactNames,
+    ...normalizedCandidates,
+    ...exactNames,
+    ...normalizedCandidates
+  ) || null;
+}
+
 function layoutConceptVehiclesForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
@@ -832,40 +935,7 @@ function layoutConceptVehiclesForLibrary() {
     const dimensions = layoutVehicleBuildDimensions(row);
     const templateAlignment = layoutVehicleTemplateAlignment(row);
     const vehicleId = text(row.vehicle_id);
-    const normalizedVehicleId = normalizedDesignFileName(vehicleId);
-    const topdownBase = db.prepare(`
-      SELECT drive_file_id, name, path, mime_type
-      FROM design_library_files
-      WHERE folder_type='vehicles'
-        AND is_folder=0
-        AND COALESCE(file_status, 'active')='active'
-        AND lower(mime_type) LIKE 'image/%'
-        AND lower(replace(replace(path, ' /', '/'), '/ ', '/')) LIKE lower(?)
-        AND (
-          lower(name) IN ('topdown_base.png','topdown_base.jpg','topdown_base.jpeg','topdown.png','topdown.jpg','topdown.jpeg','vehicle_topdown_base.png','vehicle_topdown_base.jpg','vehicle_topdown_base.jpeg')
-          OR lower(name)=lower(?)
-          OR lower(name)=lower(?)
-          OR lower(name)=lower(?)
-          OR lower(name)=lower(?)
-          OR lower(name)=lower(?)
-          OR lower(name)=lower(?)
-          OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='topdownbase'
-          OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '')='vehicletopdownbase'
-        )
-      ORDER BY
-        CASE WHEN lower(name) LIKE '%topdown_base%' THEN 0 ELSE 1 END,
-        modified_time DESC,
-        name COLLATE NOCASE
-      LIMIT 1
-    `).get(
-      `${vehicleId}/%`,
-      `${vehicleId}_topdown_base.png`,
-      `${vehicleId}_topdown_base.jpg`,
-      `${vehicleId}_topdown_base.jpeg`,
-      `${normalizedVehicleId}_topdown_base.png`,
-      `${normalizedVehicleId}_topdown_base.jpg`,
-      `${normalizedVehicleId}_topdown_base.jpeg`
-    );
+    const topdownBase = designTopdownBaseImageForVehicle(vehicleId);
     return {
       key: vehicleId,
       name: layoutVehicleName(row),
@@ -885,7 +955,7 @@ function layoutConceptProductsForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_product_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
   return db.prepare(`
-    SELECT product_id, name, category, layout_width_mm, layout_depth_mm, layout_height_mm,
+    SELECT product_id, sku, name, category, layout_width_mm, layout_depth_mm, layout_height_mm,
       width_mm, depth_mm, height_mm, color, status, updated_at
     FROM design_ai_product_records
     WHERE status=?
@@ -895,6 +965,7 @@ function layoutConceptProductsForLibrary() {
     const width = positiveNumber(row.layout_width_mm ?? row.width_mm, 0);
     const depth = positiveNumber(row.layout_depth_mm ?? row.depth_mm, 0);
     const height = positiveNumber(row.layout_height_mm ?? row.height_mm, 0);
+    const productImage = designProductPngForProduct(row.product_id, row);
     return {
       id: text(row.product_id),
       name: text(row.name || row.product_id || 'CRDN Product'),
@@ -903,6 +974,9 @@ function layoutConceptProductsForLibrary() {
       depth,
       height,
       color: text(row.color),
+      productImageDriveId: productImage?.drive_file_id || '',
+      productImagePath: productImage?.path || '',
+      productImageName: productImage?.name || '',
       source: 'design_ai_product_records',
       status: row.status || status,
       missing_dimensions: !width || !depth
@@ -1108,7 +1182,7 @@ const DESIGN_AI_VEHICLE_FIELDS = [
   'payload_kg', 'floor_plan_notes', 'layout_constraints_json', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
 ];
 const DESIGN_AI_PRODUCT_FIELDS = [
-  'sku', 'name', 'category', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
+  'sku', 'name', 'category', 'description', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
   'mounting_type', 'compatible_vehicles_json', 'requires_drilling', 'install_minutes', 'price',
   'mounting_notes', 'installation_notes', 'dimension_confidence', 'material', 'color',
   'layout_component_type', 'layout_width_mm', 'layout_depth_mm', 'layout_height_mm',
@@ -1509,17 +1583,23 @@ function designExtractionFromRow(row) {
 
 function designVehicleRecordFromRow(row) {
   if (!row) return null;
+  const topdownBase = designTopdownBaseImageForVehicle(row.vehicle_id);
   return {
     ...row,
     floor_plan_notes: row.floor_plan_notes || row.notes || '',
     reference_files: parseJson(row.reference_files_json, []),
     compatible_vehicles: [],
+    topdown_base_image: topdownBase,
+    topdownBaseImageDriveId: topdownBase?.drive_file_id || '',
+    topdownBaseImagePath: topdownBase?.path || '',
+    topdownBaseImageName: topdownBase?.name || '',
     source_summary: parseJson(row.source_summary_json, {})
   };
 }
 
 function designProductRecordFromRow(row) {
   if (!row) return null;
+  const productImage = designProductPngForProduct(row.product_id, row);
   return {
     ...row,
     requires_drilling: Boolean(row.requires_drilling),
@@ -1535,6 +1615,10 @@ function designProductRecordFromRow(row) {
     variants: parseJson(row.variants_json, []),
     confirmed_data: parseJson(row.confirmed_data_json, {}),
     estimated_data: parseJson(row.estimated_data_json, {}),
+    product_image: productImage,
+    productImageDriveId: productImage?.drive_file_id || '',
+    productImagePath: productImage?.path || '',
+    productImageName: productImage?.name || '',
     source_summary: parseJson(row.source_summary_json, {})
   };
 }

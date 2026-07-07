@@ -989,7 +989,7 @@ function layoutConceptVehiclesForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
   return db.prepare(`
-    SELECT vehicle_id, brand, make, model, interior_length_mm, interior_width_mm,
+    SELECT vehicle_id, brand, make, model, interior_length_mm, interior_width_mm, interior_height_mm,
       layout_constraints_json, status, updated_at
     FROM design_ai_vehicle_records
     WHERE status=?
@@ -1005,6 +1005,11 @@ function layoutConceptVehiclesForLibrary() {
       name: layoutVehicleName(row),
       buildLength: dimensions.buildLength,
       buildWidth: dimensions.buildWidth,
+      interiorHeight: positiveNumber(row.interior_height_mm, 0),
+      brand: text(row.brand || row.make),
+      make: text(row.make || row.brand),
+      model: text(row.model),
+      layoutConstraints: parseJsonPayload(row.layout_constraints_json) || {},
       topdownBaseImageDriveId: topdownBase?.drive_file_id || '',
       topdownBaseImagePath: topdownBase?.path || '',
       topdownBaseImageName: topdownBase?.name || '',
@@ -1020,7 +1025,7 @@ function layoutConceptProductsForLibrary() {
   const status = approvedCount > 0 ? 'approved' : 'draft';
   return db.prepare(`
     SELECT product_id, sku, name, category, layout_width_mm, layout_depth_mm, layout_height_mm,
-      width_mm, depth_mm, height_mm, color, status, updated_at
+      width_mm, depth_mm, height_mm, color, variants_json, default_variant_json, status, updated_at
     FROM design_ai_product_records
     WHERE status=?
     ORDER BY updated_at DESC, product_id COLLATE NOCASE
@@ -2574,7 +2579,7 @@ app.get([
   '/design-ai/requests',
   '/design-ai/requests/:id'
 ], requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
-app.use('/assets', express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 
 app.get('/api/meta', requireAuth, (req, res) => {
   res.json({
@@ -3415,6 +3420,43 @@ app.post('/api/design-ai/products', requireAdmin, (req, res) => {
   res.status(201).json({ record });
 });
 
+app.post('/api/design-ai/products/:productId/duplicate', requireAdmin, (req, res) => {
+  const productId = text(req.params.productId);
+  const existing = db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(productId);
+  if (!existing) return res.status(404).json({ error: 'Product record not found.' });
+
+  const baseId = text(req.body.product_id) || `${existing.product_id}-copy`;
+  let nextId = baseId;
+  let index = 2;
+  while (db.prepare('SELECT 1 FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(nextId)) {
+    nextId = `${baseId}-${index++}`;
+  }
+
+  const payload = {};
+  DESIGN_AI_PRODUCT_FIELDS.forEach(field => {
+    if (field in existing) payload[field] = existing[field];
+  });
+
+  payload.product_id = nextId;
+  payload.sku = text(req.body.sku || `${text(existing.sku || existing.product_id)}-copy`);
+  payload.name = text(req.body.name || `${text(existing.name || existing.product_id)} Copy`);
+  payload.status = 'draft';
+  payload.source_summary_json = JSON.stringify({
+    duplicated_from_product_id: existing.product_id,
+    duplicated_by_line_user_id: actor(req).userId || '',
+    duplicated_at: new Date().toISOString()
+  });
+
+  const record = upsertDesignProductRecord(nextId, payload, {
+    manual_duplicate: true,
+    duplicated_from_product_id: existing.product_id,
+    duplicated_by_line_user_id: actor(req).userId || '',
+    duplicated_at: new Date().toISOString()
+  }, { defaultStatus: 'draft', preserveExistingEmpty: true });
+
+  res.status(201).json({ record });
+});
+
 app.patch('/api/design-ai/products/:productId', requireAdmin, (req, res) => {
   const productId = text(req.params.productId);
   if (!productId) return res.status(400).json({ error: 'product id is required.' });
@@ -3441,6 +3483,76 @@ app.patch('/api/design-ai/products/:productId', requireAdmin, (req, res) => {
     edited_at: new Date().toISOString()
   });
   res.json({ record });
+});
+
+app.post('/api/design-ai/products/:productId/upload-variant-image', requireAdmin, express.text({ type: 'text/plain', limit: '12mb' }), (req, res) => {
+  const productId = text(req.params.productId);
+  const row = db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(productId);
+  if (!row) return res.status(404).json({ error: 'Product record not found.' });
+
+  let payload = {};
+  try { payload = JSON.parse(String(req.body || '{}')); }
+  catch (err) { return res.status(400).json({ error: 'Invalid upload payload.' }); }
+
+  const mime = text(payload.type).toLowerCase();
+  const ext = mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : '';
+  const base64 = text(payload.data).replace(/^data:image\/[^;]+;base64,/i, '');
+  if (!ext || !base64) return res.status(400).json({ error: 'Upload PNG, JPG, or WebP image.' });
+
+  const buffer = Buffer.from(base64, 'base64');
+  if (!buffer.length || buffer.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'Product image must be 8MB or smaller.' });
+
+  const safe = value => text(value || 'file').toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'file';
+  const root = path.join(__dirname, 'data', 'design-ai-product-images');
+  const productDir = safe(row.product_id);
+  fs.mkdirSync(path.join(root, productDir), { recursive: true });
+
+  const label = text(payload.label) || safe(payload.name || 'variant');
+  const filename = `${productDir}/${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${safe(label)}.${ext}`;
+  fs.writeFileSync(path.join(root, filename), buffer);
+
+  const variants = parseJson(row.variants_json, []);
+  const nextVariants = Array.isArray(variants) ? variants : [];
+  nextVariants.push({
+    label,
+    name: text(payload.name || `${label}.${ext}`),
+    local_image: filename,
+    image_url: `/api/design-ai/product-images/${encodeURIComponent(filename)}`,
+    path: `local-upload/${filename}`,
+    source: 'local_upload',
+    status: 'available',
+    uploaded_at: new Date().toISOString()
+  });
+
+  db.prepare('UPDATE design_ai_product_records SET variants_json=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(JSON.stringify(nextVariants), row.id);
+  const record = designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(row.id));
+  res.status(201).json({ record });
+});
+
+app.get('/api/design-ai/product-images/:filename', requireAuth, (req, res) => {
+  const safe = value => text(value || '').split('/').map(part => part.toLowerCase().replace(/[^a-z0-9._-]+/g, '-')).filter(Boolean).join('/');
+  const root = path.join(__dirname, 'data', 'design-ai-product-images');
+  const filename = safe(req.params.filename);
+  const filePath = path.join(root, filename);
+  if (!filename || !filePath.startsWith(root) || !fs.existsSync(filePath)) return res.status(404).send('Product image not found');
+  res.sendFile(filePath);
+});
+
+
+app.delete('/api/design-ai/products/:productId/variants/:index', requireAdmin, (req,res)=>{
+  const row=db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(text(req.params.productId));
+  if(!row)return res.status(404).json({error:'Product not found.'});
+  const variants=parseJson(row.variants_json,[]);
+  const index=Number(req.params.index);
+  if(!variants[index])return res.status(404).json({error:'Variant not found.'});
+  const variant=variants[index];
+  if(variant.local_image){
+    const file=path.join(__dirname,'data','design-ai-product-images',variant.local_image);
+    if(fs.existsSync(file))fs.unlinkSync(file);
+  }
+  variants.splice(index,1);
+  db.prepare('UPDATE design_ai_product_records SET variants_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(JSON.stringify(variants),row.id);
+  res.json({record:designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(row.id))});
 });
 
 app.patch('/api/design-ai/products/:productId/archive', requireAdmin, (req, res) => {

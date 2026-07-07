@@ -890,6 +890,66 @@ button{cursor:pointer}
 .dai-unsaved-pill.show{display:inline-flex}
 .dai-save-status{font-size:var(--xxs);color:var(--g500)}
 
+.dai-product-compact .dai-warning,
+.dai-product-compact > .pc-s{
+  display:none;
+}
+.dai-product-compact .dai-panel{
+  padding:12px;
+  margin-bottom:10px;
+}
+.dai-product-compact .dai-panel-title{
+  margin-bottom:8px;
+}
+.dai-product-compact .dai-form-grid,
+.dai-product-compact .dai-emphasis-grid{
+  gap:8px;
+}
+.dai-upload-drop{
+  border:2px dashed var(--g200);
+  border-radius:var(--r);
+  background:var(--g50);
+  padding:14px;
+  text-align:center;
+  display:grid;
+  gap:7px;
+  margin-bottom:12px;
+}
+.dai-upload-drop.dragover{
+  border-color:var(--brand);
+  background:var(--brand-f);
+}
+.dai-upload-drop input{display:none}
+
+
+
+/* Hide visible header user pill, keep user status inside hamburger menu */
+.topbar > .tright > .upill{
+  display:none !important;
+}
+
+
+/* Universal header New Project button */
+.topbar .tright > .btn-dark{
+  background:#111110 !important;
+  color:#fff !important;
+  border:0 !important;
+  padding:6px 11px !important;
+  font-size:13px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  border-radius:6px !important;
+  height:auto !important;
+  min-height:0 !important;
+}
+@media(max-width:720px){
+  .topbar .tright > .btn-dark{
+    height:34px !important;
+    padding:0 12px !important;
+    font-size:13px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -904,10 +964,8 @@ button{cursor:pointer}
   </div>
   <div class="tright">
     <button class="btn btn-out btn-sm desktop-timeline-btn" onclick="openGarageTimeline()">📅 Timeline</button>
-    <button class="btn btn-out btn-sm hide-sm" onclick="openMockups()">🖼 Mockup</button>
     <button class="btn btn-out btn-sm hide-sm" id="btn-mastercf" style="display:none" onclick="openMasterCF()">📊 Cashflow</button>
     <button class="btn btn-out btn-sm hide-sm" onclick="openLayoutConcept()">🧭 2D Layout</button>
-    <button class="btn btn-out btn-sm hide-sm" onclick="openDesignAI()">🗄 Database</button>
     <button class="btn btn-dark btn-sm" onclick="openNewModal()">+ New Project</button>
     <div class="menu-wrap">
       <button class="menu-btn" onclick="toggleNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
@@ -4285,6 +4343,12 @@ function designAiProductVariantLabel(variant={},fallback='Variant'){
 function designAiProductVariantDriveId(variant={}){
   return variant.drive_file_id||variant.product_image_drive_id||variant.productImageDriveId||variant.image_drive_file_id||'';
 }
+function designAiProductVariantImageUrl(variant={}){
+  if(variant.image_url)return variant.image_url;
+  if(variant.local_image)return `/api/design-ai/product-images/${encodeURIComponent(variant.local_image)}`;
+  const driveId=designAiProductVariantDriveId(variant);
+  return driveId?`/api/design-ai/library-image/${encodeURIComponent(driveId)}`:'';
+}
 function designAiProductVariantPath(variant={}){
   return variant.path||variant.drive_path||variant.productImagePath||variant.product_image_path||variant.file_path||'';
 }
@@ -4327,22 +4391,35 @@ function designAiProductVariantList(record={}){
 }
 function designAiProductVariantsHtml(record){
   const variants=designAiProductVariantList(record);
+  const productId=record.product_id||'';
   return `<div class="dai-panel">
     <div class="dai-panel-title">Product Variants</div>
-    ${variants.length?`<div class="dai-variant-grid">${variants.map(variant=>{
-      const driveId=designAiProductVariantDriveId(variant);
+    ${productId?`
+      <div class="dai-upload-drop"
+        id="dai-product-upload-drop"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleDesignAiProductImageDrop(event)">
+        <strong>Drop product PNG/JPG/WebP here</strong>
+        <div class="pc-s">Uploads directly to this product record. No Google Drive sync needed.</div>
+        <div><button class="btn btn-out btn-sm" type="button" onclick="document.getElementById('dai-product-image-file')?.click()">Upload Image</button></div>
+        <input id="dai-product-image-file" type="file" accept="image/png,image/jpeg,image/webp" onchange="uploadDesignAiProductImageInput(this)">
+      </div>
+    `:''}
+    ${variants.length?`<div class="dai-variant-grid">${variants.map((variant,index)=>{
+      const imageUrl=designAiProductVariantImageUrl(variant);
       const label=designAiProductVariantLabel(variant);
       const path=designAiProductVariantPath(variant);
       return `<div class="dai-variant-card">
         <div class="dai-variant-thumb">
-          ${driveId?`<img src="/api/design-ai/library-image/${encodeURIComponent(driveId)}" alt="${esc(label)}">`:'<div class="dai-product-image-empty">No image</div>'}
+          ${imageUrl?`<img src="${esc(imageUrl)}" alt="${esc(label)}">`:'<div class="dai-product-image-empty">No image</div>'}
         </div>
         <div class="dai-variant-title">${esc(label)}</div>
         <div>${designAiStatusPill(variant.status||'saved')}</div>
         <div class="dai-variant-path">${esc(path||variant.name||'Saved variant metadata')}</div>
+        <div style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="deleteDesignAiVariant(${index})">Delete</button></div>
       </div>`;
-    }).join('')}</div>`:'<div class="dai-empty">No product variants found yet. Add PNG options under this product folder, for example colors/black.png or colors/leather-brown.png, then sync Google Drive Files.</div>'}
-    <div class="pc-s" style="margin-top:10px">2D Layout uses the selected variant PNG when available and falls back to the default PNG or rectangle footprint when no image exists.</div>
+    }).join('')}</div>`:'<div class="dai-empty">No product variants yet. Drop or upload a product image above.</div>'}
   </div>`;
 }
 function designAiProductDimensionsHtml(prefix,record){
@@ -4365,6 +4442,8 @@ function designAiProductDimensionsHtml(prefix,record){
   </div>`;
 }
 function designAiProductEditorSection(prefix,title,fields,record){
+  if(String(title).includes('Compatible Vehicles'))return '';
+  if(String(title).includes('Research Files'))return '';
   if(String(title).includes('Variants'))return designAiProductVariantsHtml(record);
   if(String(title).includes('Footprint'))return designAiProductDimensionsHtml(prefix,record);
   return `<div class="dai-panel">
@@ -4378,7 +4457,7 @@ function designAiProductEditorHtml(record,isNew){
     `Version ${esc(record.version||1)}`,
     record.updated_at?`Updated ${esc(new Date(record.updated_at).toLocaleString('zh-TW'))}`:'Not saved yet'
   ].join(' · ');
-  return `<div class="dai-record-savebar">
+  return `<div class="dai-product-compact"><div class="dai-record-savebar">
       <div>
         <strong>${esc(record.name || record.product_id || 'Product')}</strong>
         <span id="dai-unsaved-pill" class="dai-unsaved-pill">Unsaved Changes</span>
@@ -4386,6 +4465,7 @@ function designAiProductEditorHtml(record,isNew){
       </div>
       <div class="dai-record-savebar-actions">
         <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save Product</button>
+        ${!isNew?`<button class="btn btn-out btn-sm" onclick="duplicateDesignAiProduct()">Duplicate Product</button>`:''}
         <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Products</button>
         ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
       </div>
@@ -4395,9 +4475,10 @@ function designAiProductEditorHtml(record,isNew){
     ${DESIGN_AI_PRODUCT_FIELD_SECTIONS.map(([title,fields])=>designAiProductEditorSection(prefix,title,fields,record)).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       <button class="btn btn-brand btn-sm" onclick="saveDesignAiRecord(this)">Save Product</button>
+      ${!isNew?`<button class="btn btn-out btn-sm" onclick="duplicateDesignAiProduct()">Duplicate Product</button>`:''}
       <button class="btn btn-out btn-sm" onclick="guardDesignAiLeave(()=>openDesignAI('products'))">Back to Products</button>
       ${!isNew?`<button class="btn btn-out btn-sm" onclick="archiveDesignAiProduct()">Archive Product</button>`:''}
-    </div>`;
+    </div></div>`;
 }
 async function renderDesignAiRecordEditor(kind='products',recordKey='new'){
   const cfg=designAiRecordConfig(kind);
@@ -4509,6 +4590,82 @@ async function saveDesignAiRecord(button){
     });
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
 }
+async function uploadDesignAiProductImageFile(file){
+  const productId=DESIGN_AI.currentRecord?.product_id||DESIGN_AI.record?.recordKey||'';
+  if(!productId){toast('Save product before uploading images.');return;}
+  if(!file)return;
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type)){toast('Upload PNG, JPG, or WebP only',4000);return;}
+  if(file.size>8*1024*1024){toast('Product image must be 8MB or smaller',4000);return;}
+  const label=prompt('Variant label:',file.name.replace(/\.[^.]+$/,''));
+  if(!label||!label.trim())return;
+  try{
+    const data=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(String(reader.result||''));
+      reader.onerror=()=>reject(reader.error||new Error('File read failed'));
+      reader.readAsDataURL(file);
+    });
+    const res=await fetch(`/api/design-ai/products/${encodeURIComponent(productId)}/upload-variant-image`,{
+      method:'POST',
+      credentials:'include',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({name:file.name,type:file.type,label:label.trim(),data})
+    });
+    const body=await telegramJsonResponse(res);
+    if(!res.ok)throw new Error(body?.error||`HTTP ${res.status} upload failed`);
+    DESIGN_AI.currentRecord=body.record;
+    toast('Product image uploaded ✓');
+    renderDesignAiRecordEditor('products',body.record.product_id);
+  }catch(e){toast(`Upload failed: ${errMsg(e)}`,6500);}
+}
+function uploadDesignAiProductImageInput(input){
+  const file=input?.files?.[0];
+  uploadDesignAiProductImageFile(file).finally(()=>{if(input)input.value='';});
+}
+function handleDesignAiProductImageDrop(event){
+  event.preventDefault();
+  event.currentTarget?.classList?.remove('dragover');
+  uploadDesignAiProductImageFile(event.dataTransfer?.files?.[0]);
+}
+
+async function deleteDesignAiVariant(index){
+  if(!confirm('Delete this product image?'))return;
+  const productId=DESIGN_AI.currentRecord?.product_id||DESIGN_AI.record?.recordKey;
+  try{
+    const r=await fetch(`/api/design-ai/products/${encodeURIComponent(productId)}/variants/${index}`,{method:'DELETE',credentials:'include'});
+    const j=await telegramJsonResponse(r);
+    if(!r.ok)throw new Error(j.error||'Delete failed');
+    DESIGN_AI.currentRecord=j.record;
+    toast('Variant deleted ✓');
+    renderDesignAiRecordEditor('products',j.record.product_id);
+  }catch(e){toast(`Delete failed: ${errMsg(e)}`,6000);}
+}
+
+async function duplicateDesignAiProduct(){
+  const record=DESIGN_AI.currentRecord||{};
+  const productId=record.product_id||DESIGN_AI.record?.recordKey||'';
+  if(!productId){toast('Product ID missing.');return;}
+
+  const suggestedId=`${productId}-copy`;
+  const nextId=prompt('New Product ID for duplicate:',suggestedId);
+  if(!nextId||!nextId.trim())return;
+
+  const suggestedName=`${record.name||productId} Copy`;
+  const nextName=prompt('New Product Name:',suggestedName);
+  if(!nextName||!nextName.trim())return;
+
+  try{
+    const res=await POST(`/api/design-ai/products/${encodeURIComponent(productId)}/duplicate`,{
+      product_id:nextId.trim(),
+      name:nextName.trim()
+    });
+    toast('Product duplicated ✓');
+    openDesignAI('products',{id:res.record.product_id});
+  }catch(e){
+    toast(`Duplicate failed: ${errMsg(e)}`,6500);
+  }
+}
+
 async function archiveDesignAiProduct(){
   const ctx=DESIGN_AI.record||{};
   if(ctx.kind!=='products'||ctx.isNew)return;

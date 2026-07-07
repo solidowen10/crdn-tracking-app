@@ -117,7 +117,7 @@
       .upill{display:none}
       .menu-btn{width:38px;height:38px}
       .nav-menu{top:46px}
-      .hide-sm,.desktop-timeline-btn,.tright>.btn-dark{display:none !important}
+      .hide-sm,.desktop-timeline-btn{display:none !important}
       .layout{
         display:flex;
         flex-direction:column;
@@ -184,47 +184,45 @@
       min-width:0;
       white-space:nowrap;
     }
+.vehicle-summary{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--g200);
+  border-radius:10px;
+  background:#fff;
+  color:var(--g700);
+  font-size:13px;
+  line-height:1.5;
+}
+.vehicle-summary-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:3px 0;
+}
+.vehicle-summary-row strong{
+  color:var(--black);
+  text-align:right;
+}
 
-  
-    /* main app header compatibility */
-    .tlogo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;color:inherit}
-    .tlogo img{width:34px;height:34px;border-radius:7px;object-fit:cover}
-    .tlogo-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;white-space:nowrap}
-    .tlogo-name span{color:var(--brand)}
-    .tright{margin-left:auto;display:flex;gap:8px;align-items:center}
-    .btn-out{background:var(--w);color:var(--g700);border:1px solid var(--g200)}
-    .btn-out:hover{background:var(--g50);border-color:var(--g300)}
-    .btn-brand{background:var(--brand);border-color:var(--brand);color:#fff}
-    .btn-brand:hover{background:var(--brand-d);border-color:var(--brand-d);color:#fff}
-    .btn-dark{background:var(--black);border-color:var(--black);color:#fff}
-    .btn-sm{padding:6px 11px;font-size:var(--xxs)}
-    .menu-wrap{position:relative;display:flex;align-items:center}
-    .menu-btn{width:34px;height:34px;border:1px solid var(--g200);border-radius:var(--rs);background:var(--w);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
-    .menu-btn span{width:16px;height:2px;border-radius:2px;background:var(--black);display:block}
-    .nav-menu{position:absolute;right:0;top:42px;min-width:156px;background:var(--w);border:1px solid var(--g200);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:none;z-index:220}
-    .nav-menu.open{display:flex;flex-direction:column;gap:3px}
-    .nav-menu a,.nav-menu button{border:none;background:transparent;color:var(--black);font-size:var(--sm);font-weight:600;text-align:left;padding:9px 10px;border-radius:var(--rs);cursor:pointer;text-decoration:none}
-    .nav-menu a:hover,.nav-menu button:hover{background:var(--brand-f);color:var(--brand)}
-    .menu-status{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--g100);font-size:var(--xxs);color:var(--g500);margin-bottom:3px}
-    .upill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--g100);border-radius:99px;font-size:var(--xxs);font-weight:500}
-    .udot{width:7px;height:7px;border-radius:50%;background:#22c55e}
 
-  
-    /* main header alias styles */
-    .tlogo{display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;color:inherit}
-    .tlogo-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.06em;white-space:nowrap}
-    .tlogo-name span{color:var(--brand)}
-    .tright{margin-left:auto;display:flex;gap:8px;align-items:center}
-    .btn-out{background:var(--w);color:var(--g700);border:1px solid var(--g200)}
-    .btn-dark{background:var(--black);border-color:var(--black);color:#fff}
-    .btn-sm{padding:6px 11px;font-size:var(--xxs)}
-    .hide-sm{display:inline-flex}
-    @media(max-width:720px){
-      .hide-sm{display:none !important}
-      .tright>.btn-dark{display:none !important}
-    }
+.product-stack{
+  display:grid;
+  gap:12px;
+}
+.product-stack .field{
+  margin-bottom:0;
+}
+.product-add-btn{
+  width:100%;
+}
 
-  
+
+.placed-card.selected{
+  border-color:#7c3aed !important;
+  box-shadow:0 0 0 2px rgba(124,58,237,.16);
+}
+
 /* Saved Layouts save button */
 .saved-actions .saved-save-btn{
   grid-column:1 / -1;
@@ -302,8 +300,227 @@
   .layout>aside:first-child{margin-bottom:14px!important}
 }
 
+
+
+
+
+
+/* 2D Layout unified header */
+.topbar{
+  height:56px !important;
+  background:#fff !important;
+  border-bottom:1px solid var(--g200) !important;
+  display:flex !important;
+  align-items:center !important;
+  padding:0 18px !important;
+  gap:12px !important;
+  box-shadow:var(--sh) !important;
+  flex-shrink:0 !important;
+  position:sticky !important;
+  top:0 !important;
+  z-index:300 !important;
+}
+.tlogo{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  cursor:pointer !important;
+  text-decoration:none !important;
+  color:inherit !important;
+  flex:0 0 auto !important;
+}
+.tlogo img{
+  width:34px !important;
+  height:34px !important;
+  max-width:34px !important;
+  max-height:34px !important;
+  border-radius:7px !important;
+  object-fit:cover !important;
+  display:block !important;
+}
+.tlogo-name{
+  font-family:'Bebas Neue',sans-serif !important;
+  font-size:22px !important;
+  letter-spacing:.06em !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  color:var(--black) !important;
+}
+.tlogo-name span{color:var(--brand) !important}
+.tright{
+  margin-left:auto !important;
+  display:flex !important;
+  gap:8px !important;
+  align-items:center !important;
+}
+.menu-wrap{position:relative !important;display:flex !important;align-items:center !important}
+.menu-btn{
+  width:34px !important;
+  height:34px !important;
+  border:1px solid var(--g200) !important;
+  border-radius:var(--rs) !important;
+  background:#fff !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:4px !important;
+  padding:0 !important;
+}
+.menu-btn span{
+  width:16px !important;
+  height:2px !important;
+  border-radius:2px !important;
+  background:var(--black) !important;
+  display:block !important;
+}
+.nav-menu{
+  position:absolute !important;
+  right:0 !important;
+  top:42px !important;
+  min-width:156px !important;
+  background:#fff !important;
+  border:1px solid var(--g200) !important;
+  border-radius:var(--r) !important;
+  box-shadow:var(--shm) !important;
+  padding:6px !important;
+  display:none !important;
+  z-index:400 !important;
+}
+.nav-menu.open{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:3px !important;
+}
+.nav-menu a,.nav-menu button{
+  border:none !important;
+  background:transparent !important;
+  color:var(--black) !important;
+  font-size:var(--sm) !important;
+  font-weight:600 !important;
+  text-align:left !important;
+  padding:9px 10px !important;
+  border-radius:var(--rs) !important;
+  cursor:pointer !important;
+  text-decoration:none !important;
+  display:block !important;
+  white-space:nowrap !important;
+}
+.nav-menu a:hover,.nav-menu button:hover{background:var(--brand-f) !important;color:var(--brand) !important}
+.menu-status{
+  display:flex !important;
+  align-items:center !important;
+  gap:7px !important;
+  padding:8px 10px !important;
+  border-bottom:1px solid var(--g100) !important;
+  font-size:var(--xxs) !important;
+  color:var(--g500) !important;
+  margin-bottom:3px !important;
+}
+.upill{
+  display:flex !important;
+  align-items:center !important;
+  gap:6px !important;
+  padding:5px 12px !important;
+  background:var(--g100) !important;
+  border-radius:99px !important;
+  font-size:var(--xxs) !important;
+  font-weight:500 !important;
+}
+@media(max-width:720px){
+  .topbar{
+    height:64px !important;
+    padding:0 14px !important;
+    gap:10px !important;
+  }
+  .tlogo{gap:12px !important;min-width:0 !important}
+  .tlogo img{
+    width:38px !important;
+    height:38px !important;
+    max-width:38px !important;
+    max-height:38px !important;
+  }
+  .tlogo-name{
+    font-size:18px !important;
+    max-width:152px !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  .tright{gap:9px !important}
+  .hide-sm,.desktop-timeline-btn,.upill{display:none !important}
+  .tright>.btn-dark{
+    display:inline-flex !important;
+    height:34px !important;
+    padding:0 12px !important;
+    border-radius:8px !important;
+    font-size:13px !important;
+    font-weight:700 !important;
+  }
+  .menu-btn{width:38px !important;height:38px !important}
+  .nav-menu{top:46px !important;min-width:220px !important}
+}
+
+
+/* 2D Layout header button sync */
+.topbar .btn{
+  padding:6px 11px !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  line-height:1 !important;
+  border-radius:6px !important;
+}
+.topbar .btn-dark{
+  background:#111110 !important;
+  border-color:#111110 !important;
+  color:#fff !important;
+}
+.topbar .btn-out{
+  background:#fff !important;
+  color:#3d3d3b !important;
+  border:1px solid #e2e2de !important;
+}
+.topbar .upill{
+  display:none !important;
+}
+@media(max-width:720px){
+  .topbar .btn-dark{
+    height:34px !important;
+    padding:0 12px !important;
+    font-size:13px !important;
+  }
+}
+
+
+/* Hide visible header user pill, keep user status inside hamburger menu */
+.topbar > .tright > .upill{
+  display:none !important;
+}
+
+
+/* Universal header New Project button */
+.topbar .tright > .btn-dark{
+  background:#111110 !important;
+  color:#fff !important;
+  border:0 !important;
+  padding:6px 11px !important;
+  font-size:13px !important;
+  font-weight:700 !important;
+  line-height:1 !important;
+  border-radius:6px !important;
+  height:auto !important;
+  min-height:0 !important;
+}
+@media(max-width:720px){
+  .topbar .tright > .btn-dark{
+    height:34px !important;
+    padding:0 12px !important;
+    font-size:13px !important;
+  }
+}
+
 </style>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Noto+Sans+TC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -314,42 +531,64 @@
       </a>
       <div class="tright">
         <a class="btn btn-out btn-sm desktop-timeline-btn" href="/#timeline">📅 Timeline</a>
-        <a class="btn btn-out btn-sm hide-sm" href="/#mockups">🖼 Mockup</a>
         <a class="btn btn-out btn-sm hide-sm" href="/#cashflow">📊 Cashflow</a>
         <a class="btn btn-out btn-sm hide-sm" href="/layout-concept">🧭 2D Layout</a>
-        <a class="btn btn-out btn-sm hide-sm" href="/#designai">🗄 Database</a>
         <a class="btn btn-dark btn-sm" href="/">+ New Project</a>
         <div class="menu-wrap">
           <button class="menu-btn" onclick="toggleLayoutNavMenu(event)" aria-label="Open navigation" aria-expanded="false">
             <span></span><span></span><span></span>
           </button>
           <div class="nav-menu" id="layout-nav-menu">
-            <div class="menu-status"><div class="udot"></div><span>Owen Lu ・ 呂信誠</span></div>
+            <div class="menu-status"><div class="udot"></div><span>Menu</span></div>
             <a href="/">Projects</a>
             <a href="/#timeline">Timeline</a>
             <a href="/#mockups">Mockup</a>
             <a href="/layout-concept">2D Layout</a>
             <a href="/#designai">Database</a>
             <a href="/#cashflow">Cashflow</a>
+            <a href="/#settings">Settings</a>
+            <a href="/auth/logout">Logout</a>
           </div>
         </div>
-        <div class="upill"><div class="udot"></div><span>Owen Lu ・ 呂信誠</span></div>
       </div>
     </div>
 
     <main class="layout">
       <aside>
         <section class="panel">
-          <div class="panel-title">Layout Setup</div>
+          <div class="panel-title">Vehicle</div>
+          <div class="field">
+            <label for="vehicleSelect">Vehicle</label>
+            <select id="vehicleSelect"></select>
+          </div>
+          <div class="vehicle-summary" id="vehicleSummary"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Product</div>
+          <div class="product-stack">
+            <div class="field">
+              <label for="productSelect">Product</label>
+              <select id="productSelect"></select>
+            </div>
+            <div class="field">
+              <label for="productVariantSelect">Variant</label>
+              <select id="productVariantSelect" disabled>
+                <option value="">Default</option>
+              </select>
+            </div>
+            <button class="btn primary product-add-btn" type="button" onclick="addSelectedProduct()">Add</button>
+          </div>
+          <p class="hint" id="productLibraryHint">Positions are in millimeters relative to the buildable area. Product rectangles clamp inside the buildable area.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Layout</div>
           <div class="warning">Concept Layout Only. This is a pre-sales discussion tool, not final CAD or fabrication approval.</div>
           <div class="source-pill" id="librarySourceBadge">Loading library data...</div>
           <div class="field">
             <label for="layoutTitle">Layout Title</label>
             <input id="layoutTitle" type="text" placeholder="Customer camper concept">
-          </div>
-          <div class="field">
-            <label for="vehicleSelect">Vehicle</label>
-            <select id="vehicleSelect"></select>
           </div>
           <div class="field">
             <label for="layoutNotes">Notes</label>
@@ -360,29 +599,9 @@
             <div class="stat"><strong id="statWidth">-</strong><span>Build W</span></div>
             <div class="stat"><strong id="statScale">-</strong><span>Scale</span></div>
           </div>
-        </section>
 
-        <section class="panel">
-          <div class="panel-title">Add Product</div>
-          <div class="product-grid">
-            <div class="field" style="margin-bottom:0">
-              <label for="productSelect">Product</label>
-              <select id="productSelect"></select>
+          <div class="action-divider"></div>
 
-              <div class="field" style="margin-top:8px;margin-bottom:0">
-                <label for="productVariantSelect">Variant</label>
-                <select id="productVariantSelect" disabled>
-                  <option value="">Default</option>
-                </select>
-              </div>
-            </div>
-            <button class="btn primary" type="button" onclick="addSelectedProduct()">Add</button>
-          </div>
-          <p class="hint" id="productLibraryHint">Positions are in millimeters relative to the buildable area. Product rectangles clamp inside the buildable area.</p>
-        </section>
-
-        <section class="panel">
-          <div class="panel-title">Saved Layouts</div>
           <div class="field">
             <label for="savedConceptSelect">Saved layout</label>
             <select id="savedConceptSelect"></select>
@@ -417,7 +636,7 @@
           <div class="panel-title">Layout Actions</div>
           <div class="action-section-label">Export</div>
           <div class="preset-grid">
-            <button class="btn" type="button" onclick="exportSvg()">Export SVG</button>
+            <button class="btn" type="button" onclick="exportPdf()">Export PDF</button>
             <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
           </div>
 
@@ -561,6 +780,7 @@
       title: 'Basic Camper Concept',
       notes: '',
       placed: [],
+      selectedItemId: null,
       nextId: 1,
       editingBuildArea: false,
       draggingBuildArea: false,
@@ -663,6 +883,11 @@
         name: vehicle.name || key,
         buildLength: positiveNumber(vehicle.buildLength, 1900),
         buildWidth: positiveNumber(vehicle.buildWidth, 1340),
+        interiorHeight: positiveNumber(vehicle.interiorHeight || vehicle.interior_height_mm, 0),
+        brand: vehicle.brand || vehicle.make || '',
+        make: vehicle.make || vehicle.brand || '',
+        model: vehicle.model || '',
+        layoutConstraints: vehicle.layoutConstraints || vehicle.layout_constraints || {},
         topdownBaseImageDriveId: vehicle.topdownBaseImageDriveId || vehicle.topdown_base_image_drive_id || '',
         topdownBaseImagePath: vehicle.topdownBaseImagePath || vehicle.topdown_base_image_path || '',
         topdownBaseImageName: vehicle.topdownBaseImageName || vehicle.topdown_base_image_name || '',
@@ -686,6 +911,7 @@
         width: missingDimensions ? 0 : width,
         height: positiveNumber(product.height, 0),
         productImageDriveId: product.productImageDriveId || product.product_image_drive_id || '',
+        productImageUrl: product.productImageUrl || product.product_image_url || product.product_image?.image_url || '',
         productImagePath: product.productImagePath || product.product_image_path || '',
         productImageName: product.productImageName || product.product_image_name || '',
         productVariants: Array.isArray(product.productVariants) ? product.productVariants : [],
@@ -1204,7 +1430,10 @@
         0,
         selectedVariantDriveId
       );
-      if (item) state.placed.push(item);
+      if (item) {
+        state.placed.push(item);
+        state.selectedItemId = item.id;
+      }
       render();
     }
 
@@ -1213,10 +1442,16 @@
       render();
     }
 
+    function selectItem(id) {
+      state.selectedItemId = Number(id);
+      render();
+    }
+
     function moveItem(id, dx, dy) {
       const step = Number(document.getElementById('moveStep').value || 50);
       const item = state.placed.find(entry => entry.id === id);
       if (!item) return;
+      state.selectedItemId = item.id;
       item.x += dx * step;
       item.y += dy * step;
       clampItem(item);
@@ -1226,6 +1461,7 @@
     function rotateItem(id, direction) {
       const item = state.placed.find(entry => entry.id === id);
       if (!item) return;
+      state.selectedItemId = item.id;
       const product = products[item.productKey] || ensureProductForKey(item.productKey);
       const before = productFootprint(product, item.rotation);
       const centerX = Number(item.x || 0) + before.length / 2;
@@ -1240,6 +1476,7 @@
 
     function removeItem(id) {
       state.placed = state.placed.filter(item => item.id !== id);
+      if (Number(state.selectedItemId) === Number(id)) state.selectedItemId = null;
       render();
     }
 
@@ -1364,8 +1601,30 @@
       return { product, footprint, rotation: normalizeRotation(item.rotation), x, y, width, height };
     }
 
+
+    function rectsOverlap(a, b) {
+      return !(
+        a.x + a.width <= b.x ||
+        b.x + b.width <= a.x ||
+        a.y + a.height <= b.y ||
+        b.y + b.height <= a.y
+      );
+    }
+
+    function productVariantImageUrl(variant = {}) {
+      if (variant.image_url) return variant.image_url;
+      if (variant.local_image) return `/api/design-ai/product-images/${encodeURIComponent(variant.local_image)}`;
+      if (variant.drive_file_id) return `/api/design-ai/library-image/${encodeURIComponent(variant.drive_file_id)}`;
+      return '';
+    }
+
     function productImageUrl(product, item = {}) {
-      const driveId = item.productImageDriveId || product?.productImageDriveId || product?.product_image?.drive_file_id || '';
+      const selected = item.productImageDriveId || '';
+      if (selected.startsWith('/api/')) return selected;
+      if (selected) return `/api/design-ai/library-image/${encodeURIComponent(selected)}`;
+
+      if (product?.productImageUrl) return product.productImageUrl;
+      const driveId = product?.productImageDriveId || product?.product_image?.drive_file_id || '';
       return driveId ? `/api/design-ai/library-image/${encodeURIComponent(driveId)}` : '';
     }
 
@@ -1419,17 +1678,40 @@
         `;
 
       const buildAreaLayer = `
-        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="#fdf8f3" fill-opacity="${baseImageUrl ? '0.72' : '1'}" stroke="#CA741F" stroke-width="${state.editingBuildArea ? '3.2' : '2.4'}" stroke-dasharray="${state.editingBuildArea ? '10 6' : 'none'}"/>
+        <rect x="${geometry.x.toFixed(1)}" y="${geometry.y.toFixed(1)}" width="${geometry.width.toFixed(1)}" height="${geometry.height.toFixed(1)}" rx="10" fill="#fdf8f3" fill-opacity="${baseImageUrl ? '0.16' : '0.55'}" stroke="#CA741F" stroke-width="${state.editingBuildArea ? '3.2' : '2.4'}" stroke-dasharray="${state.editingBuildArea ? '10 6' : 'none'}"/>
         <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">${baseImageUrl ? 'Buildable Area' : 'Centered Buildable Area'}</text>
       `;
 
-      const productNodes = state.placed.map(item => {
+      const drawItems = [...state.placed].sort((a, b) => {
+        if (Number(a.id) === Number(state.selectedItemId)) return 1;
+        if (Number(b.id) === Number(state.selectedItemId)) return -1;
+        return 0;
+      });
+
+      const productNodes = drawItems.map(item => {
         const rect = productRect(clampItem(item), geometry);
         const productLength = positiveNumber(rect.footprint.length, 520);
         const productWidth = positiveNumber(rect.footprint.width, 330);
         const label = productLabel(rect, rect.product.name, `${productLength} × ${productWidth} mm`);
         const clipId = `productClip${Number(item.id || 0)}`;
         const imageUrl = productImageUrl(rect.product, item);
+        const isSelected = Number(item.id) === Number(state.selectedItemId);
+        const itemOpacity = isSelected ? 0.76 : 1;
+        const overlap = state.placed.some(other => {
+          if (other.id === item.id) return false;
+          return rectsOverlap(
+            rect,
+            productRect(clampItem(other), geometry)
+          );
+        });
+
+        const itemStroke =
+          overlap ? '#dc2626' :
+          (isSelected ? '#7c3aed' : rect.product.stroke);
+
+        const itemStrokeWidth =
+          overlap ? 2.4 :
+          (isSelected ? 2.2 : 1.2);
         const centerX = rect.x + rect.width / 2;
         const centerY = rect.y + rect.height / 2;
         const baseImageWidth = positiveNumber(rect.footprint.baseLength, productLength) * geometry.pxPerMm;
@@ -1438,7 +1720,7 @@
         const imageY = centerY - baseImageHeight / 2;
         const productVisual = imageUrl
           ? `
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="#ffffff" fill-opacity=".72" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="none" stroke="${itemStroke}" stroke-width="${itemStrokeWidth}"/>
             <g clip-path="url(#${clipId})">
               <g transform="rotate(${rect.rotation} ${centerX.toFixed(1)} ${centerY.toFixed(1)})">
                 <image href="${esc(imageUrl)}" x="${imageX.toFixed(1)}" y="${imageY.toFixed(1)}" width="${baseImageWidth.toFixed(1)}" height="${baseImageHeight.toFixed(1)}" preserveAspectRatio="xMidYMid meet"/>
@@ -1448,14 +1730,14 @@
             </g>
           `
           : `
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" stroke="${rect.product.stroke}" stroke-width="2"/>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" fill-opacity="${itemOpacity}" stroke="${itemStroke}" stroke-width="${itemStrokeWidth}"/>
             <g clip-path="url(#${clipId})">
               <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.nameY.toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
               ${label.showDimensions ? `<text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.dimensionsY.toFixed(1)}" text-anchor="middle" font-size="9" fill="#555">${esc(label.dimensions)}</text>` : ''}
             </g>
           `;
         return `
-          <g>
+          <g onclick="selectItem(${Number(item.id || 0)})" style="cursor:pointer">
             <defs>
               <clipPath id="${clipId}">
                 <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6"/>
@@ -1501,13 +1783,14 @@
       }
 
       vehicleSelect.innerHTML = realVehicleEntries.map(([key, vehicle]) => {
-        const meta = vehicle.status ? ` · ${vehicle.status}` : '';
-        return `<option value="${esc(key)}" ${key === state.vehicleKey ? 'selected' : ''}>${esc(vehicle.name)}${esc(meta)}</option>`;
+        const label = vehicle.model || vehicle.name;
+        return `<option value="${esc(key)}" ${key === state.vehicleKey ? 'selected' : ''}>${esc(label)}</option>`;
       }).join('');
 
       const productSelect = document.getElementById('productSelect');
       const productOptions = Object.entries(products)
         .filter(([, product]) => product.selectable !== false)
+        .sort(([, a], [, b]) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
         .map(([key, product]) => {
           const label = product.missingDimensions
             ? `${product.name} · Missing footprint dimensions`
@@ -1530,11 +1813,14 @@
 
         variantSelect.innerHTML = [
           '<option value="">Default / Original</option>',
-          ...product.productVariants.map(variant => `
-            <option value="${esc(variant.drive_file_id)}">
-              ${esc(variant.label)}
-            </option>
-          `)
+          ...product.productVariants.map(variant => {
+            const imageValue = productVariantImageUrl(variant) || variant.drive_file_id || '';
+            return `
+              <option value="${esc(imageValue)}">
+                ${esc(variant.label)}
+              </option>
+            `;
+          })
         ].join('');
 
         variantSelect.disabled = false;
@@ -1549,6 +1835,22 @@ productSelect.addEventListener('change', populateProductVariants);
       if (presetWrap) {
         presetWrap.innerHTML = Object.entries(presets).map(([key, preset]) => `<button class="btn" type="button" onclick="applyPreset('${key}')">${preset.label}</button>`).join('');
       }
+    }
+
+    function renderVehicleSummary() {
+      const el = document.getElementById('vehicleSummary');
+      if (!el) return;
+      const vehicle = currentVehicle();
+      const brand = vehicle.brand || vehicle.make || 'Unknown';
+      const model = vehicle.model || vehicle.name || 'Unknown';
+      const status = vehicle.status || 'Unknown';
+      const height = positiveNumber(vehicle.interiorHeight, 0) ? `${vehicle.interiorHeight} mm` : 'Unknown';
+      el.innerHTML = `
+        <div class="vehicle-summary-row"><span>Brand</span><strong>${esc(brand)}</strong></div>
+        <div class="vehicle-summary-row"><span>Model</span><strong>${esc(model)}</strong></div>
+        <div class="vehicle-summary-row"><span>Status</span><strong>${esc(status)}</strong></div>
+        <div class="vehicle-summary-row"><span>Interior</span><strong>${esc(vehicle.buildLength)} / ${esc(vehicle.buildWidth)} / ${esc(height)}</strong></div>
+      `;
     }
 
     function renderStats() {
@@ -1584,7 +1886,7 @@ productSelect.addEventListener('change', populateProductVariants);
             ? 'Demo Fallback Data'
             : 'Saved fallback';
         return `
-          <div class="placed-card">
+          <div class="placed-card${Number(item.id) === Number(state.selectedItemId) ? ' selected' : ''}" onclick="selectItem(${Number(item.id || 0)})">
             <div class="placed-head">
               <div>
                 <div class="placed-name">${esc(product.name)}</div>
@@ -1609,6 +1911,7 @@ productSelect.addEventListener('change', populateProductVariants);
     function render() {
       state.placed.forEach(clampItem);
       renderStats();
+      renderVehicleSummary();
       renderVanSvg();
       renderPlacedList();
     }
@@ -1654,10 +1957,17 @@ productSelect.addEventListener('change', populateProductVariants);
       ).join('');
     }
 
-    const CRDN_LOGO_DATA_URL = "/assets/crdn-logo.png";
+    const CRDN_LOGO_DATA_URL = "/assets/crdn-square.png";
 
     async function crdnLogoDataUrl() {
-      return CRDN_LOGO_DATA_URL;
+      try {
+        const response = await fetch(CRDN_LOGO_DATA_URL, { credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`Logo fetch failed: ${response.status}`);
+        return await blobToDataUrl(await response.blob());
+      } catch (err) {
+        console.warn('Could not prepare CRDN logo for export:', err.message || err);
+        return '';
+      }
     }
 
     function blobToDataUrl(blob) {
@@ -1700,28 +2010,279 @@ productSelect.addEventListener('change', populateProductVariants);
       downloadBlob(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), 'crdn-layout-concept.svg');
     }
 
-    async function exportPng() {
+    function canvasToBlob(canvas, type = 'image/png', quality) {
+      return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+    }
+
+    async function exportPdf() {
+      const canvas = await renderExportCanvas();
+      const imageData = canvas.toDataURL('image/png');
+
+      const jsPdf = window.jspdf?.jsPDF;
+      if (!jsPdf) {
+        setStatus('PDF library did not load. Please refresh and try again.', 'error');
+        return;
+      }
+
+      const pdf = new jsPdf({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      const pageW = 210;
+      const pageH = 297;
+      const margin = 6;
+      const maxW = pageW - margin * 2;
+      const maxH = pageH - margin * 2;
+
+      const ratio = Math.min(maxW / canvas.width, maxH / canvas.height);
+      const imgW = canvas.width * ratio;
+      const imgH = canvas.height * ratio;
+
+      const x = (pageW - imgW) / 2;
+      const y = margin;
+
+      pdf.addImage(imageData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
+      pdf.save('crdn-layout-concept.pdf');
+
+      setStatus('PDF exported.', 'ok');
+    }
+
+    function loadImageSource(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Could not load image: ${src}`));
+        img.src = src;
+      });
+    }
+
+    function exportVehicleConstraintData(vehicle = {}) {
+      const c = vehicle.layoutConstraints || {};
+      const area = c.build_area || c.buildArea || c.buildable_area || {};
+      const clearance = c.clearance || c.clearances || {};
+      const metadata = c.metadata || {};
+      const value = v => (v === undefined || v === null || v === '') ? 'Unknown' : String(v);
+      const mm = v => (v === undefined || v === null || v === '') ? 'Unknown' : `${v} mm`;
+      return {
+        vehicleId: value(vehicle.name || state.vehicleKey || vehicle.vehicle_id || vehicle.key),
+        brand: value(vehicle.brand || vehicle.make),
+        model: value(vehicle.model || vehicle.name),
+        status: value(vehicle.status),
+        interiorLength: mm(vehicle.buildLength),
+        interiorWidth: mm(vehicle.buildWidth),
+        interiorHeight: mm(vehicle.interiorHeight),
+        buildLength: mm(area.length_mm ?? area.buildable_length_mm ?? vehicle.buildLength),
+        buildWidth: mm(area.width_mm ?? area.buildable_width_mm ?? vehicle.buildWidth),
+        buildHeight: mm(area.height_mm ?? area.buildable_height_mm ?? vehicle.interiorHeight),
+        originX: mm(area.x_mm ?? area.origin_x_mm),
+        originY: mm(area.y_mm ?? area.origin_y_mm),
+        front: mm(clearance.front_mm ?? clearance.front_seat_clearance_mm),
+        rear: mm(clearance.rear_mm ?? clearance.rear_door_clearance_mm),
+        left: mm(clearance.left_mm ?? clearance.left_wall_clearance_mm),
+        right: mm(clearance.right_mm ?? clearance.right_wall_clearance_mm),
+        walkway: mm(clearance.minimum_walkway_mm ?? clearance.walkway_mm),
+        layoutStatus: value(metadata.status || c.status || 'draft'),
+        confidence: value(metadata.confidence),
+        derivedFrom: value(metadata.derived_from || metadata.source_file || 'layout_constraints.json'),
+        fabrication: 'Not approved for fabrication'
+      };
+    }
+
+    function drawExportRow(ctx, label, value, x, y, w) {
+      const clean = String(value || '—');
+      const max = clean.length > 34 ? `${clean.slice(0, 31)}...` : clean;
+      ctx.fillStyle = '#666666';
+      ctx.font = '9px Arial, sans-serif';
+      ctx.fillText(label, x, y);
+      ctx.fillStyle = '#111111';
+      ctx.font = '700 9px Arial, sans-serif';
+      ctx.fillText(max, x + w * 0.42, y);
+    }
+
+    function exportSelectedProducts() {
+      return state.placed.map(item => {
+        const product = products[item.productKey] || ensureProductForKey(item.productKey);
+        const footprint = productFootprint(product, item.rotation);
+        return {
+          name: product.name || item.productKey || 'Product',
+          size: `${Math.round(footprint.length)} × ${Math.round(footprint.width)} mm`
+        };
+      });
+    }
+
+    function drawExportVehicleScanSheet(ctx, geometry, y, width) {
+      const d = exportVehicleConstraintData(geometry.vehicle);
+      const margin = 34;
+      const cardW = width - margin * 2;
+
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(margin, y);
+      ctx.lineTo(width - margin, y);
+      ctx.stroke();
+
+      ctx.fillStyle = '#111111';
+      ctx.font = '900 18px Arial, sans-serif';
+      ctx.fillText('CRDN VEHICLE SCAN SHEET', margin, y + 30);
+
+      ctx.fillStyle = '#777777';
+      ctx.font = '10px Arial, sans-serif';
+      ctx.fillText('CONFIRMED DATABASE VALUES ONLY · CUSTOMER DISCUSSION AND LAYOUT PLANNING', margin, y + 48);
+
+      ctx.fillStyle = '#CA741F';
+      ctx.font = '900 16px Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(d.model || d.vehicleId, width - margin, y + 32);
+      ctx.textAlign = 'left';
+
+      const colGap = 14;
+      const colW = (cardW - colGap * 2) / 3;
+      const top = y + 68;
+      const section = (title, x) => {
+        ctx.fillStyle = '#fafaf7';
+        ctx.strokeStyle = '#dededa';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(x, top, colW, 132, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#666666';
+        ctx.font = '900 10px Arial, sans-serif';
+        ctx.fillText(title, x + 12, top + 22);
+      };
+
+      const x1 = margin;
+      const x2 = margin + colW + colGap;
+      const x3 = margin + (colW + colGap) * 2;
+
+      section('VEHICLE INFORMATION', x1);
+      drawExportRow(ctx, 'Vehicle', d.vehicleId, x1 + 12, top + 44, colW - 24);
+      drawExportRow(ctx, 'Brand', d.brand, x1 + 12, top + 62, colW - 24);
+      drawExportRow(ctx, 'Model', d.model, x1 + 12, top + 80, colW - 24);
+      drawExportRow(ctx, 'Status', d.status, x1 + 12, top + 98, colW - 24);
+      drawExportRow(ctx, 'Interior', `${d.interiorLength} / ${d.interiorWidth} / ${d.interiorHeight}`, x1 + 12, top + 116, colW - 24);
+
+      section('BUILD AREA', x2);
+      drawExportRow(ctx, 'Buildable L', d.buildLength, x2 + 12, top + 44, colW - 24);
+      drawExportRow(ctx, 'Buildable W', d.buildWidth, x2 + 12, top + 62, colW - 24);
+      drawExportRow(ctx, 'Buildable H', d.buildHeight, x2 + 12, top + 80, colW - 24);
+      drawExportRow(ctx, 'Origin X/Y', `${d.originX} / ${d.originY}`, x2 + 12, top + 98, colW - 24);
+      drawExportRow(ctx, 'Min Walkway', d.walkway, x2 + 12, top + 116, colW - 24);
+
+      section('SELECTED PRODUCTS', x3);
+      const selectedProducts = exportSelectedProducts();
+      if (!selectedProducts.length) {
+        drawExportRow(ctx, 'Products', 'No products placed', x3 + 12, top + 44, colW - 24);
+      } else {
+        selectedProducts.slice(0, 4).forEach((product, index) => {
+          const rowY = top + 44 + index * 18;
+          drawExportRow(ctx, product.name, product.size, x3 + 12, rowY, colW - 24);
+        });
+        if (selectedProducts.length > 4) {
+          drawExportRow(ctx, 'More', `+${selectedProducts.length - 4} products`, x3 + 12, top + 116, colW - 24);
+        }
+      }
+
+      ctx.fillStyle = '#777777';
+      ctx.font = '10px Arial, sans-serif';
+      ctx.fillText('Use this coordinate system for 2D layout generation. Confirm exact origin on physical scan before fabrication.', margin, y + 228);
+    }
+
+    async function renderExportCanvas() {
       const exportScale = 3;
+      const headerHeight = 96;
+      const sheetHeight = 260;
+      const geometry = getBuildGeometry();
+      const vehicleName = geometry.vehicle.name || 'Vehicle';
+
       const canvas = document.createElement('canvas');
       canvas.width = VIEWBOX.width * exportScale;
-      canvas.height = VIEWBOX.height * exportScale;
+      canvas.height = (VIEWBOX.height + headerHeight + sheetHeight) * exportScale;
+
       const ctx = canvas.getContext('2d');
-      const image = new Image();
+      ctx.scale(exportScale, exportScale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, VIEWBOX.width, VIEWBOX.height + headerHeight + sheetHeight);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      if (document.fonts?.ready) {
+        try { await document.fonts.ready; } catch (_) {}
+      }
+
+      if (document.fonts?.ready) {
+        try { await document.fonts.ready; } catch (_) {}
+      }
+
+      try {
+        const logoSrc = await crdnLogoDataUrl();
+        if (!logoSrc) throw new Error('Logo source missing');
+        const logo = await loadImageSource(logoSrc);
+        ctx.drawImage(logo, 34, 18, 34, 34);
+      } catch (err) {
+        console.warn('Logo could not be loaded for export:', err.message || err);
+        ctx.fillStyle = '#CA741F';
+        ctx.font = '800 12px "Noto Sans TC", Arial, sans-serif';
+        ctx.fillText('CRDN', 34, 38);
+      }
+
+      const brandX = 78;
+      const brandY = 40;
+
+      ctx.font = '22px "Bebas Neue", Impact, "Arial Narrow", sans-serif';
+      ctx.fillStyle = '#111110';
+      ctx.fillText('CREATIVE DEN', brandX, brandY);
+
+      const studioX = brandX + ctx.measureText('CREATIVE DEN').width + 8;
+      ctx.fillStyle = '#CA741F';
+      ctx.fillText('STUDIO', studioX, brandY);
+
+      ctx.fillStyle = '#111111';
+      ctx.font = '700 18px "Noto Sans TC", Arial, sans-serif';
+      ctx.fillText(`${vehicleName} Layout Concept`, 34, 72);
+
+      ctx.fillStyle = '#6b6b68';
+      ctx.font = '12px "Noto Sans TC", Arial, sans-serif';
+      ctx.fillText('Generated from CRDN Database · approximate product placement', 34, 94);
+
+      ctx.fillStyle = '#CA741F';
+      ctx.font = '700 12px "Noto Sans TC", Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Build Area: ${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm`, VIEWBOX.width - 34, 72);
+      ctx.fillText(`Products: ${state.placed.length}`, VIEWBOX.width - 34, 94);
+      ctx.textAlign = 'left';
+
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(34, 108);
+      ctx.lineTo(VIEWBOX.width - 34, 108);
+      ctx.stroke();
+
       const svgUrl = URL.createObjectURL(new Blob([await layoutSvgMarkup()], { type: 'image/svg+xml;charset=utf-8' }));
-      image.onload = () => {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      try {
+        const image = await loadImageSource(svgUrl);
+        ctx.drawImage(image, 0, headerHeight, VIEWBOX.width, VIEWBOX.height);
         URL.revokeObjectURL(svgUrl);
-        canvas.toBlob(blob => downloadBlob(blob, 'crdn-layout-concept.png'), 'image/png');
-      };
-      image.onerror = () => {
+        drawExportVehicleScanSheet(ctx, geometry, headerHeight + VIEWBOX.height + 10, VIEWBOX.width);
+        return canvas;
+      } catch (err) {
         URL.revokeObjectURL(svgUrl);
-        setStatus('PNG export failed. Please try again after the vehicle image finishes loading.', 'error');
-      };
-      image.src = svgUrl;
+        setStatus('Export failed. Please try again after the vehicle image finishes loading.', 'error');
+        throw err;
+      }
+    }
+
+    async function exportPng() {
+      const canvas = await renderExportCanvas();
+      const blob = await canvasToBlob(canvas, 'image/png');
+      downloadBlob(blob, 'crdn-layout-concept.png');
     }
 
     document.getElementById('vehicleSelect').addEventListener('change', event => {

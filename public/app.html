@@ -4380,13 +4380,20 @@ function designAiProductVariantList(record={}){
       status:'available'
     },'default');
   }
-  (Array.isArray(record.productVariants)?record.productVariants:[]).forEach(variant=>pushVariant(variant,'drive'));
+  const seenVariants=new Set();
+  const pushUniqueVariant=(variant,source,index=0)=>{
+    if(!variant)return;
+    const normalized=typeof variant==='string'?{label:variant,status:'saved'}:{...variant};
+    if(!normalized.label)normalized.label=designAiProductVariantLabel(normalized,`Variant ${index+1}`);
+    const key=String(normalized.image_url||normalized.local_image||normalized.drive_file_id||normalized.product_image_drive_id||normalized.path||normalized.label||'').toLowerCase();
+    if(key&&seenVariants.has(key))return;
+    if(key)seenVariants.add(key);
+    pushVariant(normalized,source);
+  };
+  (Array.isArray(record.productVariants)?record.productVariants:[]).forEach((variant,index)=>pushUniqueVariant(variant,'drive',index));
   const defaultVariant=record.default_variant&&typeof record.default_variant==='object'?record.default_variant:null;
-  if(defaultVariant&&Object.keys(defaultVariant).length)pushVariant(defaultVariant,'saved');
-  (Array.isArray(record.variants)?record.variants:[]).forEach((variant,index)=>{
-    if(typeof variant==='string')pushVariant({label:variant,status:'saved'},'saved');
-    else if(variant&&typeof variant==='object')pushVariant({...variant,label:designAiProductVariantLabel(variant,`Variant ${index+1}`)},'saved');
-  });
+  if(defaultVariant&&Object.keys(defaultVariant).length)pushUniqueVariant(defaultVariant,'saved');
+  (Array.isArray(record.variants)?record.variants:[]).forEach((variant,index)=>pushUniqueVariant(variant,'saved',index));
   return out;
 }
 function designAiProductVariantsHtml(record){
@@ -4417,7 +4424,10 @@ function designAiProductVariantsHtml(record){
         <div class="dai-variant-title">${esc(label)}</div>
         <div>${designAiStatusPill(variant.status||'saved')}</div>
         <div class="dai-variant-path">${esc(path||variant.name||'Saved variant metadata')}</div>
-        <div style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="deleteDesignAiVariant(${index})">Delete</button></div>
+        <div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn btn-out btn-sm" onclick="renameDesignAiVariant(${index})">Rename</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDesignAiVariant(${index})">Delete</button>
+        </div>
       </div>`;
     }).join('')}</div>`:'<div class="dai-empty">No product variants yet. Drop or upload a product image above.</div>'}
   </div>`;
@@ -4639,6 +4649,27 @@ async function deleteDesignAiVariant(index){
     toast('Variant deleted ✓');
     renderDesignAiRecordEditor('products',j.record.product_id);
   }catch(e){toast(`Delete failed: ${errMsg(e)}`,6000);}
+}
+
+async function renameDesignAiVariant(index){
+  const productId=DESIGN_AI.currentRecord?.product_id||DESIGN_AI.record?.recordKey;
+  const variants=designAiProductVariantList(DESIGN_AI.currentRecord||{});
+  const current=variants[index]||{};
+  const nextLabel=prompt('Variant name:',designAiProductVariantLabel(current,'Variant'));
+  if(!nextLabel||!nextLabel.trim())return;
+  try{
+    const r=await fetch(`/api/design-ai/products/${encodeURIComponent(productId)}/variants/${index}`,{
+      method:'PATCH',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({label:nextLabel.trim()})
+    });
+    const j=await telegramJsonResponse(r);
+    if(!r.ok)throw new Error(j.error||'Rename failed');
+    DESIGN_AI.currentRecord=j.record;
+    toast('Variant renamed ✓');
+    renderDesignAiRecordEditor('products',j.record.product_id);
+  }catch(e){toast(`Rename failed: ${errMsg(e)}`,6000);}
 }
 
 async function duplicateDesignAiProduct(){

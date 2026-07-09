@@ -940,6 +940,25 @@ function designProductPngForProduct(productId, row = {}) {
 }
 
 function designProductVariantsForProduct(productId, row = {}) {
+  const savedVariants = parseJson(row.variants_json, [])
+    .filter(variant => variant && typeof variant === 'object')
+    .map((variant, index) => {
+      const label = text(variant.label || variant.name || variant.variant_id || `Variant ${index + 1}`);
+      return {
+        ...variant,
+        variant_id: text(variant.variant_id || label),
+        label,
+        type: variant.type || 'local_upload',
+        drive_file_id: text(variant.drive_file_id || variant.product_image_drive_id || ''),
+        product_image_drive_id: text(variant.product_image_drive_id || variant.drive_file_id || ''),
+        image_url: text(variant.image_url || ''),
+        local_image: text(variant.local_image || ''),
+        path: text(variant.path || ''),
+        status: text(variant.status || 'available'),
+        source: text(variant.source || 'saved_variant')
+      };
+    });
+
   const candidates = [
     productId,
     row.product_id,
@@ -947,7 +966,7 @@ function designProductVariantsForProduct(productId, row = {}) {
     row.name
   ].map(text).filter(Boolean);
 
-  if (!candidates.length) return [];
+  if (!candidates.length) return savedVariants;
 
   const folderPatterns = [...new Set([
     ...candidates.map(value => `${value}/colors/%`),
@@ -959,7 +978,7 @@ function designProductVariantsForProduct(productId, row = {}) {
     .map(() => `${normalizedLibraryPathExpression()} LIKE lower(?)`)
     .join(' OR ');
 
-  return db.prepare(`
+  const driveVariants = db.prepare(`
     SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
     FROM design_library_files
     WHERE folder_type='products'
@@ -980,8 +999,17 @@ function designProductVariantsForProduct(productId, row = {}) {
       drive_file_id: file.drive_file_id,
       name: file.name,
       path: file.path,
-      status: 'available'
+      status: 'available',
+      source: 'drive'
     };
+  });
+
+  const seen = new Set();
+  return [...savedVariants, ...driveVariants].filter(variant => {
+    const key = text(variant.image_url || variant.local_image || variant.drive_file_id || variant.path || variant.label).toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
@@ -3538,6 +3566,20 @@ app.get('/api/design-ai/product-images/:filename', requireAuth, (req, res) => {
   res.sendFile(filePath);
 });
 
+
+
+app.patch('/api/design-ai/products/:productId/variants/:index', requireAdmin, (req,res)=>{
+  const row=db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(text(req.params.productId));
+  if(!row)return res.status(404).json({error:'Product not found.'});
+  const variants=parseJson(row.variants_json,[]);
+  const index=Number(req.params.index);
+  if(!variants[index])return res.status(404).json({error:'Variant not found.'});
+  const label=text(req.body.label);
+  if(!label)return res.status(400).json({error:'Variant label is required.'});
+  variants[index]={...variants[index],label,updated_at:new Date().toISOString()};
+  db.prepare('UPDATE design_ai_product_records SET variants_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(JSON.stringify(variants),row.id);
+  res.json({record:designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(row.id))});
+});
 
 app.delete('/api/design-ai/products/:productId/variants/:index', requireAdmin, (req,res)=>{
   const row=db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(text(req.params.productId));

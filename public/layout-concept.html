@@ -95,6 +95,9 @@
     .rotate-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:8px 0}
     .rotate-actions .btn{min-height:36px}
     .row-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+    .export-options{display:grid;gap:8px}
+    .export-check{display:flex;align-items:center;gap:9px;font-size:var(--xxs);font-weight:600;color:var(--g500);line-height:1.25}
+    .export-check input{width:16px;height:16px;flex:0 0 auto}
     .small{font-size:var(--xxxs);padding:6px 8px}
     .empty{border:1px dashed var(--g200);border-radius:var(--r);background:var(--g50);padding:16px;text-align:center;color:var(--g500);font-size:var(--xxs);line-height:1.5}
     .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -639,6 +642,12 @@
             <button class="btn" type="button" onclick="exportPdf()">Export PDF</button>
             <button class="btn" type="button" onclick="exportPng()">Export PNG</button>
           </div>
+          <div class="field export-options" style="margin-top:12px">
+            <label>Export Options</label>
+            <label class="export-check"><input id="exportShowNames" type="checkbox"> <span>Show product names</span></label>
+            <label class="export-check"><input id="exportShowOutlines" type="checkbox"> <span>Show product outlines</span></label>
+            <label class="export-check"><input id="exportShowBuildArea" type="checkbox"> <span>Show buildable area</span></label>
+          </div>
 
           <div class="action-divider"></div>
           <div class="action-section-label">Alignment</div>
@@ -910,8 +919,9 @@
         length: missingDimensions ? 0 : depth,
         width: missingDimensions ? 0 : width,
         height: positiveNumber(product.height, 0),
-        productImageDriveId: product.productImageDriveId || product.product_image_drive_id || '',
+        productImageDriveId: product.productImageDriveId || product.product_image_drive_id || product.product_image?.drive_file_id || '',
         productImageUrl: product.productImageUrl || product.product_image_url || product.product_image?.image_url || '',
+
         productImagePath: product.productImagePath || product.product_image_path || '',
         productImageName: product.productImageName || product.product_image_name || '',
         productVariants: Array.isArray(product.productVariants) ? product.productVariants : [],
@@ -1021,7 +1031,7 @@
       return item;
     }
 
-    function createItem(productKey, x = 0, y = 0, rotation = 0, productImageDriveId = '') {
+    function createItem(productKey, x = 0, y = 0, rotation = 0, productImageDriveId = '', variantLabel = '') {
       const product = products[productKey] || ensureProductForKey(productKey);
       if (!product || product.missingDimensions) return null;
       const item = {
@@ -1030,7 +1040,8 @@
         rotation: normalizeRotation(rotation),
         x: resolveCoordinate(product, x, 'x'),
         y: resolveCoordinate(product, y, 'y'),
-        productImageDriveId
+        productImageDriveId,
+        variantLabel
       };
       return clampItem(item);
     }
@@ -1082,7 +1093,9 @@
           productKey: item.productKey,
           rotation: normalizeRotation(item.rotation),
           x: Math.round(Number(item.x || 0)),
-          y: Math.round(Number(item.y || 0))
+          y: Math.round(Number(item.y || 0)),
+          productImageDriveId: item.productImageDriveId || '',
+          variantLabel: item.variantLabel || ''
         })),
         nextId: state.nextId
       };
@@ -1114,7 +1127,9 @@
             productKey: item.productKey,
             rotation: normalizeRotation(item.rotation),
             x: Number(item.x || 0),
-            y: Number(item.y || 0)
+            y: Number(item.y || 0),
+            productImageDriveId: item.productImageDriveId || '',
+            variantLabel: item.variantLabel || ''
           });
         });
       const maxId = state.placed.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0);
@@ -1412,7 +1427,9 @@
 
     function addSelectedProduct() {
       const key = document.getElementById('productSelect').value;
-      const selectedVariantDriveId = document.getElementById('productVariantSelect')?.value || '';
+      const variantSelect = document.getElementById('productVariantSelect');
+      const selectedVariantDriveId = variantSelect?.value || '';
+      const selectedVariantLabel = selectedVariantDriveId ? (variantSelect?.selectedOptions?.[0]?.textContent || '').trim() : '';
       const product = products[key];
       if (!product) {
         setStatus('Choose a product to add.', 'warn');
@@ -1428,7 +1445,8 @@
         (vehicle.buildLength - product.length) / 2,
         (vehicle.buildWidth - product.width) / 2,
         0,
-        selectedVariantDriveId
+        selectedVariantDriveId,
+        selectedVariantLabel
       );
       if (item) {
         state.placed.push(item);
@@ -1477,6 +1495,35 @@
     function removeItem(id) {
       state.placed = state.placed.filter(item => item.id !== id);
       if (Number(state.selectedItemId) === Number(id)) state.selectedItemId = null;
+      render();
+    }
+
+    function moveLayer(id, direction) {
+      const index = state.placed.findIndex(item => Number(item.id) === Number(id));
+      if (index < 0) return;
+      const target = index + direction;
+      if (target < 0 || target >= state.placed.length) return;
+      const [item] = state.placed.splice(index, 1);
+      state.placed.splice(target, 0, item);
+      state.selectedItemId = Number(id);
+      render();
+    }
+
+    function bringToFront(id) {
+      const index = state.placed.findIndex(item => Number(item.id) === Number(id));
+      if (index < 0) return;
+      const [item] = state.placed.splice(index, 1);
+      state.placed.push(item);
+      state.selectedItemId = Number(id);
+      render();
+    }
+
+    function sendToBack(id) {
+      const index = state.placed.findIndex(item => Number(item.id) === Number(id));
+      if (index < 0) return;
+      const [item] = state.placed.splice(index, 1);
+      state.placed.unshift(item);
+      state.selectedItemId = Number(id);
       render();
     }
 
@@ -1619,7 +1666,7 @@
     }
 
     function productImageUrl(product, item = {}) {
-      const selected = item.productImageDriveId || '';
+      const selected = String(item.productImageDriveId || '');
       if (selected.startsWith('/api/')) return selected;
       if (selected) return `/api/design-ai/library-image/${encodeURIComponent(selected)}`;
 
@@ -1634,23 +1681,56 @@
       return `${clean.slice(0, Math.max(1, maxChars - 1)).trim()}…`;
     }
 
+    function wrapTextLines(value, maxChars, maxLines = 2) {
+      const raw = String(value || '').trim();
+      if (!raw) return [];
+      const tokens = raw.split(/\s+/).filter(Boolean);
+      const lines = [];
+      let line = '';
+      tokens.forEach(token => {
+        while (token.length > maxChars) {
+          if (line) { lines.push(line); line = ''; }
+          lines.push(token.slice(0, maxChars));
+          token = token.slice(maxChars);
+        }
+        const next = line ? `${line} ${token}` : token;
+        if (next.length > maxChars && line) {
+          lines.push(line);
+          line = token;
+        } else {
+          line = next;
+        }
+      });
+      if (line) lines.push(line);
+      const clipped = lines.slice(0, maxLines);
+      if (lines.length > maxLines && clipped.length) clipped[clipped.length - 1] = clipped[clipped.length - 1].replace(/…?$/, '') + '…';
+      return clipped;
+    }
+
+    function svgTextLines(lines, x, y, lineHeight, attrs = '') {
+      return lines.map((line, i) => `<text x="${x}" y="${y + i * lineHeight}" ${attrs}>${esc(line)}</text>`).join('');
+    }
+
     function productLabel(rect, name, dimensions) {
-      const labelChars = Math.max(4, Math.floor((rect.width - 14) / 6.3));
-      const dimChars = Math.max(4, Math.floor((rect.width - 14) / 5.2));
-      const fontSize = rect.width < 86 || rect.height < 38 ? 9 : 11;
-      const showDimensions = rect.width >= 76 && rect.height >= 42;
+      const labelChars = Math.max(5, Math.floor((rect.width - 18) / 6.6));
+      const fontSize = rect.width < 90 || rect.height < 42 ? 8 : 9;
+      const nameLines = wrapTextLines(name, labelChars, 1);
       return {
-        name: truncateSvgText(name, labelChars),
-        dimensions: truncateSvgText(dimensions, dimChars),
+        nameLines,
+        dimensions: '',
         fontSize,
-        nameY: rect.y + rect.height / 2 + (showDimensions ? -4 : 3),
-        dimensionsY: rect.y + rect.height / 2 + 13,
-        showDimensions
+        nameY: rect.y + rect.height / 2 + 3,
+        dimensionsY: rect.y + rect.height / 2 + 15,
+        showDimensions: false
       };
     }
 
-    function renderVanSvg() {
+    function renderVanSvg(options = {}) {
       const geometry = getBuildGeometry();
+      const isExport = Boolean(options.exportMode);
+      const showProductNames = !isExport || Boolean(options.showProductNames);
+      const showProductOutlines = !isExport || Boolean(options.showProductOutlines);
+      const showBuildArea = !isExport || Boolean(options.showBuildArea);
       const baseImageUrl = geometry.vehicle.topdownBaseImageDriveId
         ? `/api/design-ai/library-image/${encodeURIComponent(geometry.vehicle.topdownBaseImageDriveId)}`
         : '';
@@ -1682,11 +1762,7 @@
         <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y - 12).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#CA741F">${baseImageUrl ? 'Buildable Area' : 'Centered Buildable Area'}</text>
       `;
 
-      const drawItems = [...state.placed].sort((a, b) => {
-        if (Number(a.id) === Number(state.selectedItemId)) return 1;
-        if (Number(b.id) === Number(state.selectedItemId)) return -1;
-        return 0;
-      });
+      const drawItems = [...state.placed];
 
       const productNodes = drawItems.map(item => {
         const rect = productRect(clampItem(item), geometry);
@@ -1720,21 +1796,21 @@
         const imageY = centerY - baseImageHeight / 2;
         const productVisual = imageUrl
           ? `
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="none" stroke="${itemStroke}" stroke-width="${itemStrokeWidth}"/>
+            ${showProductOutlines ? `<rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="none" stroke="${itemStroke}" stroke-width="${itemStrokeWidth}"/>` : ''}
             <g clip-path="url(#${clipId})">
               <g transform="rotate(${rect.rotation} ${centerX.toFixed(1)} ${centerY.toFixed(1)})">
                 <image href="${esc(imageUrl)}" x="${imageX.toFixed(1)}" y="${imageY.toFixed(1)}" width="${baseImageWidth.toFixed(1)}" height="${baseImageHeight.toFixed(1)}" preserveAspectRatio="xMidYMid meet"/>
               </g>
-              <rect x="${(rect.x+4).toFixed(1)}" y="${(rect.y+rect.height-20).toFixed(1)}" width="${Math.max(0,rect.width-8).toFixed(1)}" height="16" rx="5" fill="#ffffff" fill-opacity=".82"/>
-              <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${(rect.y+rect.height-8).toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
+              ${showProductNames ? `<rect x="${(rect.x+5).toFixed(1)}" y="${(rect.y+rect.height-17).toFixed(1)}" width="${Math.max(0,rect.width-10).toFixed(1)}" height="13" rx="5" fill="#ffffff" fill-opacity=".86"/>
+              ${svgTextLines(label.nameLines, (rect.x + rect.width / 2).toFixed(1), (rect.y+rect.height-7).toFixed(1), 10, `text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111"`)}
+              ` : ''}
             </g>
           `
           : `
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" fill-opacity="${itemOpacity}" stroke="${itemStroke}" stroke-width="${itemStrokeWidth}"/>
-            <g clip-path="url(#${clipId})">
-              <text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.nameY.toFixed(1)}" text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111">${esc(label.name)}</text>
-              ${label.showDimensions ? `<text x="${(rect.x + rect.width / 2).toFixed(1)}" y="${label.dimensionsY.toFixed(1)}" text-anchor="middle" font-size="9" fill="#555">${esc(label.dimensions)}</text>` : ''}
-            </g>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${rect.width.toFixed(1)}" height="${rect.height.toFixed(1)}" rx="6" fill="${rect.product.fill}" fill-opacity="${itemOpacity}" stroke="${showProductOutlines ? itemStroke : 'none'}" stroke-width="${showProductOutlines ? itemStrokeWidth : 0}"/>
+            ${showProductNames ? `<g clip-path="url(#${clipId})">
+              ${svgTextLines(label.nameLines, (rect.x + rect.width / 2).toFixed(1), label.nameY.toFixed(1), 11, `text-anchor="middle" font-size="${label.fontSize}" font-weight="800" fill="#111"`)}
+            </g>` : ''}
           `;
         return `
           <g onclick="selectItem(${Number(item.id || 0)})" style="cursor:pointer">
@@ -1757,8 +1833,8 @@
 
         <rect x="0" y="0" width="${VIEWBOX.width}" height="${VIEWBOX.height}" fill="#ffffff"/>
         ${vehicleBaseLayer}
-        ${buildAreaLayer}
-        <text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#CA741F">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>
+        ${showBuildArea ? buildAreaLayer : ''}
+        ${showBuildArea ? `<text x="${(geometry.x + geometry.width / 2).toFixed(1)}" y="${(geometry.y + geometry.height + 20).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#CA741F">${geometry.vehicle.buildLength} × ${geometry.vehicle.buildWidth} mm</text>` : ''}
 
         ${productNodes}
 
@@ -1880,8 +1956,10 @@ productSelect.addEventListener('change', populateProductVariants);
         const baseWidth = positiveNumber(footprint.baseWidth, 330);
         const productLength = positiveNumber(footprint.length, 520);
         const productWidth = positiveNumber(footprint.width, 330);
+        const variantLabel = item.variantLabel || '';
+        const variantLine = variantLabel ? `Variant: ${esc(variantLabel)}<br>` : '';
         const sourceLabel = product.source === 'design_ai_product_records'
-          ? `${product.status || 'record'} · Real Database Data · ${productImageUrl(product)?'PNG mode':'Rectangle mode'}`
+          ? `${product.status || 'record'} · Real Database Data · ${productImageUrl(product,item)?'PNG mode':'Rectangle mode'}`
           : product.source === 'demo_fallback'
             ? 'Demo Fallback Data'
             : 'Saved fallback';
@@ -1890,13 +1968,19 @@ productSelect.addEventListener('change', populateProductVariants);
             <div class="placed-head">
               <div>
                 <div class="placed-name">${esc(product.name)}</div>
-                <div class="placed-meta">Size: ${baseLength} × ${baseWidth} mm · Footprint: ${productLength} × ${productWidth} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm · Rotation: ${rotation}°<br>${esc(sourceLabel)}</div>
+                <div class="placed-meta">${variantLine}Size: ${baseLength} × ${baseWidth} mm · Footprint: ${productLength} × ${productWidth} mm<br>Position: x ${Math.round(item.x)} mm · y ${Math.round(item.y)} mm · Rotation: ${rotation}°<br>${esc(sourceLabel)}</div>
               </div>
               <button class="btn small danger" type="button" onclick="removeItem(${item.id})">Remove</button>
             </div>
             <div class="rotate-actions" aria-label="Rotate ${esc(product.name)}">
               <button class="btn" type="button" onclick="rotateItem(${item.id},-1)">↺ Rotate Left 90°</button>
               <button class="btn" type="button" onclick="rotateItem(${item.id},1)">↻ Rotate Right 90°</button>
+            </div>
+            <div class="row-actions" aria-label="Layer order ${esc(product.name)}">
+              <button class="btn small" type="button" onclick="moveLayer(${item.id},1)">Bring Forward</button>
+              <button class="btn small" type="button" onclick="moveLayer(${item.id},-1)">Send Backward</button>
+              <button class="btn small" type="button" onclick="bringToFront(${item.id})">Bring to Front</button>
+              <button class="btn small" type="button" onclick="sendToBack(${item.id})">Send to Back</button>
             </div>
             <div class="move-pad" aria-label="Move ${esc(product.name)}">
               <span></span><button class="btn" type="button" onclick="moveItem(${item.id},0,-1)">↑</button><span></span>
@@ -1996,17 +2080,38 @@ productSelect.addEventListener('change', populateProductVariants);
       }));
     }
 
-    async function layoutSvgMarkup() {
-      const svg = document.getElementById('layoutSvg').cloneNode(true);
+    async function layoutSvgMarkup(options = {}) {
+      const liveSvg = document.getElementById('layoutSvg');
+      const originalMarkup = liveSvg.innerHTML;
+
+      if (options.exportMode) {
+        renderVanSvg(options);
+      }
+
+      const svg = liveSvg.cloneNode(true);
       svg.setAttribute('width', VIEWBOX.width);
       svg.setAttribute('height', VIEWBOX.height);
       svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+      if (options.exportMode) {
+        liveSvg.innerHTML = originalMarkup;
+      }
+
       await inlineSvgImages(svg);
       return new XMLSerializer().serializeToString(svg);
     }
 
+    function exportLayoutOptions() {
+      return {
+        exportMode: true,
+        showProductNames: Boolean(document.getElementById('exportShowNames')?.checked),
+        showProductOutlines: Boolean(document.getElementById('exportShowOutlines')?.checked),
+        showBuildArea: Boolean(document.getElementById('exportShowBuildArea')?.checked)
+      };
+    }
+
     async function exportSvg() {
-      const markup = await layoutSvgMarkup();
+      const markup = await layoutSvgMarkup(exportLayoutOptions());
       downloadBlob(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), 'crdn-layout-concept.svg');
     }
 
@@ -2092,25 +2197,58 @@ productSelect.addEventListener('change', populateProductVariants);
     }
 
     function drawExportRow(ctx, label, value, x, y, w) {
-      const clean = String(value || '—');
-      const max = clean.length > 34 ? `${clean.slice(0, 31)}...` : clean;
+      const wrapText = (text, maxWidth, maxLines = 2) => {
+        const words = String(text || '—').trim().split(/\s+/).filter(Boolean);
+        const lines = [];
+        let line = '';
+        words.forEach(word => {
+          const next = line ? `${line} ${word}` : word;
+          if (ctx.measureText(next).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = next;
+          }
+        });
+        if (line) lines.push(line);
+        return lines.slice(0, maxLines);
+      };
+
+      const labelW = Math.max(82, w * 0.58);
+      const valueX = x + labelW + 8;
+      const valueW = Math.max(42, w - labelW - 8);
+
       ctx.fillStyle = '#666666';
       ctx.font = '9px Arial, sans-serif';
-      ctx.fillText(label, x, y);
+      const labelLines = wrapText(label, labelW, 2);
+      labelLines.forEach((line, i) => ctx.fillText(line, x, y + i * 10));
+
       ctx.fillStyle = '#111111';
       ctx.font = '700 9px Arial, sans-serif';
-      ctx.fillText(max, x + w * 0.42, y);
+      const valueLines = wrapText(value, valueW, 1);
+      valueLines.forEach((line, i) => ctx.fillText(line, valueX, y + i * 10));
+
+      return Math.max(labelLines.length, valueLines.length, 1) * 10;
     }
 
     function exportSelectedProducts() {
-      return state.placed.map(item => {
+      const grouped = new Map();
+
+      state.placed.forEach(item => {
         const product = products[item.productKey] || ensureProductForKey(item.productKey);
         const footprint = productFootprint(product, item.rotation);
-        return {
-          name: product.name || item.productKey || 'Product',
-          size: `${Math.round(footprint.length)} × ${Math.round(footprint.width)} mm`
-        };
+        const name = product.name || item.productKey || 'Product';
+        const size = `${Math.round(footprint.length)} × ${Math.round(footprint.width)} mm`;
+        const key = `${name}__${size}`;
+
+        if (!grouped.has(key)) grouped.set(key, { name, size, count: 0 });
+        grouped.get(key).count += 1;
       });
+
+      return [...grouped.values()].map(item => ({
+        name: `${item.name} ×${item.count}`,
+        size: item.size
+      }));
     }
 
     function drawExportVehicleScanSheet(ctx, geometry, y, width) {
@@ -2142,12 +2280,17 @@ productSelect.addEventListener('change', populateProductVariants);
       const colGap = 14;
       const colW = (cardW - colGap * 2) / 3;
       const top = y + 68;
-      const section = (title, x) => {
+      const selectedProducts = exportSelectedProducts();
+      const baseSectionH = 132;
+      const selectedSectionH = Math.max(baseSectionH, 48 + selectedProducts.length * 28);
+      const sectionH = Math.max(baseSectionH, selectedSectionH);
+
+      const section = (title, x, h = baseSectionH) => {
         ctx.fillStyle = '#fafaf7';
         ctx.strokeStyle = '#dededa';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(x, top, colW, 132, 8);
+        ctx.roundRect(x, top, colW, h, 8);
         ctx.fill();
         ctx.stroke();
 
@@ -2160,43 +2303,40 @@ productSelect.addEventListener('change', populateProductVariants);
       const x2 = margin + colW + colGap;
       const x3 = margin + (colW + colGap) * 2;
 
-      section('VEHICLE INFORMATION', x1);
+      section('VEHICLE INFORMATION', x1, baseSectionH);
       drawExportRow(ctx, 'Vehicle', d.vehicleId, x1 + 12, top + 44, colW - 24);
       drawExportRow(ctx, 'Brand', d.brand, x1 + 12, top + 62, colW - 24);
       drawExportRow(ctx, 'Model', d.model, x1 + 12, top + 80, colW - 24);
       drawExportRow(ctx, 'Status', d.status, x1 + 12, top + 98, colW - 24);
       drawExportRow(ctx, 'Interior', `${d.interiorLength} / ${d.interiorWidth} / ${d.interiorHeight}`, x1 + 12, top + 116, colW - 24);
 
-      section('BUILD AREA', x2);
+      section('BUILD AREA', x2, baseSectionH);
       drawExportRow(ctx, 'Buildable L', d.buildLength, x2 + 12, top + 44, colW - 24);
       drawExportRow(ctx, 'Buildable W', d.buildWidth, x2 + 12, top + 62, colW - 24);
       drawExportRow(ctx, 'Buildable H', d.buildHeight, x2 + 12, top + 80, colW - 24);
       drawExportRow(ctx, 'Origin X/Y', `${d.originX} / ${d.originY}`, x2 + 12, top + 98, colW - 24);
       drawExportRow(ctx, 'Min Walkway', d.walkway, x2 + 12, top + 116, colW - 24);
 
-      section('SELECTED PRODUCTS', x3);
-      const selectedProducts = exportSelectedProducts();
+      section('SELECTED PRODUCTS', x3, selectedSectionH);
       if (!selectedProducts.length) {
         drawExportRow(ctx, 'Products', 'No products placed', x3 + 12, top + 44, colW - 24);
       } else {
-        selectedProducts.slice(0, 4).forEach((product, index) => {
-          const rowY = top + 44 + index * 18;
-          drawExportRow(ctx, product.name, product.size, x3 + 12, rowY, colW - 24);
+        let rowY = top + 44;
+        selectedProducts.forEach(product => {
+          const usedH = drawExportRow(ctx, product.name, product.size, x3 + 12, rowY, colW - 24);
+          rowY += Math.max(22, usedH + 8);
         });
-        if (selectedProducts.length > 4) {
-          drawExportRow(ctx, 'More', `+${selectedProducts.length - 4} products`, x3 + 12, top + 116, colW - 24);
-        }
       }
 
       ctx.fillStyle = '#777777';
       ctx.font = '10px Arial, sans-serif';
-      ctx.fillText('Use this coordinate system for 2D layout generation. Confirm exact origin on physical scan before fabrication.', margin, y + 228);
+      ctx.fillText('Use this coordinate system for 2D layout generation. Confirm exact origin on physical scan before fabrication.', margin, top + sectionH + 28);
     }
 
     async function renderExportCanvas() {
       const exportScale = 3;
       const headerHeight = 96;
-      const sheetHeight = 260;
+      const sheetHeight = Math.max(260, 190 + state.placed.length * 34);
       const geometry = getBuildGeometry();
       const vehicleName = geometry.vehicle.name || 'Vehicle';
 
@@ -2264,7 +2404,7 @@ productSelect.addEventListener('change', populateProductVariants);
       ctx.lineTo(VIEWBOX.width - 34, 108);
       ctx.stroke();
 
-      const svgUrl = URL.createObjectURL(new Blob([await layoutSvgMarkup()], { type: 'image/svg+xml;charset=utf-8' }));
+      const svgUrl = URL.createObjectURL(new Blob([await layoutSvgMarkup(exportLayoutOptions())], { type: 'image/svg+xml;charset=utf-8' }));
 
       try {
         const image = await loadImageSource(svgUrl);

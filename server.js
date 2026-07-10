@@ -955,7 +955,8 @@ function designProductVariantsForProduct(productId, row = {}) {
         local_image: text(variant.local_image || ''),
         path: text(variant.path || ''),
         status: text(variant.status || 'available'),
-        source: text(variant.source || 'saved_variant')
+        source: text(variant.source || 'saved_variant'),
+        saved_index: index
       };
     });
 
@@ -1052,11 +1053,34 @@ function layoutConceptProductsForLibrary() {
   const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_product_records WHERE status='approved'").get().count;
   const status = approvedCount > 0 ? 'approved' : 'draft';
   return db.prepare(`
-    SELECT product_id, sku, name, category, layout_width_mm, layout_depth_mm, layout_height_mm,
-      width_mm, depth_mm, height_mm, color, variants_json, default_variant_json, status, updated_at
-    FROM design_ai_product_records
-    WHERE status=?
-    ORDER BY updated_at DESC, product_id COLLATE NOCASE
+    SELECT
+      p.product_id,
+      p.sku,
+      p.name,
+      COALESCE(NULLIF(TRIM(p.category), ''), 'Uncategorized') AS category,
+      p.product_sort_order,
+      COALESCE(c.sort_order, 999999) AS category_sort_order,
+      p.layout_width_mm,
+      p.layout_depth_mm,
+      p.layout_height_mm,
+      p.width_mm,
+      p.depth_mm,
+      p.height_mm,
+      p.color,
+      p.variants_json,
+      p.default_variant_json,
+      p.status,
+      p.updated_at
+    FROM design_ai_product_records p
+    LEFT JOIN design_ai_product_categories c
+      ON lower(c.name)=lower(COALESCE(NULLIF(TRIM(p.category), ''), 'Uncategorized'))
+    WHERE p.status=?
+    ORDER BY
+      category_sort_order,
+      category COLLATE NOCASE,
+      CASE WHEN COALESCE(p.product_sort_order, 0) > 0 THEN p.product_sort_order ELSE 999999 END,
+      p.name COLLATE NOCASE,
+      p.product_id COLLATE NOCASE
     LIMIT 500
   `).all(status).map(row => {
     const width = positiveNumber(row.layout_width_mm ?? row.width_mm, 0);
@@ -1067,7 +1091,9 @@ function layoutConceptProductsForLibrary() {
     return {
       id: text(row.product_id),
       name: text(row.name || row.product_id || 'CRDN Product'),
-      category: text(row.category),
+      category: text(row.category || 'Uncategorized'),
+      categorySortOrder: Number(row.category_sort_order || 999999),
+      productSortOrder: Number(row.product_sort_order || 0),
       width,
       depth,
       height,
@@ -1281,7 +1307,7 @@ const DESIGN_AI_VEHICLE_FIELDS = [
   'payload_kg', 'floor_plan_notes', 'layout_constraints_json', 'reference_files_json', 'source_drive_folder_id', 'source_summary_json', 'status'
 ];
 const DESIGN_AI_PRODUCT_FIELDS = [
-  'sku', 'name', 'category', 'description', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
+  'sku', 'name', 'category', 'product_sort_order', 'description', 'unit', 'width_mm', 'depth_mm', 'height_mm', 'weight_kg',
   'mounting_type', 'compatible_vehicles_json', 'requires_drilling', 'install_minutes', 'price',
   'mounting_notes', 'installation_notes', 'dimension_confidence', 'material', 'color',
   'layout_component_type', 'layout_width_mm', 'layout_depth_mm', 'layout_height_mm',
@@ -1312,7 +1338,8 @@ const DESIGN_AI_NUMBER_FIELDS = new Set([
   'layout_width_mm', 'layout_depth_mm', 'layout_height_mm', 'seat_mode_width_mm',
   'seat_mode_depth_mm', 'bed_mode_width_mm', 'bed_mode_depth_mm', 'extended_bed_mode_width_mm',
   'extended_bed_mode_depth_mm', 'seat_panel_depth_mm', 'back_panel_depth_mm',
-  'optional_extension_depth_mm', 'payload_kg', 'weight_kg', 'install_minutes', 'price'
+  'optional_extension_depth_mm', 'payload_kg', 'weight_kg', 'install_minutes', 'price',
+  'product_sort_order'
 ]);
 const DESIGN_AI_JSON_FIELDS = new Set([
   'compatible_vehicles_json', 'reference_files_json', 'source_summary_json', 'colors_json',
@@ -3417,15 +3444,327 @@ app.patch('/api/design-ai/vehicles/:vehicleId', requireAuth, (req, res) => {
   res.json({ record });
 });
 
+function ensureDesignProductCategories() {
+  const names = db.prepare(`
+    SELECT DISTINCT COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized') AS name
+    FROM design_ai_product_records
+  `).all().map(row => text(row.name)).filter(Boolean);
+
+  const nextRow = db.prepare(`
+    SELECT COALESCE(MAX(sort_order), 0) + 1 AS next
+    FROM design_ai_product_categories
+  `);
+
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO design_ai_product_categories (name, sort_order, active)
+    VALUES (?, ?, 1)
+  `);
+
+  names.forEach(name => {
+    insert.run(name, Number(nextRow.get().next || 1));
+  });
+
+  if (!names.length) insert.run('Uncategorized', Number(nextRow.get().next || 1));
+}
+
+function designProductCategories() {
+  ensureDesignProductCategories();
+  return db.prepare(`
+    SELECT id, name, sort_order, active, created_at, updated_at
+    FROM design_ai_product_categories
+    WHERE active=1
+    ORDER BY sort_order, id
+  `).all();
+}
+
+function normalizeDesignProductOrder(category) {
+  const name = text(category || 'Uncategorized') || 'Uncategorized';
+  const rows = db.prepare(`
+    SELECT id
+    FROM design_ai_product_records
+    WHERE lower(COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized'))=lower(?)
+      AND COALESCE(status,'') <> 'archived'
+    ORDER BY
+      CASE WHEN COALESCE(product_sort_order,0)>0 THEN product_sort_order ELSE 999999 END,
+      name COLLATE NOCASE,
+      product_id COLLATE NOCASE,
+      id
+  `).all(name);
+
+  const update = db.prepare(`
+    UPDATE design_ai_product_records
+    SET product_sort_order=?, updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `);
+
+  const transaction = db.transaction(() => {
+    rows.forEach((row, index) => update.run(index + 1, row.id));
+  });
+
+  transaction();
+}
+
 app.get('/api/design-ai/products', requireAuth, (req, res) => {
   const includeArchived = String(req.query.include_archived || '') === '1';
+  const categories = designProductCategories();
+
   const rows = db.prepare(`
-    SELECT *
-    FROM design_ai_product_records
-    ${includeArchived ? '' : "WHERE COALESCE(status,'') <> 'archived'"}
-    ORDER BY updated_at DESC, product_id COLLATE NOCASE
+    SELECT p.*
+    FROM design_ai_product_records p
+    LEFT JOIN design_ai_product_categories c
+      ON lower(c.name)=lower(COALESCE(NULLIF(TRIM(p.category), ''), 'Uncategorized'))
+    ${includeArchived ? '' : "WHERE COALESCE(p.status,'') <> 'archived'"}
+    ORDER BY
+      COALESCE(c.sort_order, 999999),
+      COALESCE(NULLIF(TRIM(p.category), ''), 'Uncategorized') COLLATE NOCASE,
+      CASE WHEN COALESCE(p.product_sort_order,0)>0 THEN p.product_sort_order ELSE 999999 END,
+      p.name COLLATE NOCASE,
+      p.product_id COLLATE NOCASE
   `).all().map(designProductRecordFromRow);
-  res.json({ records: rows, include_archived: includeArchived });
+
+  res.json({
+    records: rows,
+    categories,
+    include_archived: includeArchived
+  });
+});
+
+app.post('/api/design-ai/product-categories', requireAdmin, (req, res) => {
+  const name = text(req.body.name);
+  if (!name) return res.status(400).json({ error: 'Category name is required.' });
+
+  const duplicate = db.prepare(`
+    SELECT id FROM design_ai_product_categories WHERE lower(name)=lower(?)
+  `).get(name);
+
+  if (duplicate) return res.status(409).json({ error: 'Category already exists.' });
+
+  const next = db.prepare(`
+    SELECT COALESCE(MAX(sort_order),0)+1 AS next
+    FROM design_ai_product_categories
+  `).get();
+
+  const result = db.prepare(`
+    INSERT INTO design_ai_product_categories (name, sort_order, active)
+    VALUES (?, ?, 1)
+  `).run(name, Number(next.next || 1));
+
+  res.status(201).json({
+    category: db.prepare(`
+      SELECT * FROM design_ai_product_categories WHERE id=?
+    `).get(result.lastInsertRowid)
+  });
+});
+
+app.patch('/api/design-ai/product-categories/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const category = db.prepare(`
+    SELECT * FROM design_ai_product_categories WHERE id=?
+  `).get(id);
+
+  if (!category) return res.status(404).json({ error: 'Category not found.' });
+
+  const direction = text(req.body.direction).toLowerCase();
+  const nextName = text(req.body.name);
+
+  if (nextName && nextName.toLowerCase() !== text(category.name).toLowerCase()) {
+    const duplicate = db.prepare(`
+      SELECT id FROM design_ai_product_categories
+      WHERE lower(name)=lower(?) AND id<>?
+    `).get(nextName, id);
+
+    if (duplicate) return res.status(409).json({ error: 'Category already exists.' });
+
+    const transaction = db.transaction(() => {
+      db.prepare(`
+        UPDATE design_ai_product_categories
+        SET name=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `).run(nextName, id);
+
+      db.prepare(`
+        UPDATE design_ai_product_records
+        SET category=?, updated_at=CURRENT_TIMESTAMP
+        WHERE lower(COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized'))=lower(?)
+      `).run(nextName, category.name);
+    });
+
+    transaction();
+  }
+
+  if (direction === 'up' || direction === 'down') {
+    const categories = designProductCategories();
+    const index = categories.findIndex(item => Number(item.id) === id);
+    const target = direction === 'up' ? index - 1 : index + 1;
+
+    if (index >= 0 && target >= 0 && target < categories.length) {
+      [categories[index], categories[target]] = [categories[target], categories[index]];
+
+      const update = db.prepare(`
+        UPDATE design_ai_product_categories
+        SET sort_order=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `);
+
+      const transaction = db.transaction(() => {
+        categories.forEach((item, itemIndex) => update.run(itemIndex + 1, item.id));
+      });
+
+      transaction();
+    }
+  }
+
+  res.json({ categories: designProductCategories() });
+});
+
+app.delete('/api/design-ai/product-categories/:id', requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+
+  const category = db.prepare(`
+    SELECT *
+    FROM design_ai_product_categories
+    WHERE id=?
+  `).get(id);
+
+  if (!category) {
+    return res.status(404).json({ error: 'Category not found.' });
+  }
+
+  if (String(category.name || '').toLowerCase() === 'uncategorized') {
+    return res.status(400).json({ error: 'Uncategorized cannot be deleted.' });
+  }
+
+  const ensureUncategorized = db.prepare(`
+    SELECT *
+    FROM design_ai_product_categories
+    WHERE lower(name)=lower('Uncategorized')
+  `).get();
+
+  if (!ensureUncategorized) {
+    const next = db.prepare(`
+      SELECT COALESCE(MAX(sort_order),0)+1 AS next
+      FROM design_ai_product_categories
+    `).get();
+
+    db.prepare(`
+      INSERT INTO design_ai_product_categories
+        (name, sort_order, active)
+      VALUES
+        ('Uncategorized', ?, 1)
+    `).run(Number(next.next || 1));
+  }
+
+  const transaction = db.transaction(() => {
+    db.prepare(`
+      UPDATE design_ai_product_records
+      SET
+        category='Uncategorized',
+        product_sort_order=0,
+        updated_at=CURRENT_TIMESTAMP
+      WHERE lower(COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized'))=lower(?)
+    `).run(category.name);
+
+    db.prepare(`
+      DELETE FROM design_ai_product_categories
+      WHERE id=?
+    `).run(id);
+  });
+
+  transaction();
+
+  normalizeDesignProductOrder('Uncategorized');
+
+  res.json({
+    success: true,
+    categories: designProductCategories()
+  });
+});
+
+app.patch('/api/design-ai/products/:productId/organization', requireAdmin, (req, res) => {
+  const productId = text(req.params.productId);
+  const row = db.prepare(`
+    SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)
+  `).get(productId);
+
+  if (!row) return res.status(404).json({ error: 'Product record not found.' });
+
+  const currentCategory = text(row.category || 'Uncategorized') || 'Uncategorized';
+  const nextCategory = text(req.body.category || currentCategory) || 'Uncategorized';
+  const direction = text(req.body.direction).toLowerCase();
+
+  if (nextCategory.toLowerCase() !== currentCategory.toLowerCase()) {
+    ensureDesignProductCategories();
+
+    const existingCategory = db.prepare(`
+      SELECT id FROM design_ai_product_categories WHERE lower(name)=lower(?)
+    `).get(nextCategory);
+
+    if (!existingCategory) {
+      const next = db.prepare(`
+        SELECT COALESCE(MAX(sort_order),0)+1 AS next
+        FROM design_ai_product_categories
+      `).get();
+
+      db.prepare(`
+        INSERT INTO design_ai_product_categories (name, sort_order, active)
+        VALUES (?, ?, 1)
+      `).run(nextCategory, Number(next.next || 1));
+    }
+
+    const maxOrder = db.prepare(`
+      SELECT COALESCE(MAX(product_sort_order),0)+1 AS next
+      FROM design_ai_product_records
+      WHERE lower(COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized'))=lower(?)
+    `).get(nextCategory);
+
+    db.prepare(`
+      UPDATE design_ai_product_records
+      SET category=?, product_sort_order=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(nextCategory, Number(maxOrder.next || 1), row.id);
+
+    normalizeDesignProductOrder(currentCategory);
+    normalizeDesignProductOrder(nextCategory);
+  }
+
+  const effectiveCategory = nextCategory;
+
+  if (direction === 'up' || direction === 'down') {
+    normalizeDesignProductOrder(effectiveCategory);
+
+    const rows = db.prepare(`
+      SELECT id
+      FROM design_ai_product_records
+      WHERE lower(COALESCE(NULLIF(TRIM(category), ''), 'Uncategorized'))=lower(?)
+        AND COALESCE(status,'') <> 'archived'
+      ORDER BY product_sort_order, id
+    `).all(effectiveCategory);
+
+    const index = rows.findIndex(item => Number(item.id) === Number(row.id));
+    const target = direction === 'up' ? index - 1 : index + 1;
+
+    if (index >= 0 && target >= 0 && target < rows.length) {
+      [rows[index], rows[target]] = [rows[target], rows[index]];
+
+      const update = db.prepare(`
+        UPDATE design_ai_product_records
+        SET product_sort_order=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+      `);
+
+      const transaction = db.transaction(() => {
+        rows.forEach((item, itemIndex) => update.run(itemIndex + 1, item.id));
+      });
+
+      transaction();
+    }
+  }
+
+  res.json({
+    record: designProductRecordFromRow(
+      db.prepare(`SELECT * FROM design_ai_product_records WHERE id=?`).get(row.id)
+    )
+  });
 });
 
 app.get('/api/design-ai/products/:productId', requireAuth, (req, res) => {
@@ -3571,14 +3910,38 @@ app.get('/api/design-ai/product-images/:filename', requireAuth, (req, res) => {
 app.patch('/api/design-ai/products/:productId/variants/:index', requireAdmin, (req,res)=>{
   const row=db.prepare('SELECT * FROM design_ai_product_records WHERE lower(product_id)=lower(?)').get(text(req.params.productId));
   if(!row)return res.status(404).json({error:'Product not found.'});
+
   const variants=parseJson(row.variants_json,[]);
   const index=Number(req.params.index);
-  if(!variants[index])return res.status(404).json({error:'Variant not found.'});
-  const label=text(req.body.label);
-  if(!label)return res.status(400).json({error:'Variant label is required.'});
-  variants[index]={...variants[index],label,updated_at:new Date().toISOString()};
-  db.prepare('UPDATE design_ai_product_records SET variants_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(JSON.stringify(variants),row.id);
-  res.json({record:designProductRecordFromRow(db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(row.id))});
+
+  if(!Number.isInteger(index)||index<0||!variants[index]){
+    return res.status(404).json({error:'Variant not found.'});
+  }
+
+  const direction=text(req.body.direction).toLowerCase();
+
+  if(direction==='up'||direction==='left'){
+    if(index>0){
+      [variants[index-1],variants[index]]=[variants[index],variants[index-1]];
+    }
+  }else if(direction==='down'||direction==='right'){
+    if(index<variants.length-1){
+      [variants[index],variants[index+1]]=[variants[index+1],variants[index]];
+    }
+  }else{
+    const label=text(req.body.label);
+    if(!label)return res.status(400).json({error:'Variant label is required.'});
+    variants[index]={...variants[index],label,updated_at:new Date().toISOString()};
+  }
+
+  db.prepare('UPDATE design_ai_product_records SET variants_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')
+    .run(JSON.stringify(variants),row.id);
+
+  res.json({
+    record:designProductRecordFromRow(
+      db.prepare('SELECT * FROM design_ai_product_records WHERE id=?').get(row.id)
+    )
+  });
 });
 
 app.delete('/api/design-ai/products/:productId/variants/:index', requireAdmin, (req,res)=>{

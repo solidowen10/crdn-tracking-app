@@ -915,7 +915,17 @@
       const style = productStyle(key, product.color);
       return {
         name: product.name || key,
-        category: product.category || '',
+        category: product.category || 'Uncategorized',
+        categorySortOrder: Number(
+          product.categorySortOrder ??
+          product.category_sort_order ??
+          999999
+        ),
+        productSortOrder: Number(
+          product.productSortOrder ??
+          product.product_sort_order ??
+          index + 1
+        ),
         length: missingDimensions ? 0 : depth,
         width: missingDimensions ? 0 : width,
         height: positiveNumber(product.height, 0),
@@ -1864,45 +1874,87 @@
       }).join('');
 
       const productSelect = document.getElementById('productSelect');
-      const productOptions = Object.entries(products)
+      const groupedProducts = new Map();
+
+      Object.entries(products)
         .filter(([, product]) => product.selectable !== false)
-        .sort(([, a], [, b]) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
-        .map(([key, product]) => {
+        .sort(([, a], [, b]) => {
+          const categoryOrder =
+            positiveNumber(a.categorySortOrder, 999999) -
+            positiveNumber(b.categorySortOrder, 999999);
+
+          if (categoryOrder) return categoryOrder;
+
+          const categoryCompare = String(a.category || 'Uncategorized')
+            .localeCompare(String(b.category || 'Uncategorized'), undefined, { sensitivity: 'base' });
+
+          if (categoryCompare) return categoryCompare;
+
+          const productOrder =
+            positiveNumber(a.productSortOrder, 999999) -
+            positiveNumber(b.productSortOrder, 999999);
+
+          if (productOrder) return productOrder;
+
+          return String(a.name || '')
+            .localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+        })
+        .forEach(([key, product]) => {
+          const category = String(product.category || 'Uncategorized').trim() || 'Uncategorized';
+          if (!groupedProducts.has(category)) groupedProducts.set(category, []);
+          groupedProducts.get(category).push([key, product]);
+        });
+
+      const productOptions = [...groupedProducts.entries()].map(([category, entries]) => {
+        const options = entries.map(([key, product]) => {
           const label = product.missingDimensions
             ? `${product.name} · Missing footprint dimensions`
             : `${product.name} · ${positiveNumber(product.length, 0)} × ${positiveNumber(product.width, 0)} mm`;
+
           return `<option value="${esc(key)}" ${product.missingDimensions ? 'disabled' : ''}>${esc(label)}</option>`;
         }).join('');
-      productSelect.innerHTML = productOptions || '<option value="">No products with footprint dimensions yet</option>';
+
+        return `<optgroup label="${esc(category)}">${options}</optgroup>`;
+      }).join('');
+
+      productSelect.innerHTML =
+        productOptions ||
+        '<option value="">No products with footprint dimensions yet</option>';
       const variantSelect = document.getElementById('productVariantSelect');
 
       function populateProductVariants() {
         const product = products[productSelect.value];
-
         if (!variantSelect) return;
 
-        if (!product || !Array.isArray(product.productVariants) || !product.productVariants.length) {
-          variantSelect.innerHTML = '<option value="">Default / Original</option>';
+        const variantField = variantSelect.closest('.field') || variantSelect.parentElement;
+        const variants = Array.isArray(product?.productVariants)
+          ? product.productVariants.filter(Boolean)
+          : [];
+
+        if (!product || variants.length === 0) {
+          variantSelect.innerHTML = '<option value="">Outline</option>';
+          variantSelect.value = '';
           variantSelect.disabled = true;
+          if (variantField) variantField.style.display = 'none';
           return;
         }
 
         variantSelect.innerHTML = [
-          '<option value="">Default / Original</option>',
-          ...product.productVariants.map(variant => {
+          '<option value="">Outline</option>',
+          ...variants.map(variant => {
             const imageValue = productVariantImageUrl(variant) || variant.drive_file_id || '';
             return `
               <option value="${esc(imageValue)}">
-                ${esc(variant.label)}
+                ${esc(variant.label || 'Variant')}
               </option>
             `;
           })
         ].join('');
 
+        variantSelect.value = '';
         variantSelect.disabled = false;
+        if (variantField) variantField.style.display = '';
       }
-
-populateProductVariants();
 
 productSelect.removeEventListener('change', populateProductVariants);
 productSelect.addEventListener('change', populateProductVariants);
@@ -1948,7 +2000,11 @@ productSelect.addEventListener('change', populateProductVariants);
         wrap.innerHTML = '<div class="empty">No products placed yet. Choose a preset or add a product.</div>';
         return;
       }
-      wrap.innerHTML = state.placed.map(item => {
+      const placedListItems = [...state.placed].sort(
+        (a, b) => Number(a.id || 0) - Number(b.id || 0)
+      );
+
+      wrap.innerHTML = placedListItems.map(item => {
         const product = products[item.productKey] || ensureProductForKey(item.productKey);
         const rotation = normalizeRotation(item.rotation);
         const footprint = productFootprint(product, rotation);

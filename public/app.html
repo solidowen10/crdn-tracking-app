@@ -4293,6 +4293,280 @@ function designAiRecordCell(kind,record,field){
   if(field==='updated_at')return record.updated_at?esc(new Date(record.updated_at).toLocaleString('zh-TW')):'—';
   return esc(record[field]||'—');
 }
+function designAiProductCategoryManagerHtml(records=[],categories=[]){
+  const categoryList=[...categories];
+  const knownNames=new Set(categoryList.map(category=>String(category.name||'').toLowerCase()));
+
+  records.forEach(record=>{
+    const name=String(record.category||'Uncategorized').trim()||'Uncategorized';
+    if(!knownNames.has(name.toLowerCase())){
+      categoryList.push({
+        id:0,
+        name,
+        sort_order:999999
+      });
+      knownNames.add(name.toLowerCase());
+    }
+  });
+
+  const categoryOptions=categoryList.map(category=>
+    `<option value="${esc(category.name)}">${esc(category.name)}</option>`
+  ).join('');
+
+  const sections=categoryList.map(category=>{
+    const products=records.filter(record=>
+      String(record.category||'Uncategorized').trim().toLowerCase()===
+      String(category.name||'Uncategorized').trim().toLowerCase()
+    );
+
+    if(!products.length)return '';
+
+    return `
+      <div class="dai-panel" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div>
+            <div class="dai-panel-title" style="margin-bottom:2px">${esc(category.name||'Uncategorized')}</div>
+            <div class="pc-s">${products.length} product${products.length===1?'':'s'}</div>
+          </div>
+          ${Number(category.id||0)?`
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-out btn-sm" onclick="moveDesignAiProductCategory(${Number(category.id)},'up',event)">↑ Category</button>
+              <button class="btn btn-out btn-sm" onclick="moveDesignAiProductCategory(${Number(category.id)},'down',event)">↓ Category</button>
+              <button class="btn btn-out btn-sm" onclick="renameDesignAiProductCategory(${Number(category.id)},'${designAiJsArg(category.name)}',event)">Rename</button>
+            </div>
+          `:''}
+        </div>
+
+        <div class="dai-list">
+          ${products.map(record=>{
+            const dims=[record.layout_depth_mm||record.depth_mm,record.layout_width_mm||record.width_mm]
+              .filter(value=>value!==null&&value!==undefined&&value!=='')
+              .join(' × ')||'Missing footprint';
+
+            const productId=record.product_id||'';
+
+            return `
+              <div class="dai-row" style="grid-template-columns:minmax(240px,1fr) minmax(170px,240px) auto;align-items:center">
+                <div onclick="openDesignAI('product',{id:'${designAiJsArg(productId)}'})" style="cursor:pointer">
+                  <strong>${esc(record.name||record.sku||productId)}</strong>
+                  <div class="pc-s">${esc(productId)} · ${esc(dims)}</div>
+                </div>
+
+                <div>
+                  <select onchange="changeDesignAiProductCategory('${designAiJsArg(productId)}',this.value,event)" onclick="event.stopPropagation()" style="width:100%">
+                    ${categoryList.map(option=>
+                      `<option value="${esc(option.name)}" ${
+                        String(option.name||'').toLowerCase()===String(record.category||'Uncategorized').toLowerCase()
+                          ?'selected':''
+                      }>${esc(option.name)}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+                  <button class="btn btn-out btn-sm" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','up',event)">↑</button>
+                  <button class="btn btn-out btn-sm" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','down',event)">↓</button>
+                  <button class="btn btn-out btn-sm" onclick="event.stopPropagation();openDesignAI('product',{id:'${designAiJsArg(productId)}'})">Edit</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const categoryManagerRows=categoryList
+    .filter(category=>Number(category.id||0))
+    .map(category=>{
+      const productCount=records.filter(record=>
+        String(record.category||'Uncategorized').trim().toLowerCase()===
+        String(category.name||'Uncategorized').trim().toLowerCase()
+      ).length;
+
+      const isUncategorized=
+        String(category.name||'').trim().toLowerCase()==='uncategorized';
+
+      return `
+        <div class="dai-row" style="grid-template-columns:minmax(180px,1fr) auto;align-items:center">
+          <div>
+            <strong>${esc(category.name||'Uncategorized')}</strong>
+            <div class="pc-s">${productCount} product${productCount===1?'':'s'}</div>
+          </div>
+
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-out btn-sm"
+              onclick="moveDesignAiProductCategory(${Number(category.id)},'up',event)">
+              ↑
+            </button>
+
+            <button class="btn btn-out btn-sm"
+              onclick="moveDesignAiProductCategory(${Number(category.id)},'down',event)">
+              ↓
+            </button>
+
+            <button class="btn btn-out btn-sm"
+              onclick="renameDesignAiProductCategory(${Number(category.id)},'${designAiJsArg(category.name)}',event)">
+              Rename
+            </button>
+
+            ${isUncategorized?'':`
+              <button class="btn btn-danger btn-sm"
+                onclick="deleteDesignAiProductCategory(${Number(category.id)},'${designAiJsArg(category.name)}',event)">
+                Delete
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  return `
+    <div class="dai-panel" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <div class="dai-panel-title" style="margin-bottom:2px">Product Categories</div>
+          <div class="pc-s">Manage category names and order. Deleted categories move their products to Uncategorized.</div>
+        </div>
+
+        <button class="btn btn-brand btn-sm"
+          onclick="addDesignAiProductCategory()">
+          + Add Category
+        </button>
+      </div>
+
+      <div class="dai-list">
+        ${categoryManagerRows||'<div class="dai-empty">No categories yet.</div>'}
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin:22px 0 12px">
+      <div style="height:1px;background:var(--g200);flex:1"></div>
+      <div style="font-size:var(--xxs);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--g500);white-space:nowrap">
+        Product Order
+      </div>
+      <div style="height:1px;background:var(--g200);flex:1"></div>
+    </div>
+
+    <div class="pc-s" style="margin:-4px 0 12px;text-align:center">
+      Assign products to categories and use the arrows to control their order in 2D Layout.
+    </div>
+
+    ${sections||'<div class="dai-empty">No products found.</div>'}
+  `;
+}
+
+async function refreshDesignAiProductsPreserveScroll(){
+  const savedScroll=typeof designAiCaptureScroll==='function'
+    ? designAiCaptureScroll()
+    : null;
+
+  await renderDesignAiRecords('products');
+
+  if(savedScroll&&typeof designAiRestoreScroll==='function'){
+    designAiRestoreScroll(savedScroll);
+  }
+}
+
+async function addDesignAiProductCategory(){
+  const name=prompt('New category name:');
+  if(!name||!name.trim())return;
+
+  try{
+    await POST('/api/design-ai/product-categories',{name:name.trim()});
+    toast('Category added ✓');
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Category add failed: ${errMsg(e)}`,6000);
+  }
+}
+
+async function renameDesignAiProductCategory(id,currentName,event){
+  event?.stopPropagation?.();
+
+  const name=prompt('Category name:',currentName||'');
+  if(!name||!name.trim()||name.trim()===currentName)return;
+
+  try{
+    await PATCH(`/api/design-ai/product-categories/${Number(id)}`,{name:name.trim()});
+    toast('Category renamed ✓');
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Category rename failed: ${errMsg(e)}`,6000);
+  }
+}
+
+async function deleteDesignAiProductCategory(id,name,event){
+  event?.stopPropagation?.();
+
+  const confirmed=confirm(
+    `Delete category "${name}"?\n\nProducts in this category will be moved to Uncategorized.`
+  );
+
+  if(!confirmed)return;
+
+  try{
+    const r=await fetch(
+      `/api/design-ai/product-categories/${Number(id)}`,
+      {
+        method:'DELETE',
+        credentials:'include'
+      }
+    );
+
+    const j=await telegramJsonResponse(r);
+
+    if(!r.ok){
+      throw new Error(j?.error||'Category delete failed');
+    }
+
+    toast('Category deleted ✓');
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Category delete failed: ${errMsg(e)}`,6000);
+  }
+}
+
+async function moveDesignAiProductCategory(id,direction,event){
+  event?.stopPropagation?.();
+
+  try{
+    await PATCH(`/api/design-ai/product-categories/${Number(id)}`,{direction});
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Category reorder failed: ${errMsg(e)}`,6000);
+  }
+}
+
+async function changeDesignAiProductCategory(productId,category,event){
+  event?.stopPropagation?.();
+
+  try{
+    await PATCH(
+      `/api/design-ai/products/${encodeURIComponent(productId)}/organization`,
+      {category}
+    );
+    toast('Product category updated ✓');
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Category update failed: ${errMsg(e)}`,6000);
+  }
+}
+
+async function moveDesignAiProduct(productId,direction,event){
+  event?.stopPropagation?.();
+
+  try{
+    await PATCH(
+      `/api/design-ai/products/${encodeURIComponent(productId)}/organization`,
+      {direction}
+    );
+    await refreshDesignAiProductsPreserveScroll();
+  }catch(e){
+    toast(`Product reorder failed: ${errMsg(e)}`,6000);
+  }
+}
+
 async function renderDesignAiRecords(kind='products'){
   const cfg=designAiRecordConfig(kind);
   designAiLoading(cfg.title);
@@ -4300,10 +4574,23 @@ async function renderDesignAiRecords(kind='products'){
     const includeArchived = kind === 'products' && DESIGN_AI.showArchivedProducts;
     const data=await GET(`/api/design-ai/${kind}${includeArchived ? '?include_archived=1' : ''}`);
     const records=data.records||[];
+    const categories=data.categories||[];
     const archivedToggle = kind === 'products'
       ? `<button class="btn btn-out btn-sm" onclick="DESIGN_AI.showArchivedProducts=!DESIGN_AI.showArchivedProducts;renderDesignAiRecords('products')">${includeArchived?'Hide Archived':'Show Archived'}</button>`
       : '';
     const actions=`<button class="btn btn-out btn-sm" onclick="openDesignAI()">← Database</button><button class="btn btn-out btn-sm" onclick="DESIGN_AI.folder='${cfg.library}';openDesignAI('library')">Files</button>${archivedToggle}<button class="btn btn-brand btn-sm" onclick="openDesignAI('${cfg.route}',{id:'new'})">New ${cfg.single}</button>`;
+
+    if(kind==='products'){
+      designAiBody().innerHTML=
+        designAiHeader(
+          cfg.title,
+          'Group and reorder products for the 2D Layout product selector.',
+          actions
+        )+
+        designAiProductCategoryManagerHtml(records,categories);
+      return;
+    }
+
     const headers=cfg.columns;
     const body=records.map(record=>{
       const productVariantCount=cfg.kind==='products'?designAiProductVariantList(record).length:0;
@@ -4367,7 +4654,8 @@ function designAiProductVariantList(record={}){
       drive_file_id:driveId,
       path:designAiProductVariantPath(variant),
       status:variant.status||variant.file_status||(driveId?'available':'saved'),
-      source
+      source:variant.source||source,
+      saved_index:Number.isInteger(variant.saved_index)?variant.saved_index:null
     });
   };
   const defaultDriveId=designAiProductImageValue(record);
@@ -4417,6 +4705,7 @@ function designAiProductVariantsHtml(record){
       const imageUrl=designAiProductVariantImageUrl(variant);
       const label=designAiProductVariantLabel(variant);
       const path=designAiProductVariantPath(variant);
+      const savedIndex=Number.isInteger(variant.saved_index)?variant.saved_index:null;
       return `<div class="dai-variant-card">
         <div class="dai-variant-thumb">
           ${imageUrl?`<img src="${esc(imageUrl)}" alt="${esc(label)}">`:'<div class="dai-product-image-empty">No image</div>'}
@@ -4424,10 +4713,14 @@ function designAiProductVariantsHtml(record){
         <div class="dai-variant-title">${esc(label)}</div>
         <div>${designAiStatusPill(variant.status||'saved')}</div>
         <div class="dai-variant-path">${esc(path||variant.name||'Saved variant metadata')}</div>
+        ${savedIndex!==null?`
         <div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
-          <button class="btn btn-out btn-sm" onclick="renameDesignAiVariant(${index})">Rename</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteDesignAiVariant(${index})">Delete</button>
+          <button class="btn btn-out btn-sm" onclick="moveDesignAiVariant(${savedIndex},'left')">← Move</button>
+          <button class="btn btn-out btn-sm" onclick="moveDesignAiVariant(${savedIndex},'right')">Move →</button>
+          <button class="btn btn-out btn-sm" onclick="renameDesignAiVariant(${savedIndex})">Rename</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDesignAiVariant(${savedIndex})">Delete</button>
         </div>
+        `:'<div class="pc-s">Synced image ordering is controlled by Google Drive.</div>'}
       </div>`;
     }).join('')}</div>`:'<div class="dai-empty">No product variants yet. Drop or upload a product image above.</div>'}
   </div>`;
@@ -4596,7 +4889,17 @@ async function saveDesignAiRecord(button){
       DESIGN_AI.choices=null;
       clearDesignAiRecordDirty();
       toast('Database record saved ✓');
-      openDesignAI(cfg.route,{id});
+
+      const savedScroll=designAiCaptureScroll();
+
+      history.replaceState(
+        {view:'designai',page:cfg.route,id},
+        '',
+        designAiUrl(cfg.route,{id})
+      );
+
+      await renderDesignAiRecordEditor(ctx.kind||'products',id);
+      designAiRestoreScroll(savedScroll);
     });
   }catch(e){toast(`Record save failed: ${errMsg(e)}`,6500);}
 }
@@ -4638,6 +4941,39 @@ function handleDesignAiProductImageDrop(event){
   uploadDesignAiProductImageFile(event.dataTransfer?.files?.[0]);
 }
 
+function designAiScrollContainer(){
+  return document.querySelector('.view.active') || document.scrollingElement || document.documentElement;
+}
+
+function designAiCaptureScroll(){
+  const container=designAiScrollContainer();
+  return {
+    container,
+    top:Number(container?.scrollTop||0),
+    left:Number(container?.scrollLeft||0)
+  };
+}
+
+function designAiRestoreScroll(saved){
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      const container=saved?.container?.isConnected
+        ? saved.container
+        : designAiScrollContainer();
+      if(container){
+        container.scrollTop=Number(saved?.top||0);
+        container.scrollLeft=Number(saved?.left||0);
+      }
+    });
+  });
+}
+
+async function refreshDesignAiProductEditorPreserveScroll(productId){
+  const savedScroll=designAiCaptureScroll();
+  await renderDesignAiRecordEditor('products',productId);
+  designAiRestoreScroll(savedScroll);
+}
+
 async function deleteDesignAiVariant(index){
   if(!confirm('Delete this product image?'))return;
   const productId=DESIGN_AI.currentRecord?.product_id||DESIGN_AI.record?.recordKey;
@@ -4647,8 +4983,29 @@ async function deleteDesignAiVariant(index){
     if(!r.ok)throw new Error(j.error||'Delete failed');
     DESIGN_AI.currentRecord=j.record;
     toast('Variant deleted ✓');
-    renderDesignAiRecordEditor('products',j.record.product_id);
+    await refreshDesignAiProductEditorPreserveScroll(j.record.product_id);
   }catch(e){toast(`Delete failed: ${errMsg(e)}`,6000);}
+}
+
+async function moveDesignAiVariant(index,direction){
+  const productId=DESIGN_AI.currentRecord?.product_id||DESIGN_AI.record?.recordKey;
+  if(!productId)return;
+
+  try{
+    const r=await fetch(`/api/design-ai/products/${encodeURIComponent(productId)}/variants/${index}`,{
+      method:'PATCH',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({direction})
+    });
+    const j=await telegramJsonResponse(r);
+    if(!r.ok)throw new Error(j.error||'Reorder failed');
+    DESIGN_AI.currentRecord=j.record;
+    toast('Variant order updated ✓');
+    await refreshDesignAiProductEditorPreserveScroll(j.record.product_id);
+  }catch(e){
+    toast(`Reorder failed: ${errMsg(e)}`,6000);
+  }
 }
 
 async function renameDesignAiVariant(index){
@@ -4668,7 +5025,7 @@ async function renameDesignAiVariant(index){
     if(!r.ok)throw new Error(j.error||'Rename failed');
     DESIGN_AI.currentRecord=j.record;
     toast('Variant renamed ✓');
-    renderDesignAiRecordEditor('products',j.record.product_id);
+    await refreshDesignAiProductEditorPreserveScroll(j.record.product_id);
   }catch(e){toast(`Rename failed: ${errMsg(e)}`,6000);}
 }
 

@@ -656,6 +656,18 @@ function migrate() {
   addColumn('design_ai_vehicle_records', 'floor_plan_notes', 'TEXT');
   addColumn('design_ai_vehicle_records', 'layout_constraints_json', "TEXT DEFAULT '{}'");
   addColumn('design_ai_vehicle_records', 'reference_files_json', 'TEXT');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS design_ai_product_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  addColumn('design_ai_product_records', 'product_sort_order', 'INTEGER NOT NULL DEFAULT 0');
   addColumn('design_ai_product_records', 'mounting_notes', 'TEXT');
   addColumn('design_ai_product_records', 'installation_notes', 'TEXT');
   addColumn('design_ai_product_records', 'reference_files_json', 'TEXT');
@@ -724,6 +736,10 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_design_ai_extraction_entity ON design_ai_extraction_drafts(entity_type, entity_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_vehicle_records_status ON design_ai_vehicle_records(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_product_records_status ON design_ai_product_records(status, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_product_records_category_order
+    ON design_ai_product_records(category, product_sort_order, id);
+    CREATE INDEX IF NOT EXISTS idx_design_ai_product_categories_order
+    ON design_ai_product_categories(active, sort_order, id);
     CREATE INDEX IF NOT EXISTS idx_design_ai_style_records_status ON design_ai_style_records(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_workspaces_status ON design_ai_workspaces(status, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_design_ai_workspace_versions_workspace ON design_ai_workspace_versions(workspace_id, version DESC);

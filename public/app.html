@@ -950,6 +950,111 @@ button{cursor:pointer}
   }
 }
 
+
+/* Product organization mobile layout */
+@media(max-width:720px){
+  .dai-mobile-icon-btn{
+    width:44px !important;
+    min-width:44px !important;
+    height:44px !important;
+    padding:0 !important;
+    font-size:20px !important;
+  }
+
+  .dai-desktop-label{
+    display:none !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]){
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) select{
+    width:100% !important;
+    min-height:44px !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) > div:last-child{
+    justify-content:flex-start !important;
+  }
+}
+
+
+/* Product organization mobile polish */
+@media(max-width:720px){
+  .dai-mobile-icon-btn{
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:44px !important;
+    min-width:44px !important;
+    max-width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
+    padding:0 !important;
+    font-size:22px !important;
+    line-height:1 !important;
+    text-align:center !important;
+  }
+
+  .dai-mobile-icon-btn .dai-desktop-label{
+    display:none !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]){
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:12px !important;
+    padding:15px !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) > div{
+    min-width:0 !important;
+    width:100% !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) select{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    height:46px !important;
+    min-height:46px !important;
+    padding:0 42px 0 14px !important;
+    border:1px solid var(--g200) !important;
+    border-radius:12px !important;
+    background-color:var(--g50) !important;
+    color:var(--black) !important;
+    font-size:16px !important;
+    line-height:46px !important;
+    appearance:auto !important;
+    -webkit-appearance:menulist !important;
+    text-overflow:ellipsis !important;
+    overflow:hidden !important;
+    white-space:nowrap !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) > div:last-child{
+    display:flex !important;
+    width:100% !important;
+    gap:10px !important;
+    justify-content:flex-start !important;
+    align-items:center !important;
+    flex-wrap:nowrap !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) strong{
+    display:block !important;
+    line-height:1.35 !important;
+    overflow-wrap:anywhere !important;
+  }
+
+  .dai-row:has(select[onchange*="changeDesignAiProductCategory"]) .pc-s{
+    line-height:1.45 !important;
+    overflow-wrap:anywhere !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -3002,15 +3107,15 @@ const DESIGN_AI_VEHICLE_FIELD_SECTIONS = [
     ]
   ],
   [
+    '🟩 Build Area',
+    []
+  ],
+  [
     'Suggested Build Area',
     []
   ],
   [
     '🗺️ Floor Plan Preview',
-    []
-  ],
-  [
-    '🟩 Build Area',
     []
   ],
   [
@@ -3074,8 +3179,27 @@ function designAiVehicleLayoutConstraints(record){
     vehicle_readiness:c.vehicle_readiness||metadata.vehicle_readiness||record?.vehicle_readiness||null
   };
 }
-function designAiVehicleBuildAreaInput(id,label,value,placeholder=''){
-  return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(value===undefined||value===null?'':value)}" placeholder="${esc(placeholder)}"></div>`;
+function designAiVehicleBuildAreaInput(id,label,value,placeholder='',options={}){
+  const required=Boolean(options.required);
+  const rawValue=value===undefined||value===null?'':value;
+
+  if(required){
+    return `
+      <div class="dai-emphasis-card">
+        <label>${esc(label)}</label>
+        <input
+          id="${esc(id)}"
+          value="${esc(rawValue)}"
+          placeholder="${esc(placeholder)}"
+          required
+          oninput="this.closest('.dai-emphasis-card')?.classList.toggle('missing',!String(this.value||'').trim())"
+        >
+        <div class="pc-s" style="margin-top:6px">Required for 2D Layout</div>
+      </div>
+    `;
+  }
+
+  return `<div class="dai-field"><label>${esc(label)}</label><input id="${esc(id)}" value="${esc(rawValue)}" placeholder="${esc(placeholder)}"></div>`;
 }
 function designAiCompletenessStatusPill(status='Missing'){
   const value=String(status||'Missing');
@@ -3371,33 +3495,115 @@ function designAiGeometrySuggestionHtml(data){
 function designAiVehicleBuildAreaHtml(prefix,record){
   const c=designAiVehicleLayoutConstraints(record);
   return `
-    ${designAiVehicleCompletenessHtml(record,c)}
     <div class="dai-panel">
       <div class="dai-panel-title">🟩 Build Area</div>
+
       <div class="dai-warning">
-        Define where CRDN is allowed to build inside this vehicle. This is human-approved data for future AI layout planning.
+        Define where CRDN is allowed to build inside this vehicle. Length and width are required for the 2D Layout.
       </div>
+
+      <div class="dai-emphasis-grid" style="margin-bottom:16px">
+        ${designAiVehicleBuildAreaInput(
+          prefix+'build_length_mm',
+          'Length Used by 2D Layout',
+          c.build_area?.length_mm,
+          'e.g. 1960',
+          {required:true}
+        )}
+        ${designAiVehicleBuildAreaInput(
+          prefix+'build_width_mm',
+          'Width Used by 2D Layout',
+          c.build_area?.width_mm,
+          'e.g. 1430',
+          {required:true}
+        )}
+      </div>
+
       <div class="dai-form-grid">
-        ${designAiVehicleBuildAreaInput(prefix+'layout_status','Approval Status',c.metadata?.status||c.status||'draft','draft / ai_suggested / approved')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_origin_x_mm','Build Origin X (mm)',c.build_area?.x_mm,'e.g. 0')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_origin_y_mm','Build Origin Y (mm)',c.build_area?.y_mm,'e.g. 0')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_length_mm','Buildable Length (mm)',c.build_area?.length_mm,'e.g. 1960')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_width_mm','Buildable Width (mm)',c.build_area?.width_mm,'e.g. 1430')}
-        ${designAiVehicleBuildAreaInput(prefix+'build_height_mm','Buildable Height (mm)',c.build_area?.height_mm,'optional')}
-        ${designAiVehicleBuildAreaInput(prefix+'front_clearance_mm','Front Seat Clearance (mm)',c.clearance?.front_mm,'e.g. 50')}
-        ${designAiVehicleBuildAreaInput(prefix+'rear_clearance_mm','Rear Door Clearance (mm)',c.clearance?.rear_mm,'e.g. 50')}
-        ${designAiVehicleBuildAreaInput(prefix+'left_clearance_mm','Left Wall Clearance (mm)',c.clearance?.left_mm,'e.g. 30')}
-        ${designAiVehicleBuildAreaInput(prefix+'right_clearance_mm','Right Wall Clearance (mm)',c.clearance?.right_mm,'e.g. 30')}
-        ${designAiVehicleBuildAreaInput(prefix+'minimum_walkway_mm','Minimum Walkway (mm)',c.clearance?.minimum_walkway_mm,'e.g. 450')}
-        ${designAiVehicleBuildAreaInput(prefix+'derived_from','Derived From',c.metadata?.derived_from,'e.g. floorplan.svg')}
+        ${designAiVehicleBuildAreaInput(
+          prefix+'layout_status',
+          'Approval Status',
+          c.metadata?.status||c.status||'draft',
+          'draft / ai_suggested / approved'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'build_height_mm',
+          'Buildable Height (mm)',
+          c.build_area?.height_mm,
+          'optional'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'build_origin_x_mm',
+          'Build Origin X (mm)',
+          c.build_area?.x_mm,
+          'e.g. 0'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'build_origin_y_mm',
+          'Build Origin Y (mm)',
+          c.build_area?.y_mm,
+          'e.g. 0'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'front_clearance_mm',
+          'Front Seat Clearance (mm)',
+          c.clearance?.front_mm,
+          'e.g. 50'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'rear_clearance_mm',
+          'Rear Door Clearance (mm)',
+          c.clearance?.rear_mm,
+          'e.g. 50'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'left_clearance_mm',
+          'Left Wall Clearance (mm)',
+          c.clearance?.left_mm,
+          'e.g. 30'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'right_clearance_mm',
+          'Right Wall Clearance (mm)',
+          c.clearance?.right_mm,
+          'e.g. 30'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'minimum_walkway_mm',
+          'Minimum Walkway (mm)',
+          c.clearance?.minimum_walkway_mm,
+          'e.g. 450'
+        )}
+
+        ${designAiVehicleBuildAreaInput(
+          prefix+'derived_from',
+          'Derived From',
+          c.metadata?.derived_from,
+          'e.g. floorplan.svg'
+        )}
+
         <div class="dai-field wide">
           <label>Layout Notes</label>
-          <textarea id="${esc(prefix+'layout_notes')}" placeholder="Example: Build starts behind front seats. Keep rear hatch access clear. Avoid wheel arches.">${esc(c.metadata?.notes||'')}</textarea>
+          <textarea
+            id="${esc(prefix+'layout_notes')}"
+            placeholder="Example: Build starts behind front seats. Keep rear hatch access clear. Avoid wheel arches."
+          >${esc(c.metadata?.notes||'')}</textarea>
         </div>
       </div>
     </div>
+
+    ${designAiVehicleCompletenessHtml(record,c)}
   `;
 }
+
 function designAiVehicleBuildAreaValue(prefix){
   const num=id=>{
     const el=document.getElementById(prefix+id);
@@ -4330,9 +4536,9 @@ function designAiProductCategoryManagerHtml(records=[],categories=[]){
           </div>
           ${Number(category.id||0)?`
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-out btn-sm" onclick="moveDesignAiProductCategory(${Number(category.id)},'up',event)">↑ Category</button>
-              <button class="btn btn-out btn-sm" onclick="moveDesignAiProductCategory(${Number(category.id)},'down',event)">↓ Category</button>
-              <button class="btn btn-out btn-sm" onclick="renameDesignAiProductCategory(${Number(category.id)},'${designAiJsArg(category.name)}',event)">Rename</button>
+              <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Move category up" aria-label="Move category up" onclick="moveDesignAiProductCategory(${Number(category.id)},'up',event)">↑<span class="dai-desktop-label"> Category</span></button>
+              <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Move category down" aria-label="Move category down" onclick="moveDesignAiProductCategory(${Number(category.id)},'down',event)">↓<span class="dai-desktop-label"> Category</span></button>
+              <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Rename category" aria-label="Rename category" onclick="renameDesignAiProductCategory(${Number(category.id)},'${designAiJsArg(category.name)}',event)">✎<span class="dai-desktop-label"> Rename</span></button>
             </div>
           `:''}
         </div>
@@ -4364,9 +4570,9 @@ function designAiProductCategoryManagerHtml(records=[],categories=[]){
                 </div>
 
                 <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-                  <button class="btn btn-out btn-sm" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','up',event)">↑</button>
-                  <button class="btn btn-out btn-sm" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','down',event)">↓</button>
-                  <button class="btn btn-out btn-sm" onclick="event.stopPropagation();openDesignAI('product',{id:'${designAiJsArg(productId)}'})">Edit</button>
+                  <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Move product up" aria-label="Move product up" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','up',event)">↑</button>
+                  <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Move product down" aria-label="Move product down" onclick="moveDesignAiProduct('${designAiJsArg(productId)}','down',event)">↓</button>
+                  <button class="btn btn-out btn-sm dai-mobile-icon-btn" title="Edit product" aria-label="Edit product" onclick="event.stopPropagation();openDesignAI('product',{id:'${designAiJsArg(productId)}'})">✎<span class="dai-desktop-label"> Edit</span></button>
                 </div>
               </div>
             `;

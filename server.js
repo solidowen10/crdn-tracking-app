@@ -1014,21 +1014,146 @@ function designProductVariantsForProduct(productId, row = {}) {
   });
 }
 
-function layoutConceptVehiclesForLibrary() {
-  const approvedCount = db.prepare("SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'").get().count;
-  const status = approvedCount > 0 ? 'approved' : 'draft';
+function layoutConceptVehicleTopdownFiles() {
   return db.prepare(`
-    SELECT vehicle_id, brand, make, model, interior_length_mm, interior_width_mm, interior_height_mm,
-      layout_constraints_json, status, updated_at
+    SELECT drive_file_id, name, path, mime_type, web_view_link, modified_time
+    FROM design_library_files
+    WHERE folder_type='vehicles'
+      AND is_folder=0
+      AND COALESCE(file_status, 'active')='active'
+      AND (
+        lower(COALESCE(mime_type,'')) LIKE 'image/%'
+        OR lower(name) LIKE '%.png'
+        OR lower(name) LIKE '%.jpg'
+        OR lower(name) LIKE '%.jpeg'
+        OR lower(name) LIKE '%.webp'
+      )
+      AND (
+        lower(name) IN (
+          'topdown_base.png',
+          'topdown_base.jpg',
+          'topdown_base.jpeg',
+          'topdown_base.webp',
+          'topdown.png',
+          'topdown.jpg',
+          'topdown.jpeg',
+          'topdown.webp',
+          'vehicle_topdown_base.png',
+          'vehicle_topdown_base.jpg',
+          'vehicle_topdown_base.jpeg',
+          'vehicle_topdown_base.webp'
+        )
+        OR lower(name) LIKE '%topdown_base%'
+        OR replace(replace(replace(lower(name), '_', ''), '-', ''), ' ', '') LIKE '%topdownbase%'
+      )
+    ORDER BY modified_time DESC, name COLLATE NOCASE
+  `).all();
+}
+
+function layoutConceptTopdownForVehicle(row = {}, files = []) {
+  const vehicleId = text(row.vehicle_id);
+  if (!vehicleId || !files.length) return null;
+
+  const normalizedId = normalizedDesignFileName(vehicleId);
+  const normalizedModel = normalizedDesignFileName(row.model || '');
+  const compactVehicleId = normalizedId.replace(/transporter|volkswagen|vw/g, '');
+
+  const tokens = String(
+    `${vehicleId} ${row.brand || ''} ${row.make || ''} ${row.model || ''}`
+  )
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map(value => value.trim())
+    .filter(value => value && (value.length >= 3 || /\d/.test(value)));
+
+  const needles = [...new Set(
+    [normalizedId, normalizedModel, compactVehicleId, ...tokens]
+      .map(value => String(value || '').replace(/[^a-z0-9]+/g, ''))
+      .filter(value => value && (value.length >= 3 || /\d/.test(value)))
+  )];
+
+  const normalizedExactNames = new Set([
+    `${normalizedId}topdownbase`,
+    `${normalizedId}topdown`,
+    `${compactVehicleId}topdownbase`,
+    `${compactVehicleId}topdown`
+  ].filter(Boolean));
+
+  const scored = files.map(file => {
+    const rawPath = text(file.path).toLowerCase();
+    const rawName = text(file.name).toLowerCase();
+    const compactPath = rawPath.replace(/[^a-z0-9]+/g, '');
+    const compactName = rawName
+      .replace(/\.[a-z0-9]+$/, '')
+      .replace(/[^a-z0-9]+/g, '');
+
+    let score = 0;
+
+    if (normalizedExactNames.has(compactName)) score += 1000;
+
+    if (
+      rawPath.startsWith(`${vehicleId.toLowerCase()}/`) ||
+      rawPath.includes(`/${vehicleId.toLowerCase()}/`)
+    ) {
+      score += 800;
+    }
+
+    if (normalizedId && compactPath.includes(normalizedId)) score += 500;
+    if (compactVehicleId && compactPath.includes(compactVehicleId)) score += 400;
+    if (normalizedModel && compactPath.includes(normalizedModel)) score += 300;
+
+    for (const needle of needles) {
+      if (compactPath.includes(needle)) score += 25;
+    }
+
+    if (compactName.includes('topdownbase')) score += 20;
+    else if (compactName.includes('topdown')) score += 10;
+
+    return { file, score };
+  })
+    .filter(item => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return String(b.file.modified_time || '')
+        .localeCompare(String(a.file.modified_time || ''));
+    });
+
+  return scored[0]?.file || null;
+}
+
+function layoutConceptVehiclesForLibrary() {
+  const approvedCount = db.prepare(
+    "SELECT COUNT(*) AS count FROM design_ai_vehicle_records WHERE status='approved'"
+  ).get().count;
+
+  const status = approvedCount > 0 ? 'approved' : 'draft';
+
+  const rows = db.prepare(`
+    SELECT
+      vehicle_id,
+      brand,
+      make,
+      model,
+      interior_length_mm,
+      interior_width_mm,
+      interior_height_mm,
+      layout_constraints_json,
+      status,
+      updated_at
     FROM design_ai_vehicle_records
     WHERE status=?
     ORDER BY updated_at DESC, vehicle_id COLLATE NOCASE
     LIMIT 200
-  `).all(status).map(row => {
+  `).all(status);
+
+  const topdownFiles = layoutConceptVehicleTopdownFiles();
+
+  return rows.map(row => {
     const dimensions = layoutVehicleBuildDimensions(row);
     const templateAlignment = layoutVehicleTemplateAlignment(row);
     const vehicleId = text(row.vehicle_id);
-    const topdownBase = designTopdownBaseImageForVehicle(vehicleId, row);
+    const topdownBase = layoutConceptTopdownForVehicle(row, topdownFiles);
+
     return {
       key: vehicleId,
       name: layoutVehicleName(row),
